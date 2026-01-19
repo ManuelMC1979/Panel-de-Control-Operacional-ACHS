@@ -5046,7 +5046,12 @@
               adminFecha.textContent = fechaIngreso.toLocaleString('es-CL');
               renderHistorial();
             }
+            // Marcar como autenticado para módulos como Podio
+            try{ sessionStorage.setItem('achs_auth','1'); }catch(e){}
+            // Ocultar modal principal
             loginModal.style.display = 'none';
+            // Invocar UI de podio si ya está disponible
+            try{ if(window.achs_showPodioUI) window.achs_showPodioUI(); }catch(e){}
           });
         }
         const adminAuthModal = document.getElementById('admin-auth-modal');
@@ -5144,7 +5149,9 @@
               return;
             }
             // Aquí podrías agregar validación extra de RUT si lo deseas
+            try{ sessionStorage.setItem('achs_auth','1'); }catch(e){}
             loginModal.style.display = 'none';
+            try{ if(window.achs_showPodioUI) window.achs_showPodioUI(); }catch(e){}
           });
         }
       });
@@ -8565,6 +8572,99 @@
         }
       });
     });
+  </script>
+  <!-- Podio 3 más bajos (KPIs solicitados) -->
+  <script>
+    (function(){
+      const STORAGE_KEY = 'dashboard_metricas_historial';
+      const KPI_KEYS = ['satisfaccion_snl','resolucion_snl','satisfaccion_ep','resolucion_ep','tmo','epa','tipificaciones'];
+      const THRESHOLDS = { satisfaccion_snl:95, resolucion_snl:90, satisfaccion_ep:95, resolucion_ep:90, tmo:5, epa:85, tipificaciones:95 };
+
+      function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+      function latest(series){ if(!series||!Array.isArray(series)||series.length===0) return null; const last = series[series.length-1]; return (typeof last.valor!=='undefined'? last.valor : (last.value!==undefined? last.value : null)); }
+
+      function readHist(){ try{ const r = localStorage.getItem(STORAGE_KEY); return r? JSON.parse(r): null; }catch(e){ console.warn('leer historial',e); return null; } }
+
+      function computeTop3(){
+        const data = readHist(); if(!data) return [];
+        const execs = Object.keys(data||{});
+        const results = execs.map(name=>{
+          const raw = data[name]; const vals = {}; const scores = [];
+          KPI_KEYS.forEach(k=>{
+            const series = raw && (raw[k] || raw[k.toLowerCase()]) ? (raw[k]||raw[k.toLowerCase()]) : null;
+            const v = latest(series);
+            let value = (v===null||v===undefined||isNaN(v))? null: Number(v);
+            if(value!==null && k!=='tmo'){ if(value<=1) value = value*100; }
+            let normalized = null;
+            if(value!==null && !isNaN(value)){
+              if(k==='tmo'){ if(value>0) normalized = Math.min(100,(THRESHOLDS.tmo / value)*100); }
+              else normalized = Math.max(0,Math.min(100,Number(value)));
+            }
+            if(normalized!==null) scores.push(normalized);
+            vals[k] = { raw: v, normalized };
+          });
+          const score = scores.length? scores.reduce((a,b)=>a+b,0)/scores.length : null;
+          return { id:name, label:name, vals, score };
+        }).filter(r=>r.score!==null && !isNaN(r.score));
+        return results.sort((a,b)=>a.score - b.score).slice(0,3);
+      }
+
+      function makeButton(){ if(document.getElementById('podio-btn')) return document.getElementById('podio-btn'); const b = document.createElement('button'); b.id='podio-btn'; b.textContent='Podio 3 bajos'; Object.assign(b.style,{position:'fixed',left:'18px',bottom:'18px',zIndex:12000,background:'#b00020',color:'#fff',border:'none',padding:'10px 12px',borderRadius:'8px',cursor:'pointer'}); document.body.appendChild(b); return b; }
+      function makeModal(){ if(document.getElementById('podio-modal')) return document.getElementById('podio-modal'); const m=document.createElement('div'); m.id='podio-modal'; Object.assign(m.style,{display:'none',position:'fixed',left:'18px',bottom:'70px',zIndex:12000,background:'#fff',borderRadius:'8px',boxShadow:'0 8px 30px rgba(0,0,0,0.2)',maxWidth:'520px',width:'480px',padding:'12px',fontFamily:'Segoe UI,Arial'}); m.innerHTML='<button id="podio-close" style="float:right;background:transparent;border:none;cursor:pointer">✕</button><h4 style="margin:6px 0 8px 0">Podio — 3 ejecutivos con menor score</h4><div id="podio-content">Cargando...</div>'; document.body.appendChild(m); return m; }
+
+      function render(){ const modal = makeModal(); const content = modal.querySelector('#podio-content'); content.innerHTML='Calculando...'; const top = computeTop3(); if(!top||!top.length){ content.innerHTML='<div style="color:#666">No hay datos en el historial.</div>'; return; } let html='<ol style="padding-left:18px">'; top.forEach(t=>{ html+='<li style="margin:8px 0"><strong>'+escapeHtml(t.label)+'</strong> — Score: '+(t.score!==null?Number(t.score).toFixed(2):'–')+'<div style="font-size:12px;color:#666;margin-top:6px">'; KPI_KEYS.forEach(k=>{ const meta=THRESHOLDS[k]; const raw=t.vals[k].raw; const norm=t.vals[k].normalized; let disp=(raw===null||raw===undefined)?'–':(k==='tmo'? Number(raw).toFixed(2)+' min': (Number(raw)>1? Number(raw).toFixed(1)+'%': (Number(raw)*100).toFixed(1)+'%')); let flag=''; if(raw!==null&&raw!==undefined&&!isNaN(raw)){ if(k==='tmo'){ if(Number(raw)>THRESHOLDS.tmo) flag=' ⚠️'; } else { let v=Number(raw); if(v<=1) v=v*100; if(v<meta) flag=' ⚠️'; } } html+='<div>'+escapeHtml(k)+': <strong style="float:right">'+disp+flag+'</strong></div>'; }); html+='</div></li>'; }); html+='</ol>'; content.innerHTML=html; }
+
+      document.addEventListener('DOMContentLoaded', function(){
+        // Mostrar botón solo después de autenticación en sessionStorage
+        function createLogin(){
+          if(document.getElementById('podio-login')) return document.getElementById('podio-login');
+          const m = document.createElement('div'); m.id='podio-login'; Object.assign(m.style,{position:'fixed',left:'50%',top:'50%',transform:'translate(-50%,-50%)',zIndex:12001,background:'#fff',borderRadius:'8px',boxShadow:'0 12px 40px rgba(0,0,0,0.25)',width:'380px',padding:'18px',fontFamily:'Segoe UI,Arial'});
+          m.innerHTML = '<h3 style="margin-top:0">Ingreso requerido</h3><div style="margin:8px 0"><label>RUT</label><input id="podio-rut" style="width:100%;padding:8px;margin-top:6px"/></div><div style="margin:8px 0"><label>Clave</label><input id="podio-clave" type="password" style="width:100%;padding:8px;margin-top:6px"/></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button id="podio-cancel" style="background:transparent;border:1px solid #ccc;padding:8px 12px;border-radius:6px;">Cancelar</button><button id="podio-ok" style="background:#1E7F4F;color:#fff;border:none;padding:8px 12px;border-radius:6px">Ingresar</button></div>';
+          document.body.appendChild(m);
+          return m;
+        }
+
+        function downloadCSV(top){
+          const hdr = ['id','label','score'].concat(KPI_KEYS);
+          const rows = top.map(t=>{
+            const rawVals = KPI_KEYS.map(k=>{ const v = t.vals && t.vals[k] ? t.vals[k].raw : null; return (v===null||v===undefined)?'':String(v); });
+            return [t.id, t.label, (t.score!==null?Number(t.score).toFixed(2):'')].concat(rawVals);
+          });
+          const csv = [hdr].concat(rows).map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+          const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+          const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'podio_3_bajos.csv'; a.click(); URL.revokeObjectURL(url);
+        }
+
+        function showUI(){
+          const btn = makeButton(); const modal = makeModal(); btn.style.display='';
+          btn.addEventListener('click', function(){ render(); modal.style.display='block';
+            // añadir botón export si no existe
+            if(!document.getElementById('podio-export')){
+              const content = modal.querySelector('#podio-content');
+              const exp = document.createElement('button'); exp.id='podio-export'; exp.textContent='Exportar CSV'; Object.assign(exp.style,{marginTop:'8px',background:'#0a62a3',color:'#fff',border:'none',padding:'6px 10px',borderRadius:'6px',cursor:'pointer'});
+              content.parentNode.insertBefore(exp, content.nextSibling);
+              exp.addEventListener('click', function(){ const top = computeTop3(); downloadCSV(top); });
+            }
+          });
+          modal.addEventListener('click', function(e){ if(e.target && e.target.id==='podio-close') modal.style.display='none'; });
+          document.addEventListener('click', function(e){ if(!modal.contains(e.target) && e.target !== btn) modal.style.display='none'; }, true);
+          document.addEventListener('keydown', function(e){ if(e.key==='Escape') modal.style.display='none'; });
+        }
+        // Exponer para que otros scripts (p.ej. el login principal) puedan activar el Podio
+        try{ window.achs_showPodioUI = showUI; }catch(e){}
+
+        if(sessionStorage.getItem('achs_auth') === '1'){
+          showUI();
+          return;
+        }
+
+        const login = createLogin();
+        const ok = login.querySelector('#podio-ok');
+        const cancel = login.querySelector('#podio-cancel');
+        ok.addEventListener('click', function(){ const rut = (document.getElementById('podio-rut').value||'').trim(); const clave = (document.getElementById('podio-clave').value||'').trim(); if(!rut||!clave){ alert('Ingrese RUT y Clave'); return; } sessionStorage.setItem('achs_auth','1'); login.style.display='none'; showUI(); });
+        cancel.addEventListener('click', function(){ login.style.display='none'; });
+      });
+    })();
   </script>
 </body>
 <style>
