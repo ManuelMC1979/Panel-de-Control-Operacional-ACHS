@@ -7076,10 +7076,10 @@
         tablaEjecutivosNotaEPA += `
           <tr class="${color}" tabindex="0">
             <td>${ej.nombre}</td>
-            <td><span style="font-weight:700;">${(ej.ep * 100).toFixed(0)}%</span> <span style="color:${flechaColor};font-size:1.2em;vertical-align:middle;">${flecha}</span></td>
-            <td><span style="font-weight:700;">${(ej.ep_res * 100).toFixed(0)}%</span> <span style="color:${(ej.ep_res * 100) >= 90 ? '#2E7D32' : (ej.ep_res * 100) >= 85 ? '#F9A825' : '#C62828'};font-size:1.2em;vertical-align:middle;">${(ej.ep_res * 100) >= 90 ? '▲' : '▼'}</span></td>
-            <td><span style="font-weight:700;">${(ej.snl * 100).toFixed(0)}%</span> <span style="color:${(ej.snl * 100) >= 95 ? '#2E7D32' : (ej.snl * 100) >= 92 ? '#F9A825' : '#C62828'};font-size:1.2em;vertical-align:middle;">${(ej.snl * 100) >= 95 ? '▲' : '▼'}</span></td>
-            <td><span style="font-weight:700;">${(ej.snl_res * 100).toFixed(0)}%</span> <span style="color:${(ej.snl_res * 100) >= 90 ? '#2E7D32' : (ej.snl_res * 100) >= 85 ? '#F9A825' : '#C62828'};font-size:1.2em;vertical-align:middle;">${(ej.snl_res * 100) >= 90 ? '▲' : '▼'}</span></td>
+            <td><span style="font-weight:700;">${(ej.ep * 100).toFixed(2)}%</span> <span style="color:${flechaColor};font-size:1.2em;vertical-align:middle;">${flecha}</span></td>
+            <td><span style="font-weight:700;">${(ej.ep_res * 100).toFixed(2)}%</span> <span style="color:${(ej.ep_res * 100) >= 90 ? '#2E7D32' : (ej.ep_res * 100) >= 85 ? '#F9A825' : '#C62828'};font-size:1.2em;vertical-align:middle;">${(ej.ep_res * 100) >= 90 ? '▲' : '▼'}</span></td>
+            <td><span style="font-weight:700;">${(ej.snl * 100).toFixed(2)}%</span> <span style="color:${(ej.snl * 100) >= 95 ? '#2E7D32' : (ej.snl * 100) >= 92 ? '#F9A825' : '#C62828'};font-size:1.2em;vertical-align:middle;">${(ej.snl * 100) >= 95 ? '▲' : '▼'}</span></td>
+            <td><span style="font-weight:700;">${(ej.snl_res * 100).toFixed(2)}%</span> <span style="color:${(ej.snl_res * 100) >= 90 ? '#2E7D32' : (ej.snl_res * 100) >= 85 ? '#F9A825' : '#C62828'};font-size:1.2em;vertical-align:middle;">${(ej.snl_res * 100) >= 90 ? '▲' : '▼'}</span></td>
           </tr>
         `;
       });
@@ -7100,19 +7100,19 @@
           </div>
           <div class="kpi-value" style="font-size: 1.1em; flex-direction: column; align-items: flex-start; gap: 0.2em;">
             <div style="display:flex; justify-content: space-between; width: 100%;">
-              <span>Satisf. EP: <b>${Math.round(avgEP * 100)}%</b></span>
+              <span>Satisf. EP: <b>${(avgEP * 100).toFixed(2)}%</b></span>
               <span style="font-size:0.7em; font-weight:400; color:#607d8b;">Meta: 95%</span>
             </div>
             <div style="display:flex; justify-content: space-between; width: 100%;">
-              <span>Resol. EP: <b>${Math.round(avgEPRes * 100)}%</b></span>
+              <span>Resol. EP: <b>${(avgEPRes * 100).toFixed(2)}%</b></span>
               <span style="font-size:0.7em; font-weight:400; color:#607d8b;">Meta: 90%</span>
             </div>
             <div style="display:flex; justify-content: space-between; width: 100%; border-top: 1px solid var(--kpi-line); padding-top: 0.2em; margin-top: 0.1em;">
-              <span>Satisf. SNL: <b>${Math.round(avgSNL * 100)}%</b></span>
+              <span>Satisf. SNL: <b>${(avgSNL * 100).toFixed(2)}%</b></span>
               <span style="font-size:0.7em; font-weight:400; color:#607d8b;">Meta: 95%</span>
             </div>
             <div style="display:flex; justify-content: space-between; width: 100%;">
-              <span>Resol. SNL: <b>${Math.round(avgSNLRes * 100)}%</b></span>
+              <span>Resol. SNL: <b>${(avgSNLRes * 100).toFixed(2)}%</b></span>
               <span style="font-size:0.7em; font-weight:400; color:#607d8b;">Meta: 90%</span>
             </div>
           </div>
@@ -7644,7 +7644,12 @@
 
     function getDynamicExecutives() {
       // Obtenemos todos los nombres únicos de los ejecutivos guardados en maintainerData
-      const EXCLUDED_NAMES = ["Gutiérrez Bermúdez Elizabeth Caterina"];
+      // Nombres a excluir explícitamente del listado (por privacidad o limpieza)
+      const EXCLUDED_NAMES = [
+        "Gutiérrez Bermúdez Elizabeth Caterina",
+        "Vásquez Suárez Constanza Camily",
+        "Vasquez Suarez Constanza Camily"
+      ];
       const names = new Set();
       Object.keys(maintainerData).forEach(metric => {
         if (maintainerData[metric]) {
@@ -7812,6 +7817,18 @@
       return n.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
     }
 
+    // Parsea un valor pegado desde Excel/CSV y acepta comas como decimales y '%' opcional.
+    function parseImportNumber(raw) {
+      if (raw === null || raw === undefined) return 0;
+      let s = String(raw).trim();
+      if (s === '') return 0;
+      // Eliminar símbolo de porcentaje y espacios, convertir coma a punto
+      s = s.replace('%', '').replace(/\s+/g, '').replace(',', '.');
+      // Intentar parsear número
+      const n = parseFloat(s);
+      return isNaN(n) ? 0 : n;
+    }
+
     function fuzzyMatch(name) {
       const normInput = normalizeName(name);
       const execList = getDynamicExecutives();
@@ -7839,7 +7856,23 @@
       let validCount = 0;
 
       lines.forEach(line => {
-        const parts = line.split(/\t|,|;/).map(p => p.trim());
+        // Intentar separar por tabulador primero (pegado desde Excel), luego por punto y coma,
+        // y por último por comas. Si se usaron comas como separador pero el valor contiene
+        // una coma decimal (ej. "95,25"), intentamos recomponerlo.
+        let parts = line.split('\t');
+        if (parts.length === 1) parts = line.split(';');
+        if (parts.length === 1) parts = line.split(',');
+        parts = parts.map(p => p.trim());
+        // Recombinar posible coma decimal si se detectó separación por comas incorrecta
+        if (line.indexOf(',') !== -1 && line.indexOf('\t') === -1 && parts.length > 2) {
+          // Buscar patrón numérico dividido: ej. ['Nombre','95','25'] -> recomponer '95,25'
+          const maybeNum = parts[1];
+          const maybeFrac = parts[2];
+          if (/^\d+$/.test(maybeNum) && /^\d+$/.test(maybeFrac) && maybeNum.length <= 3 && maybeFrac.length <= 3) {
+            parts[1] = maybeNum + ',' + maybeFrac;
+            parts.splice(2, 1);
+          }
+        }
         if (parts.length < 2) return;
 
         const nameInput = parts[0];
@@ -7854,12 +7887,12 @@
 
         if (format === '4cols') {
           if (M_MONTH_LABELS && M_MONTH_LABELS.length >= 5) {
-            rowData.vals = [parseFloat(parts[1]) || 0, parseFloat(parts[2]) || 0, parseFloat(parts[3]) || 0, parseFloat(parts[4]) || 0, parseFloat(parts[5]) || 0];
+            rowData.vals = [parseImportNumber(parts[1]), parseImportNumber(parts[2]), parseImportNumber(parts[3]), parseImportNumber(parts[4]), parseImportNumber(parts[5])];
           } else {
-            rowData.vals = [parseFloat(parts[1]) || 0, parseFloat(parts[2]) || 0, parseFloat(parts[3]) || 0, parseFloat(parts[4]) || 0];
+            rowData.vals = [parseImportNumber(parts[1]), parseImportNumber(parts[2]), parseImportNumber(parts[3]), parseImportNumber(parts[4])];
           }
         } else {
-          rowData.vals = [parseFloat(parts[1]) || 0];
+          rowData.vals = [parseImportNumber(parts[1])];
         }
 
         validCount++;
@@ -7873,6 +7906,13 @@
       const container = document.getElementById('import-preview-list');
       const summary = document.getElementById('import-summary');
       const applyBtn = document.getElementById('btn-actualizar-apply');
+
+      const metric = document.getElementById('import-metric') ? document.getElementById('import-metric').value : '';
+      function fmt(v) {
+        if (v === null || v === undefined) return '0.00';
+        const n = Number(v) || 0;
+        return n.toFixed(2);
+      }
 
       document.getElementById('import-preview-container').style.display = 'block';
 
@@ -7893,10 +7933,10 @@
       container.innerHTML = headerHtml + results.map(r => `
         <div class="preview-row ${r.status}">
           <div title="Original: ${r.originalName}">${r.matchedName}</div>
-          <div>${r.vals[0] || 0}</div>
-          <div>${format === '4cols' ? (r.vals[1] || 0) : '-'}</div>
-          <div>${format === '4cols' ? (r.vals[2] || 0) : '-'}</div>
-          <div>${format === '4cols' ? (r.vals[3] || 0) : '-'}</div>
+          <div>${fmt(r.vals[0])}</div>
+          <div>${format === '4cols' ? fmt(r.vals[1]) : '-'}</div>
+          <div>${format === '4cols' ? fmt(r.vals[2]) : '-'}</div>
+          <div>${format === '4cols' ? fmt(r.vals[3]) : '-'}</div>
           <div style="text-align:right;">${r.status === 'match' ? 'EXACTO' : (r.status === 'warning' ? 'APROXIMADO' : 'NUEVO')}</div>
         </div>
       `).join('');
