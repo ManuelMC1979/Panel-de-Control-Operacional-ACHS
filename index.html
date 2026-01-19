@@ -1,4 +1,4 @@
-<style>
+﻿<style>
   :root {
     --kpi-verde: #1E7F4F;
     --kpi-amarillo: #C79200;
@@ -9107,6 +9107,207 @@
       }
     });
   });
+</script>
+
+<script>
+  (function () {
+    // Añade controles de Exportar/Importar y persistencia via fichero JSON
+    function ensureKpiIds() {
+      const els = Array.from(document.querySelectorAll('.kpi, [data-kpi]'));
+      els.forEach((el, i) => {
+        if (!el.dataset.kpiId) el.dataset.kpiId = 'kpi-' + (i + 1);
+      });
+      return els;
+    }
+
+    function getValorElemento(el) {
+      const valEl = el.querySelector('[data-kpi-value]') || el.querySelector('.kpi__valor') || el;
+      return (valEl.textContent || '').trim();
+    }
+
+    function setValorElemento(el, texto) {
+      const valEl = el.querySelector('[data-kpi-value]') || el.querySelector('.kpi__valor') || el;
+      if (valEl) valEl.textContent = texto;
+    }
+
+    function downloadJSON(obj, filename) {
+      const dataStr = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(obj, null, 2));
+      const a = document.createElement('a');
+      a.setAttribute('href', dataStr);
+      a.setAttribute('download', filename || 'kpi-values.json');
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+
+    function parsePorcentaje(str) {
+      if (!str) return null;
+      let val = str.replace(',', '.').replace('%', '').trim();
+      let num = parseFloat(val);
+      return isNaN(num) ? null : num;
+    }
+    function parseMinutos(str) {
+      if (!str) return null;
+      str = str.replace(',', '.');
+      if (/^[0-9]+([\.,][0-9]+)?$/.test(str)) return parseFloat(str);
+      const partes = str.split(':').map(s => parseFloat(s.replace(',', '.')));
+      if (partes.length === 2) return partes[0] + (partes[1] / 60);
+      if (partes.length === 3) return partes[0] * 60 + partes[1] + (partes[2] / 60);
+      return null;
+    }
+
+    // Versión reducida del mapping usado en el HTML para evaluar estado
+    const kpiMap = [
+      { keys: ['satisfaccion-snl'], label: /satisfac[ci][óo]n\s*snl/i, type: 'porcentaje', umbrales: { verde: 95, amarillo: 85 } },
+      { keys: ['satisfaccion-ep'], label: /satisfac[ci][óo]n\s*ep/i, type: 'porcentaje', umbrales: { verde: 95, amarillo: 85 } },
+      { keys: ['resolucion-snl'], label: /resoluci[óo]n\s*snl/i, type: 'porcentaje', umbrales: { verde: 95, amarillo: 94 } },
+      { keys: ['resolucion-ep'], label: /resoluci[óo]n\s*ep/i, type: 'porcentaje', umbrales: { verde: 95, amarillo: 94 } },
+      { keys: ['tmo'], label: /tmo|tiempo\s*medio\s*de\s*operaci[óo]n/i, type: 'minutos', umbrales: { verde: 3.0, amarillo: 5.0 } },
+      { keys: ['transferencia-epa'], label: /transferencia\s*a\s*epa/i, type: 'porcentaje', umbrales: { verde: 85, amarillo: 70 } },
+      { keys: ['tipificaciones'], label: /tipificaci[óo]n|tipificaciones/i, type: 'porcentaje', umbrales: { verde: 95, amarillo: 94 } }
+    ];
+
+    function normalizaTexto(txt) {
+      return (txt || '').normalize ? txt.normalize('NFD').replace(/[\u0000-\u036f]/g, '') .toLowerCase() : (txt || '').toLowerCase();
+    }
+
+    function inferDef(el) {
+      const kpi = el.getAttribute('data-kpi') || '';
+      if (kpi) {
+        const nk = normalizaTexto(kpi);
+        for (const def of kpiMap) if (def.keys.some(key => normalizaTexto(key) === nk)) return def;
+      }
+      const labelEl = el.querySelector('.kpi__label');
+      const label = normalizaTexto(labelEl ? (labelEl.textContent || '') : (el.textContent || ''));
+      for (const def of kpiMap) {
+        if (def.keys.some(key => label.includes(normalizaTexto(key)))) return def;
+        if (def.label && def.label.test(label)) return def;
+      }
+      return null;
+    }
+
+    function evaluateKPIs() {
+      const els = Array.from(document.querySelectorAll('.kpi, [data-kpi]'));
+      els.forEach(el => {
+        const def = inferDef(el);
+        const raw = getValorElemento(el);
+        let valor = null;
+        if (def && def.type === 'porcentaje') valor = parsePorcentaje(raw);
+        else if (def && def.type === 'minutos') valor = parseMinutos(raw);
+        // limpiar clases
+        el.classList.remove('kpi--verde', 'kpi--amarillo', 'kpi--rojo', 'kpi--gris');
+        let estado = 'gris', texto = '' , emoji = '';
+        if (valor !== null && !isNaN(valor)) {
+          if (def.type === 'porcentaje') {
+            if (valor >= def.umbrales.verde) { estado='verde'; texto='Verde'; emoji='🟢'; }
+            else if (valor >= def.umbrales.amarillo) { estado='amarillo'; texto='Amarillo'; emoji='🟡'; }
+            else { estado='rojo'; texto='Rojo'; emoji='🔴'; }
+          } else if (def.type === 'minutos') {
+            if (valor <= def.umbrales.verde) { estado='verde'; texto='Verde'; emoji='🟢'; }
+            else if (valor <= def.umbrales.amarillo) { estado='amarillo'; texto='Amarillo'; emoji='🟡'; }
+            else { estado='rojo'; texto='Rojo'; emoji='🔴'; }
+          }
+        }
+        el.classList.add('kpi--' + estado);
+        let chip = el.querySelector('.kpi__estado');
+        if (texto) {
+          if (!chip) { chip = document.createElement('span'); chip.className = 'kpi__estado'; el.appendChild(chip); }
+          chip.textContent = (emoji ? (emoji + ' ' + texto) : texto);
+          chip.setAttribute('aria-label', 'Estado: ' + texto);
+          chip.setAttribute('title', 'Estado: ' + texto);
+        } else if (chip) chip.remove();
+      });
+    }
+
+    // Exportar valores actuales a JSON
+    function exportKpis() {
+      const els = ensureKpiIds();
+      const items = els.map(el => ({ id: el.dataset.kpiId, value: getValorElemento(el) }));
+      const payload = { exportedAt: new Date().toISOString(), items };
+      downloadJSON(payload, 'kpi-values.json');
+    }
+
+    // Importar desde JSON (archivo)
+    function importKpisFile(file) {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        try {
+          const obj = JSON.parse(e.target.result);
+          if (!obj || !Array.isArray(obj.items)) throw new Error('Formato JSON inválido');
+          ensureKpiIds();
+          obj.items.forEach(it => {
+            if (!it.id) return;
+            const el = document.querySelector('[data-kpi-id="' + it.id + '"]');
+            if (el) setValorElemento(el, it.value);
+          });
+          evaluateKPIs();
+          alert('Valores KPI cargados correctamente');
+        } catch (err) {
+          alert('Error al cargar JSON: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // Crear UI mínima (botones) y file input
+    function createControls() {
+      const container = document.createElement('div');
+      container.style.position = 'fixed';
+      container.style.right = '12px';
+      container.style.bottom = '12px';
+      container.style.zIndex = 9999;
+      container.style.display = 'flex';
+      container.style.flexDirection = 'column';
+      container.style.gap = '6px';
+
+      const btnExport = document.createElement('button');
+      btnExport.textContent = 'Exportar KPI';
+      btnExport.style.padding = '8px 10px';
+      btnExport.style.background = '#0b5fff';
+      btnExport.style.color = '#fff';
+      btnExport.style.border = 'none';
+      btnExport.style.borderRadius = '6px';
+      btnExport.style.cursor = 'pointer';
+      btnExport.addEventListener('click', exportKpis);
+
+      const btnImport = document.createElement('button');
+      btnImport.textContent = 'Importar KPI';
+      btnImport.style.padding = '8px 10px';
+      btnImport.style.background = '#10b981';
+      btnImport.style.color = '#fff';
+      btnImport.style.border = 'none';
+      btnImport.style.borderRadius = '6px';
+      btnImport.style.cursor = 'pointer';
+
+      const inputFile = document.createElement('input');
+      inputFile.type = 'file';
+      inputFile.accept = 'application/json';
+      inputFile.style.display = 'none';
+      inputFile.addEventListener('change', function (e) {
+        const f = e.target.files && e.target.files[0];
+        if (f) importKpisFile(f);
+        inputFile.value = '';
+      });
+      btnImport.addEventListener('click', () => inputFile.click());
+
+      container.appendChild(btnExport);
+      container.appendChild(btnImport);
+      container.appendChild(inputFile);
+      document.body.appendChild(container);
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      ensureKpiIds();
+      createControls();
+      // evaluar inicialmente para consistencia
+      evaluateKPIs();
+    });
+
+    // Hacer la función accesible desde consola si se desea
+    window.exportKpis = exportKpis;
+    window.importKpisFile = importKpisFile;
+    window.evaluateKPIs = evaluateKPIs;
+  })();
 </script>
 
 </html>
