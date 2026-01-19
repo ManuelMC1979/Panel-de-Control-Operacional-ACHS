@@ -1,4 +1,5 @@
-﻿<style>
+<!doctype html>
+<html lang="es" data-theme="light"><head><style>
   :root {
     --kpi-verde: #1E7F4F;
     --kpi-amarillo: #C79200;
@@ -2943,7 +2944,7 @@
       return null;
     }
     function normalizaTexto(txt) {
-      return txt.normalize('NFD').replace(/[ -]/g, '').toLowerCase();
+      return txt.normalize('NFD').replace(/[�-]/g, '').toLowerCase();
     }
     function getKpiType(el) {
       // Estrategia A: data-kpi
@@ -3165,10 +3166,10 @@
   };
 </script>
 <!-- ...existing code... -->
-<!DOCTYPE html>
-<html lang="es">
 
-<head>
+
+
+
   <style>
     /* Badge de alerta pulsante */
     .alert-badge {
@@ -3203,8 +3204,7 @@
   <title>Panel de Control ACHS - KPIs Operacionales</title>
   <!-- Chart.js 4.x CDN y plugin de anotaciones -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script
-    src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@4.1.0/dist/chartjs-plugin-annotation.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@4.1.0/dist/chartjs-plugin-annotation.umd.min.js"></script>
   <style>
     :root {
       /* Colores corporativos ACHS y semáforo accesible */
@@ -4371,23 +4371,18 @@
 </head>
 
 <body>
-  <div id="login-modal"
-    style="position:fixed;z-index:9999;top:0;left:0;width:100vw;height:100vh;background:#fff;display:flex;align-items:center;justify-content:center;">
-    <form id="login-form"
-      style="background:#fff;padding:2em 2.5em;border-radius:12px;box-shadow:0 4px 32px #0002;min-width:320px;display:flex;flex-direction:column;gap:1.2em;">
+  <div id="login-modal" style="position: fixed; z-index: 9999; top: 0px; left: 0px; width: 100vw; height: 100vh; background: rgb(255, 255, 255); display: none; align-items: center; justify-content: center;">
+    <form id="login-form" style="background:#fff;padding:2em 2.5em;border-radius:12px;box-shadow:0 4px 32px #0002;min-width:320px;display:flex;flex-direction:column;gap:1.2em;">
       <h2 style="margin:0 0 0.5em 0;font-size:1.3em;color:#2563eb;">Ingreso al Panel</h2>
       <div>
         <label for="rut" style="font-weight:600;">RUT:</label><br>
-        <input type="text" id="rut" name="rut" placeholder="Ej: 12.345.678-9" required pattern="[0-9kK\.-]+"
-          style="width:100%;padding:0.5em;margin-top:0.2em;">
-      </div>
+        <input type="text" id="rut" name="rut" placeholder="Ej: 12.345.678-9" required="" pattern="[0-9kK\.-]+" style="width:100%;padding:0.5em;margin-top:0.2em;" value="13.638.765-0">
+      <div id="rut-error" style="color: rgb(176, 0, 32); font-size: 0.98em; margin-top: 0.3em;"></div></div>
       <div>
         <label for="nombre" style="font-weight:600;">Nombre:</label><br>
-        <input type="text" id="nombre" name="nombre" placeholder="Tu nombre completo" required
-          style="width:100%;padding:0.5em;margin-top:0.2em;">
+        <input type="text" id="nombre" name="nombre" placeholder="Tu nombre completo" required="" style="width:100%;padding:0.5em;margin-top:0.2em;" value="Manuel Alejandro Monsalve">
       </div>
-      <button type="submit"
-        style="background:#2563eb;color:#fff;padding:0.7em 1.5em;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:1em;">Ingresar</button>
+      <button type="submit" style="background:#2563eb;color:#fff;padding:0.7em 1.5em;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:1em;">Ingresar</button>
     </form>
   </div>
   <!-- Modal Predictivo (re-diseñado: responsive, scrollable, estética limpia) -->
@@ -4670,8 +4665,7 @@
     }
   </style>
 
-  <div id="modal-predictivo" class="modal-overlay" aria-hidden="true" role="dialog" aria-modal="true"
-    aria-labelledby="modal-predictivo-title">
+  <div id="modal-predictivo" class="modal-overlay" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-predictivo-title">
     <div class="modal-card">
       <div class="modal-header">
         <h2 id="modal-predictivo-title">Análisis Predictivo de KPIs por Ejecutivo</h2>
@@ -4690,43 +4684,34 @@
     </div>
   </div>
   <header>
-    <div id="admin-auth-modal"
-      style="display:none;position:fixed;z-index:6000;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.35);align-items:center;justify-content:center;">
-      <form id="admin-auth-form"
-        style="background:#fff;padding:2em 2.5em;border-radius:12px;box-shadow:0 4px 32px #0002;min-width:320px;display:flex;flex-direction:column;gap:1.2em;">
+    <div id="admin-auth-modal" style="display:none;position:fixed;z-index:6000;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.35);align-items:center;justify-content:center;">
+      <form id="admin-auth-form" style="background:#fff;padding:2em 2.5em;border-radius:12px;box-shadow:0 4px 32px #0002;min-width:320px;display:flex;flex-direction:column;gap:1.2em;">
         <h3 style="margin:0 0 0.5em 0;font-size:1.1em;color:#1E7F4F;">Clave de Administrador</h3>
-        <input type="password" id="admin-clave" placeholder="Ingrese clave" style="width:100%;padding:0.5em;">
+        <input type="password" id="admin-clave" placeholder="Ingrese clave" style="width:100%;padding:0.5em;" value="">
         <div id="admin-auth-error" style="color:#B00020;display:none;font-size:0.98em;"></div>
         <div style="display:flex;gap:1em;justify-content:flex-end;">
-          <button type="button" id="admin-auth-cancelar"
-            style="background:#888;color:#fff;padding:0.4em 1em;border:none;border-radius:5px;cursor:pointer;">Cancelar</button>
-          <button type="submit"
-            style="background:#1E7F4F;color:#fff;padding:0.4em 1em;border:none;border-radius:5px;cursor:pointer;">Ingresar</button>
+          <button type="button" id="admin-auth-cancelar" style="background:#888;color:#fff;padding:0.4em 1em;border:none;border-radius:5px;cursor:pointer;">Cancelar</button>
+          <button type="submit" style="background:#1E7F4F;color:#fff;padding:0.4em 1em;border:none;border-radius:5px;cursor:pointer;">Ingresar</button>
         </div>
       </form>
     </div>
-    <div id="admin-info"
-      style="display:none;position:absolute;top:60px;right:24px;background:#fff;color:#222;padding:1em 1.5em;border-radius:8px;box-shadow:0 4px 24px #0002;z-index:4001;min-width:260px;font-size:1em;max-width:95vw;">
+    <div id="admin-info" style="display:none;position:absolute;top:60px;right:24px;background:#fff;color:#222;padding:1em 1.5em;border-radius:8px;box-shadow:0 4px 24px #0002;z-index:4001;min-width:260px;font-size:1em;max-width:95vw;">
       <div style="margin-bottom:0.7em;"><b>Último ingreso</b></div>
-      <div><b>Usuario:</b> <span id="admin-nombre"></span></div>
-      <div><b>RUT:</b> <span id="admin-rut"></span></div>
-      <div><b>Ingreso:</b> <span id="admin-fecha"></span></div>
+      <div><b>Usuario:</b> <span id="admin-nombre">Manuel Alejandro Monsalve</span></div>
+      <div><b>RUT:</b> <span id="admin-rut">13.638.765-0</span></div>
+      <div><b>Ingreso:</b> <span id="admin-fecha">19-01-2026, 6:30:06 p.&nbsp;m.</span></div>
       <hr style="margin:1em 0;">
       <div style="display:flex;align-items:center;gap:1em;">
         <div style="flex:1 1 auto;">
           <div style="font-weight:600;margin-bottom:0.3em;">Historial de ingresos</div>
-          <div id="admin-historial" style="max-height:180px;overflow-y:auto;font-size:0.97em;margin-bottom:0.7em;">
-          </div>
-          <button id="predictivo-btn"
-            style="background:#2563eb;color:#fff;padding:0.4em 1em;border:none;border-radius:5px;cursor:pointer;margin-bottom:0.5em;margin-left:0.5em;">Predictivo</button>
+          <div id="admin-historial" style="max-height:180px;overflow-y:auto;font-size:0.97em;margin-bottom:0.7em;"><ul style="padding-left:1.1em;margin:0;"><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 6:30:06 p.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 6:29:00 p.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 6:23:24 p.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 6:18:46 p.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 6:17:23 p.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 6:11:54 p.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 5:42:48 p.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 5:11:47 p.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 5:05:17 p.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 4:56:03 p.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 4:52:05 p.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 3:55:35 p.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 3:50:20 p.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 3:46:08 p.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 3:44:02 p.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 3:41:22 p.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 3:41:02 p.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 3:38:11 p.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 3:37:57 p.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 3:32:38 p.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 3:28:48 p.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 3:28:25 p.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 3:20:12 p.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 3:11:49 p.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 3:10:46 p.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 3:07:34 p.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 2:27:16 p.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 1:55:03 p.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 1:52:28 p.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 1:49:10 p.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 1:42:54 p.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 1:32:52 p.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 1:29:37 p.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 1:24:59 p.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 10:08:11 a.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 10:05:35 a.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 9:38:41 a.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 1:36:11 a.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 1:36:01 a.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 1:12:55 a.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 1:09:55 a.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 1:07:00 a.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 1:06:51 a.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 1:06:31 a.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 1:04:18 a.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 1:01:30 a.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 1:01:12 a.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 12:57:07 a.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 12:53:35 a.&nbsp;m.</span></li><li style="margin-bottom:0.3em;"><b>Manuel Alejandro Monsalve</b> (13.638.765-0)<br><span style="color:#2563eb;">19-01-2026, 12:50:32 a.&nbsp;m.</span></li></ul></div>
+          <button id="predictivo-btn" style="background:#2563eb;color:#fff;padding:0.4em 1em;border:none;border-radius:5px;cursor:pointer;margin-bottom:0.5em;margin-left:0.5em;">Predictivo</button>
         </div>
         <!-- Botón admin-btn duplicado eliminado -->
       </div>
-      <button id="admin-eliminar-historial"
-        style="background:#B00020;color:#fff;padding:0.4em 1em;border:none;border-radius:5px;cursor:pointer;margin-bottom:0.5em;">Eliminar
+      <button id="admin-eliminar-historial" style="background:#B00020;color:#fff;padding:0.4em 1em;border:none;border-radius:5px;cursor:pointer;margin-bottom:0.5em;">Eliminar
         historial</button>
-      <button id="admin-cerrar"
-        style="background:#888;color:#fff;padding:0.4em 1em;border:none;border-radius:5px;cursor:pointer;">Cerrar</button>
+      <button id="admin-cerrar" style="background:#888;color:#fff;padding:0.4em 1em;border:none;border-radius:5px;cursor:pointer;">Cerrar</button>
       <!-- Modal Predictivo (movido fuera de `#admin-info` para mostrarse independientemente) -->
     </div>
     <script>
@@ -5161,8 +5146,7 @@
       <button class="btn-maintainer" id="btn-historial" title="Ver y editar historial de métricas">
         📅 Historial
       </button>
-      <button class="btn-maintainer" id="btn-teams-report" title="Enviar reporte por Teams"
-        style="background:#2563eb;color:#fff;">
+      <button class="btn-maintainer" id="btn-teams-report" title="Enviar reporte por Teams" style="background:#2563eb;color:#fff;">
         📨 Envío reporte por Teams
       </button>
       <button class="btn-maintainer" id="btn-actualizar-excel" title="Cargar datos desde Excel">
@@ -5173,14 +5157,11 @@
         📈 Evolutivo
       </button>
       <!-- Acceso rápido a Predictivo (visible en el header) -->
-      <button id="predictivo-shortcut" title="Abrir Predictivo"
-        style="background:#2563eb;color:#fff;padding:0.7em 1.5em;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:1em;display:inline-block;margin-left:0.4em;">🔮
+      <button id="predictivo-shortcut" title="Abrir Predictivo" style="background:#2563eb;color:#fff;padding:0.7em 1.5em;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:1em;display:inline-block;margin-left:0.4em;">🔮
         Predictivo</button>
-      <button id="admin-btn"
-        style="display:none;background:#1E7F4F;color:#fff;padding:0.7em 1.5em;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:1em;z-index:4000;align-self:flex-start;">Administrador</button>
+      <button id="admin-btn" style="display: inline-flex; background: rgb(30, 127, 79); color: rgb(255, 255, 255); padding: 0.7em 1.5em; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 1em; z-index: 4000; align-self: flex-start;">Administrador</button>
     </div>
-    <div id="admin-info"
-      style="display:none;position:absolute;top:60px;right:24px;background:#fff;color:#222;padding:1em 1.5em;border-radius:8px;box-shadow:0 4px 24px #0002;z-index:4001;min-width:260px;font-size:1em;max-width:95vw;">
+    <div id="admin-info" style="display:none;position:absolute;top:60px;right:24px;background:#fff;color:#222;padding:1em 1.5em;border-radius:8px;box-shadow:0 4px 24px #0002;z-index:4001;min-width:260px;font-size:1em;max-width:95vw;">
       <div style="margin-bottom:0.7em;"><b>Último ingreso</b></div>
       <div><b>Usuario:</b> <span id="admin-nombre"></span></div>
       <div><b>RUT:</b> <span id="admin-rut"></span></div>
@@ -5192,418 +5173,1219 @@
           <div id="admin-historial" style="max-height:180px;overflow-y:auto;font-size:0.97em;margin-bottom:0.7em;">
           </div>
         </div>
-        <button id="admin-btn"
-          style="display:none;background:#1E7F4F;color:#fff;padding:0.7em 1.5em;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:1em;z-index:4000;align-self:flex-start;">Administrador</button>
+        <button id="admin-btn" style="display:none;background:#1E7F4F;color:#fff;padding:0.7em 1.5em;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:1em;z-index:4000;align-self:flex-start;">Administrador</button>
       </div>
-      <button id="admin-eliminar-historial"
-        style="background:#B00020;color:#fff;padding:0.4em 1em;border:none;border-radius:5px;cursor:pointer;margin-bottom:0.5em;">Eliminar
+      <button id="admin-eliminar-historial" style="background:#B00020;color:#fff;padding:0.4em 1em;border:none;border-radius:5px;cursor:pointer;margin-bottom:0.5em;">Eliminar
         historial</button>
-      <button id="admin-cerrar"
-        style="background:#888;color:#fff;padding:0.4em 1em;border:none;border-radius:5px;cursor:pointer;">Cerrar</button>
+      <button id="admin-cerrar" style="background:#888;color:#fff;padding:0.4em 1em;border:none;border-radius:5px;cursor:pointer;">Cerrar</button>
     </div>
-    <button class="theme-toggle" id="theme-toggle" aria-label="Alternar tema claro/oscuro"
-      title="Tema claro/oscuro">🌙</button>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Alternar tema claro/oscuro" title="Tema claro/oscuro">🌙</button>
     <button class="theme-toggle" id="config-toggle" aria-label="Abrir configuración" title="Configuración">⚙️</button>
-    </div>
+    
   </header>
   <!-- Modal para envío de reporte por Teams -->
   <div class="modal-overlay" id="modal-teams-report" style="display:none;z-index:3001;">
     <div class="modal-card" style="max-width:900px;">
       <div class="modal-header">
         <h2 style="margin:0; font-size:1.2em;">Envío de Reporte por Teams</h2>
-        <button class="kpi-config-close" id="teams-report-close"
-          style="position:static; color:#fff; font-size:1.5em; font-weight:bold; background:none; border:none; cursor:pointer;"
-          title="Cerrar modal">&times;</button>
+        <button class="kpi-config-close" id="teams-report-close" style="position:static; color:#fff; font-size:1.5em; font-weight:bold; background:none; border:none; cursor:pointer;" title="Cerrar modal">×</button>
       </div>
       <div class="modal-body">
         <form id="teams-report-form">
           <div style="margin-bottom:1em;">
             <label style="font-weight:600;">Indicadores a incluir:</label><br>
-            <label><input type="checkbox" name="indicadores" value="satisfaccion_snl" checked> Satisfacción
+            <label><input type="checkbox" name="indicadores" value="satisfaccion_snl" checked="" id="kpi-input-3"> Satisfacción
               SNL</label><br>
-            <label><input type="checkbox" name="indicadores" value="resolucion_snl" checked> Resolución SNL</label><br>
-            <label><input type="checkbox" name="indicadores" value="satisfaccion_ep" checked> Satisfacción
+            <label><input type="checkbox" name="indicadores" value="resolucion_snl" checked="" id="kpi-input-4"> Resolución SNL</label><br>
+            <label><input type="checkbox" name="indicadores" value="satisfaccion_ep" checked="" id="kpi-input-5"> Satisfacción
               EP</label><br>
-            <label><input type="checkbox" name="indicadores" value="resolucion_ep" checked> Resolución EP</label><br>
-            <label><input type="checkbox" name="indicadores" value="tmo" checked> TMO</label><br>
-            <label><input type="checkbox" name="indicadores" value="epa" checked> Transferencia a EPA</label><br>
-            <label><input type="checkbox" name="indicadores" value="tipificaciones" checked> Tipificaciones</label>
+            <label><input type="checkbox" name="indicadores" value="resolucion_ep" checked="" id="kpi-input-6"> Resolución EP</label><br>
+            <label><input type="checkbox" name="indicadores" value="tmo" checked="" id="kpi-input-7"> TMO</label><br>
+            <label><input type="checkbox" name="indicadores" value="epa" checked="" id="kpi-input-8"> Transferencia a EPA</label><br>
+            <label><input type="checkbox" name="indicadores" value="tipificaciones" checked="" id="kpi-input-9"> Tipificaciones</label>
           </div>
           <div style="margin-bottom:1em;">
             <label style="font-weight:600;">Período del reporte:</label><br>
-            <input type="date" id="teams-report-fecha-inicio" name="fecha_inicio"> a
-            <input type="date" id="teams-report-fecha-fin" name="fecha_fin">
+            <input type="date" id="teams-report-fecha-inicio" name="fecha_inicio" value=""> a
+            <input type="date" id="teams-report-fecha-fin" name="fecha_fin" value="">
           </div>
           <div style="margin-bottom:1em;">
             <label style="font-weight:600;">Destino en Teams:</label><br>
-            <input type="text" id="teams-report-destino" name="destino" placeholder="Canal, chat grupal o usuario(s)">
+            <input type="text" id="teams-report-destino" name="destino" placeholder="Canal, chat grupal o usuario(s)" value="">
           </div>
           <div style="margin-bottom:1em;">
             <label style="font-weight:600;">Comentario opcional:</label><br>
             <textarea id="teams-report-comentario" name="comentario" style="width:100%;min-height:40px;"></textarea>
           </div>
           <div style="margin-bottom:1em;">
-            <button type="submit" id="teams-report-generar"
-              style="background:#2563eb;color:#fff;padding:0.6em 1.5em;border:none;border-radius:6px;cursor:pointer;font-weight:600;">Generar
+            <button type="submit" id="teams-report-generar" style="background:#2563eb;color:#fff;padding:0.6em 1.5em;border:none;border-radius:6px;cursor:pointer;font-weight:600;">Generar
               informe</button>
           </div>
           <div id="teams-report-preview" style="margin-top:1em;"></div>
-          <button type="button" id="teams-report-copy"
-            style="background:#00bfae;color:#fff;padding:0.5em 1.2em;border:none;border-radius:6px;cursor:pointer;font-weight:600;margin-top:0.7em;display:none;">📋
+          <button type="button" id="teams-report-copy" style="background:#00bfae;color:#fff;padding:0.5em 1.2em;border:none;border-radius:6px;cursor:pointer;font-weight:600;margin-top:0.7em;display:none;">📋
             Copiar para Team</button>
         </form>
       </div>
-      <div class="modal-footer"
-        style="padding:1.2em 1.5em; border-top:1px solid #ddd; display:flex; justify-content:flex-end;">
-        <button type="button" class="kpi-config-reset" id="btn-teams-report-close-footer"
-          style="background:#888; color:#fff; border:none; padding:0.6em 1.5em; border-radius:6px; cursor:pointer;">Cerrar</button>
+      <div class="modal-footer" style="padding:1.2em 1.5em; border-top:1px solid #ddd; display:flex; justify-content:flex-end;">
+        <button type="button" class="kpi-config-reset" id="btn-teams-report-close-footer" style="background:#888; color:#fff; border:none; padding:0.6em 1.5em; border-radius:6px; cursor:pointer;">Cerrar</button>
       </div>
     </div>
   </div>
-  <main id="dashboard-root">
-    <script>
-      // Abrir y cerrar modal de Teams
-      document.getElementById('btn-teams-report').onclick = function () {
-        document.getElementById('modal-teams-report').style.display = 'flex';
-      };
-      document.getElementById('teams-report-close').onclick = function () {
-        document.getElementById('modal-teams-report').style.display = 'none';
-      };
-      document.getElementById('btn-teams-report-close-footer').onclick = function () {
-        document.getElementById('modal-teams-report').style.display = 'none';
-      };
-      document.getElementById('teams-report-form').onsubmit = function (e) {
-        // Definir ejemploDatos.tipificaciones si no existe
-        if (typeof ejemploDatos === 'undefined') {
-          window.ejemploDatos = { tipificaciones: { 'Motivo 1': 40, 'Motivo 2': 35, 'Motivo 3': 25 } };
-        } else if (!ejemploDatos.tipificaciones) {
-          ejemploDatos.tipificaciones = { 'Motivo 1': 40, 'Motivo 2': 35, 'Motivo 3': 25 };
-        }
-        e.preventDefault();
-        // --- Configuración de umbrales por KPI ---
-        const kpiConfig = {
-          satisfaccion_snl: { nombre: 'Satisfacción SNL', tipo: '%', mejor_es_mayor: true, verde: 95, amarillo: 90, rojo: 90, defecto: true },
-          resolucion_snl: { nombre: 'Resolución SNL', tipo: '%', mejor_es_mayor: true, verde: 90, amarillo: 85, rojo: 85, defecto: true },
-          satisfaccion_ep: { nombre: 'Satisfacción EP', tipo: '%', mejor_es_mayor: true, verde: 95, amarillo: 90, rojo: 90, defecto: true },
-          resolucion_ep: { nombre: 'Resolución EP', tipo: '%', mejor_es_mayor: true, verde: 90, amarillo: 85, rojo: 85, defecto: true },
-          tmo: { nombre: 'TMO', tipo: 's', mejor_es_mayor: false, verde: 5, amarillo: 5, rojo: 5, defecto: true },
-          epa: { nombre: 'Transferencia a EPA', tipo: '%', mejor_es_mayor: true, verde: 85, amarillo: 80, rojo: 80, defecto: true },
-          tipificaciones: { nombre: 'Tipificaciones', tipo: '%', mejor_es_mayor: true, verde: 95, amarillo: 94, rojo: 80, defecto: true }
-        };
-
-        // --- Obtener entradas del usuario ---
-        const form = e.target;
-        const indicadores = Array.from(form.querySelectorAll('input[name="indicadores"]:checked')).map(i => i.value);
-        const fechaInicio = form.fecha_inicio.value;
-        const fechaFin = form.fecha_fin.value;
-        const destino = form.destino.value;
-        const comentario = form.comentario.value;
-
-        // Log para depuración
-        console.log('Indicadores seleccionados:', indicadores);
-        console.log('Fecha inicio:', fechaInicio);
-        console.log('Fecha fin:', fechaFin);
-        console.log('Destino:', destino);
-        console.log('Comentario:', comentario);
-
-        // Validación visual rápida
-        let validacion = '';
-        if (!fechaInicio) validacion += '<div style="color:#B00020;font-weight:600;">⚠️ Falta seleccionar fecha de inicio</div>';
-        if (!fechaFin) validacion += '<div style="color:#B00020;font-weight:600;">⚠️ Falta seleccionar fecha de fin</div>';
-        if (!destino) validacion += '<div style="color:#B00020;font-weight:600;">⚠️ Falta ingresar destino en Teams</div>';
-        if (indicadores.length === 0) validacion += '<div style="color:#B00020;font-weight:600;">⚠️ Selecciona al menos un indicador</div>';
-        if (validacion) {
-          document.getElementById('teams-report-preview').innerHTML = validacion;
-          return;
-        }
-
-        // --- Ejecutivos y datos reales del panel ---
-        const ejecutivos = [...new Set(evolutivoRawData.map(d => d.nombre))];
-
-        // --- Lógica de semáforos y ordenación ---
-        let criticos = [], mejores = [], otros = [];
-        let listadoEjecutivos = '';
-        let rankingEjecutivos = []; // Para calcular el top 3 basado en desempeño general
-
-        ejecutivos.forEach(ej => {
-          let glosa = [];
-          let rowHtml = `<tr style="border-bottom:1px solid #eee;"><td style='padding:8px;font-weight:600;'>${ej}</td>`;
-          let totalScore = 0;
-          let kpiCount = 0;
-
-          indicadores.forEach(kpi => {
-            const cfg = kpiConfig[kpi];
-            let valor = '';
-            let valNum = 0;
-            if (cfg.tipo === 'cat') {
-              const motivos = {};
-              evolutivoRawData.filter(d => d.nombre === ej).forEach(d => {
-                Object.keys(d.tipificaciones || {}).forEach(m => {
-                  motivos[m] = (motivos[m] || 0) + d.tipificaciones[m];
-                });
-              });
-              const topMotivos = Object.entries(motivos).sort((a, b) => b[1] - a[1]).slice(0, 3);
-              valor = topMotivos.map(([motivo, val]) => `${motivo}: ${val}`).join(', ');
-              valNum = 0; // No suma al ranking numérico
-            } else {
-              const m = getMetrics(ej, kpi);
-              valor = m ? m.last : 'Sin datos';
-              valNum = m ? m.last : 0;
-
-              // Calcular score para ranking (proximidad a la meta o superación)
-              const metaVal = kpi === 'tmo' ? cfg.verde : cfg.verde; // Usamos umbral verde como referencia de éxito
-              if (kpi === 'tmo') {
-                totalScore += (metaVal / Math.max(valNum, 0.1)); // Menor TMO = Mayor Score
-              } else {
-                totalScore += (valNum / metaVal); // Mayor % = Mayor Score
-              }
-              kpiCount++;
-            }
-
-            let color = '🟢', estado = 'Verde';
-            const valNumFloat = parseFloat(valor);
-
-            // Determinar color y estado basado en reglas específicas
-            if (valor === 'Sin datos') {
-              color = '⚪'; estado = 'Sin datos';
-            } else if (kpi === 'tmo') {
-              if (valNumFloat <= 3) { color = '🟢'; estado = 'Verde'; }
-              else if (valNumFloat <= 5) { color = '🟡'; estado = 'Amarillo'; }
-              else { color = '🔴'; estado = 'Rojo'; }
-            } else if (kpi === 'resolucion_snl' || kpi === 'resolucion_ep') {
-              if (valNumFloat >= 90) { color = '🟢'; estado = 'Verde'; }
-              else if (valNumFloat >= 80) { color = '🟡'; estado = 'Amarillo'; }
-              else { color = '🔴'; estado = 'Rojo'; }
-            } else if (kpi === 'epa' || kpi === 'transferencia_epa') {
-              if (valNumFloat >= 85) { color = '🟢'; estado = 'Verde'; }
-              else if (valNumFloat >= 70) { color = '🟡'; estado = 'Amarillo'; }
-              else { color = '🔴'; estado = 'Rojo'; }
-            } else if (kpi === 'tipificaciones' || kpi.includes('satisfaccion')) {
-              if (valNumFloat >= 95) { color = '🟢'; estado = 'Verde'; }
-              else if (valNumFloat >= 85) { color = '🟡'; estado = 'Amarillo'; }
-              else { color = '🔴'; estado = 'Rojo'; }
-            }
-
-            if (color === '🔴') {
-              glosa.push(`<span style="color:#B00020;">${cfg.nombre} bajo la meta</span>`);
-            } else if (color === '🟡') {
-              glosa.push(`<span style="color:#C79200;">${cfg.nombre} en riesgo</span>`);
-              otros.push({ ej, kpi: cfg.nombre, valor, color });
-            } else if (color === '🟢') {
-              mejores.push({ ej, kpi: cfg.nombre, valor, color });
-            }
-
-            rowHtml += `<td style="padding:8px;text-align:center;">${color} ${valor}${cfg.tipo === '%' && valor !== 'Sin datos' ? '%' : ''}</td>`;
-          });
-
-          // Guardar puntaje promedio para el ranking
-          rankingEjecutivos.push({ ej, score: kpiCount > 0 ? (totalScore / kpiCount) : 0 });
-
-          const hasRed = glosa.some(g => g.includes('#B00020'));
-          const glosaFinal = glosa.length > 0
-            ? `<td style="padding:12px 8px;font-size:0.85em;font-weight:600;">${hasRed ? '🚨' : '⚠️'} ${glosa.join('; ')}</td>`
-            : `<td style="padding:12px 8px;color:#2e7d32;font-size:0.85em;font-weight:600;">✅ Cumple metas</td>`;
-
-          listadoEjecutivos += rowHtml + glosaFinal + `</tr>`;
-        });
-
-        let html = `<div id="teams-report-content" style='font-family:Segoe UI,Helvetica,Arial,sans-serif; width:700px; margin:auto; padding:25px; background:#ffffff; border:1px solid #e1e4e8; border-radius:12px;'>`;
-
-        // Header "Premium"
-        html += `<div style="background:#1e40af; margin:-25px -25px 20px -25px; padding:20px 25px; border-radius:12px 12px 0 0; display:flex; justify-content:space-between; align-items:center;">`;
-        html += `  <h2 style="color:#ffffff; margin:0; font-size:1.4em; letter-spacing:0.5px;">Reporte de Desempeño Operacional</h2>`;
-        html += `  <div style="color:rgba(255,255,255,0.8); font-size:0.85em; text-align:right;">${new Date().toLocaleDateString()}</div>`;
-        html += `</div>`;
-
-        html += `<div style='font-size:0.95em; color:#4b5563; margin-bottom:20px; line-height:1.5;'>`;
-        html += `<b>📍 Período:</b> ${fechaInicio || 'Actual'} al ${fechaFin || 'Actual'}<br>`;
-        html += `<b>🎯 Destino:</b> ${destino || 'Canal General'}`;
-        if (comentario) {
-          html += `<div style="margin-top:12px; padding:12px; background:#f3f4f6; border-left:4px solid #1e40af; border-radius:4px; color:#1f2937; font-style:italic;">"${comentario}"</div>`;
-        }
-        html += `</div>`;
-
-        // --- Alertas Críticas (Resumen superior) ---
-        if (criticos.length > 0) {
-          html += `<div style="background:#fff1f2; border:1px solid #fda4af; padding:15px; border-radius:8px; margin-bottom:20px; box-shadow:0 2px 4px rgba(0,0,0,0.02);">`;
-          html += `<h3 style="color:#be123c; margin-top:0; margin-bottom:10px; font-size:1.05em; display:flex; align-items:center; gap:8px;">🚨 Foco de Atención Inmediata</h3>`;
-          html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:0.9em;">`;
-          const uniquesCrit = [...new Set(criticos.map(c => c.ej))].slice(0, 4);
-          uniquesCrit.forEach(name => {
-            const kpis = criticos.filter(c => c.ej === name).map(c => c.kpi).join(', ');
-            html += `<div style="background:rgba(255,255,255,0.5); padding:8px; border-radius:4px; border-left:3px solid #be123c;"><b>${name}</b>: ${kpis}</div>`;
-          });
-          html += `</div></div>`;
-        }
-
-        // --- TABLA DETALLADA ---
-        html += `<h3 style="color:#1e2937; font-size:1.1em; margin-bottom:10px;">📊 Detalle Individual por Indicador</h3>`;
-        html += `<div style='border:1px solid #e1e4e8; border-radius:10px; overflow:hidden; margin:10px 0; box-shadow:0 1px 3px rgba(0,0,0,0.05);'>`;
-        html += `<table style='border-collapse:collapse;width:100%;font-size:0.9em;'>`;
-        html += `<thead style="background:#f8fafc; color:#475569; border-bottom:2px solid #e1e4e8;"><tr>`;
-        html += `<th style="padding:12px; text-align:left; font-weight:700;">Ejecutivo</th>`;
-        indicadores.forEach(kpi => { html += `<th style="padding:12px; text-align:center; font-weight:700;">${kpiConfig[kpi].nombre}</th>` });
-        html += `<th style="padding:12px; text-align:left; font-weight:700;">Estado / Glosa</th></tr></thead>`;
-        html += `<tbody>${listadoEjecutivos}</tbody>`;
-        html += `</table></div>`;
-
-        // --- Destacados y Críticos en Grid ---
-        html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-top:20px;">`;
-
-        // Columna Destacados
-        const topRanking = rankingEjecutivos.sort((a, b) => b.score - a.score).slice(0, 3);
-        if (topRanking.length) {
-          html += `<div style="padding:15px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px;">`;
-          html += `<h4 style='color:#166534; margin:0 0 10px 0; font-size:1em;'>🌟 Top Desempeño</h4>`;
-          html += `<ul style="margin:0; padding-left:18px; font-size:0.85em; color:#14532d; line-height:1.4;">`;
-          topRanking.forEach(item => {
-            const hasDeviation = criticos.some(c => c.ej === item.ej) || otros.some(o => o.ej === item.ej);
-            html += `<li style="margin-bottom:4px;"><b>${item.ej}</b>: ${hasDeviation ? 'Líder en KPIs' : 'Cumplimiento 100%'}</li>`;
-          });
-          html += `</ul></div>`;
-        }
-
-        // Columna Críticos
-        const btmRanking = rankingEjecutivos.sort((a, b) => a.score - b.score).filter(item => {
-          return criticos.some(c => c.ej === item.ej) || otros.some(o => o.ej === item.ej);
-        }).slice(0, 3);
-
-        if (btmRanking.length) {
-          html += `<div style="padding:15px; background:#fff1f2; border:1px solid #fecaca; border-radius:8px;">`;
-          html += `<h4 style='color:#991b1b; margin:0 0 10px 0; font-size:1em;'>📉 Oportunidades</h4>`;
-          html += `<ul style="margin:0; padding-left:18px; font-size:0.85em; color:#7f1d1d; line-height:1.4;">`;
-          btmRanking.forEach(item => {
-            const misCriticos = criticos.filter(c => c.ej === item.ej).map(c => c.kpi).slice(0, 2).join(', ');
-            html += `<li style="margin-bottom:4px;"><b>${item.ej}</b>: Refuerzo en ${misCriticos || 'KPIs en riesgo'}</li>`;
-          });
-          html += `</ul></div>`;
-        }
-        html += `</div>`;
-
-        // --- Pie de informe ---
-        html += `<div style='font-size:0.8em; color:#9ca3af; margin-top:25px; text-align:center; border-top:1px solid #f3f4f6; padding-top:15px;'>`;
-        html += `ACHS • Panel de Control Operacional • v2.1`;
-        html += `</div></div>`; // Cierra teams-report-content
-
-        // Versión texto plano (fuera del contenedor capturable)
-        html += `<div style='margin-top:20px; font-size:0.85em; color:#4b5563; background:#f9fafb; padding:15px; border-radius:8px; border:1px dashed #d1d5db;'>`;
-        html += `<b style="color:#1e40af;">📋 Versión Texto Rápido:</b><br>`;
-        const resumenTexto = [...new Set(criticos.map(c => `❌ ${c.ej}`))].concat([...new Set(mejores.map(m => `✅ ${m.ej}`))]).slice(0, 8).join(' | ');
-        html += `<code style="display:block; margin-top:8px; padding:8px; background:#fff; border:1px solid #e1e4e8; border-radius:4px;">${resumenTexto}</code>`;
-        html += `</div>`;
-
-        document.getElementById('teams-report-preview').innerHTML = html;
-
-        document.getElementById('teams-report-preview').innerHTML = html;
-        // Habilitar el botón de copiar
-        document.getElementById('teams-report-copy').style.display = 'inline-block';
-        // Botón copiar para Team
-        document.getElementById('teams-report-copy').onclick = function () {
-          // Capturar el contenedor principal del reporte
-          const recuadro = document.getElementById('teams-report-content');
-          if (!recuadro) {
-            console.error('No se encontró el contenido del reporte');
-            return;
-          }
-
-          // Función para realizar la copia
-          const processCopy = () => {
-            document.getElementById('teams-report-copy').innerText = 'Generando imagen...';
-            window.html2canvas(recuadro, {
-              backgroundColor: '#ffffff',
-              scale: 3,
-              useCORS: true,
-              logging: false
-            }).then(canvas => {
-              canvas.toBlob(blob => {
-                if (navigator.clipboard && window.ClipboardItem) {
-                  navigator.clipboard.write([
-                    new window.ClipboardItem({ 'image/png': blob })
-                  ]).then(() => {
-                    document.getElementById('teams-report-copy').innerText = '¡Imagen copiada!';
-                    setTimeout(() => {
-                      document.getElementById('teams-report-copy').innerText = '📋 Copiar para Team';
-                    }, 2000);
-                  }).catch(err => {
-                    console.error('Error al copiar:', err);
-                    document.getElementById('teams-report-copy').innerText = 'Error al copiar';
-                  });
-                } else {
-                  // Fallback: Si no soporta Clipboard API con imágenes, intentar abrir en nueva pestaña para que el usuario copie
-                  const imgUrl = canvas.toDataURL('image/png');
-                  const win = window.open();
-                  win.document.write('<img src="' + imgUrl + '" />');
-                  document.getElementById('teams-report-copy').innerText = 'Copiado (ver ventana)';
-                }
-              }, 'image/png');
-            }).catch(err => {
-              console.error('Error html2canvas:', err);
-              document.getElementById('teams-report-copy').innerText = 'Error técnico';
-            });
-          };
-
-          // Cargar html2canvas dinámicamente si no está presente
-          if (!window.html2canvas) {
-            const script = document.createElement('script');
-            script.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
-            script.onload = processCopy;
-            document.head.appendChild(script);
-          } else {
-            processCopy();
-          }
-        };
-      };
-    </script>
-    <section style="display:flex;align-items:center;gap:1.5em;margin-bottom:1.2em;">
-      <button id="btn-mostrar-todos"
-        style="padding:0.5em 1.2em;font-size:1em;border-radius:8px;background:#2563eb;color:#fff;border:none;cursor:pointer;">Mostrar
-        todos</button>
-      <label for="filtro-ejecutivo" style="font-weight:500;">Filtrar por ejecutivo:</label>
-      <select id="filtro-ejecutivo" style="font-size:1em;padding:0.4em 1em;border-radius:6px;border:1px solid #bbb;">
-        <option value="">Todos</option>
-      </select>
-    </section>
-    <!-- El tablero se renderiza aquí -->
-  </main>
+  <main id="dashboard-root"><section style="display:flex;align-items:center;gap:1.5em;margin-bottom:1.2em;">
+        <button id="btn-mostrar-todos" style="padding:0.5em 1.2em;font-size:1em;border-radius:8px;background:#2563eb;color:#fff;border:none;cursor:pointer;">Mostrar todos</button>
+        <label for="filtro-ejecutivo" style="font-weight:500;">Filtrar por ejecutivo:</label>
+        <select id="filtro-ejecutivo" style="font-size:1em;padding:0.4em 1em;border-radius:6px;border:1px solid #bbb;">
+          <option value="" selected="">Todos</option>
+          <option value="Astudillo Marin Manuela Soledad">Astudillo Marin Manuela Soledad</option><option value="Castro Cáceres Marcia Nicole">Castro Cáceres Marcia Nicole</option><option value="Chacón Avilés Alejandra Daniela">Chacón Avilés Alejandra Daniela</option><option value="Garcia Velasco Ataly Tatiana">Garcia Velasco Ataly Tatiana</option><option value="Góngora Zuleta Elsa Susana">Góngora Zuleta Elsa Susana</option><option value="Hald Tello Katia Liza">Hald Tello Katia Liza</option><option value="Llancapichun Soto Johana Angelica">Llancapichun Soto Johana Angelica</option><option value="Monsalve Corvacho Manuel Alejandro">Monsalve Corvacho Manuel Alejandro</option><option value="Méndez Pérez Nanci Zobeida">Méndez Pérez Nanci Zobeida</option><option value="Olivares González Maximiliano Alfonso">Olivares González Maximiliano Alfonso</option><option value="Orellana Mallea Ema Alejandra">Orellana Mallea Ema Alejandra</option><option value="Penailillo Cartagena Alejandro Patricio">Penailillo Cartagena Alejandro Patricio</option><option value="Rodriguez Fernandez Daniela Paz">Rodriguez Fernandez Daniela Paz</option><option value="Rodríguez Zenteno José Manuel">Rodríguez Zenteno José Manuel</option><option value="Salgado Tobar Melissa Aracelli">Salgado Tobar Melissa Aracelli</option><option value="Velasquez Perez María Loreto">Velasquez Perez María Loreto</option>
+        </select>
+      </section>
+            <div class="top-podium-container">
+            
+                <div class="podium-item rank-2">
+                    <div class="podium-avatar" title="Llancapichun Soto Johana Angelica">
+                    
+          <svg width="100%" height="100%" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="30" cy="30" r="28" fill="#f5f5f5" stroke="#2E7D32" stroke-width="3"></circle>
+            <!-- Cabeza -->
+            <ellipse cx="30" cy="25" rx="11" ry="13" fill="#ffe0b2"></ellipse>
+            <!-- Cabello corto -->
+            <path d="M19 25 Q30 10 41 25 Q38 15 22 15 Q19 25 19 25" fill="#795548"></path>
+            <!-- Cuello -->
+            <rect x="26" y="36" width="8" height="7" rx="3" fill="#ffe0b2"></rect>
+            <!-- Camisa clara -->
+            <rect x="19" y="41" width="22" height="12" rx="6" fill="#e3f2fd"></rect>
+            <polygon points="30,41 25,53 35,53" fill="#fff"></polygon>
+            <!-- Auriculares más visibles -->
+            <ellipse cx="17" cy="25" rx="2.2" ry="4.2" fill="#263238"></ellipse>
+            <ellipse cx="43" cy="25" rx="2.2" ry="4.2" fill="#263238"></ellipse>
+            <rect x="15" y="22" width="2" height="6" rx="1" fill="#263238"></rect>
+            <rect x="43" y="22" width="2" height="6" rx="1" fill="#263238"></rect>
+            <rect x="18" y="20" width="24" height="2" rx="1" fill="#263238"></rect>
+            <!-- Micrófono -->
+            <rect x="41" y="36" width="7" height="2" rx="1" fill="#263238"></rect>
+            <circle cx="48" cy="37" r="1.2" fill="#263238"></circle>
+            <!-- Ojos -->
+            <ellipse cx="26" cy="28" rx="1.1" ry="1.7" fill="#444"></ellipse>
+            <ellipse cx="34" cy="28" rx="1.1" ry="1.7" fill="#444"></ellipse>
+            <!-- Boca -->
+            <path d="M27 33 Q30 36 33 33" stroke="#b77b4b" stroke-width="1.2" fill="none"></path>
+          </svg>
+        
+                    <div class="podium-rank">2</div>
+                    </div>
+                    <div class="podium-name">Llancapichun Soto Johana Angelica</div>
+                    <div class="podium-score">🥈 Top Performer</div>
+                </div>
+                
+                <div class="podium-item rank-1">
+                    <div class="podium-avatar" title="Méndez Pérez Nanci Zobeida">
+                    
+          <svg width="100%" height="100%" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="30" cy="30" r="28" fill="#f5f5f5" stroke="#2E7D32" stroke-width="3"></circle>
+            <!-- Cabeza -->
+            <ellipse cx="30" cy="25" rx="11" ry="13" fill="#ffe0b2"></ellipse>
+            <!-- Cabello corto -->
+            <path d="M19 25 Q30 10 41 25 Q38 15 22 15 Q19 25 19 25" fill="#795548"></path>
+            <!-- Cuello -->
+            <rect x="26" y="36" width="8" height="7" rx="3" fill="#ffe0b2"></rect>
+            <!-- Camisa clara -->
+            <rect x="19" y="41" width="22" height="12" rx="6" fill="#e3f2fd"></rect>
+            <polygon points="30,41 25,53 35,53" fill="#fff"></polygon>
+            <!-- Auriculares más visibles -->
+            <ellipse cx="17" cy="25" rx="2.2" ry="4.2" fill="#263238"></ellipse>
+            <ellipse cx="43" cy="25" rx="2.2" ry="4.2" fill="#263238"></ellipse>
+            <rect x="15" y="22" width="2" height="6" rx="1" fill="#263238"></rect>
+            <rect x="43" y="22" width="2" height="6" rx="1" fill="#263238"></rect>
+            <rect x="18" y="20" width="24" height="2" rx="1" fill="#263238"></rect>
+            <!-- Micrófono -->
+            <rect x="41" y="36" width="7" height="2" rx="1" fill="#263238"></rect>
+            <circle cx="48" cy="37" r="1.2" fill="#263238"></circle>
+            <!-- Ojos -->
+            <ellipse cx="26" cy="28" rx="1.1" ry="1.7" fill="#444"></ellipse>
+            <ellipse cx="34" cy="28" rx="1.1" ry="1.7" fill="#444"></ellipse>
+            <!-- Boca -->
+            <path d="M27 33 Q30 36 33 33" stroke="#b77b4b" stroke-width="1.2" fill="none"></path>
+          </svg>
+        
+                    <div class="podium-rank">1</div>
+                    </div>
+                    <div class="podium-name">Méndez Pérez Nanci Zobeida</div>
+                    <div class="podium-score">🥇 Top Performer</div>
+                </div>
+                
+                <div class="podium-item rank-3">
+                    <div class="podium-avatar" title="Orellana Mallea Ema Alejandra">
+                    
+          <svg width="100%" height="100%" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="30" cy="30" r="28" fill="#f5f5f5" stroke="#2E7D32" stroke-width="3"></circle>
+            <!-- Cabeza -->
+            <ellipse cx="30" cy="25" rx="11" ry="13" fill="#ffe0b2"></ellipse>
+            <!-- Cabello corto -->
+            <path d="M19 25 Q30 10 41 25 Q38 15 22 15 Q19 25 19 25" fill="#795548"></path>
+            <!-- Cuello -->
+            <rect x="26" y="36" width="8" height="7" rx="3" fill="#ffe0b2"></rect>
+            <!-- Camisa clara -->
+            <rect x="19" y="41" width="22" height="12" rx="6" fill="#e3f2fd"></rect>
+            <polygon points="30,41 25,53 35,53" fill="#fff"></polygon>
+            <!-- Auriculares más visibles -->
+            <ellipse cx="17" cy="25" rx="2.2" ry="4.2" fill="#263238"></ellipse>
+            <ellipse cx="43" cy="25" rx="2.2" ry="4.2" fill="#263238"></ellipse>
+            <rect x="15" y="22" width="2" height="6" rx="1" fill="#263238"></rect>
+            <rect x="43" y="22" width="2" height="6" rx="1" fill="#263238"></rect>
+            <rect x="18" y="20" width="24" height="2" rx="1" fill="#263238"></rect>
+            <!-- Micrófono -->
+            <rect x="41" y="36" width="7" height="2" rx="1" fill="#263238"></rect>
+            <circle cx="48" cy="37" r="1.2" fill="#263238"></circle>
+            <!-- Ojos -->
+            <ellipse cx="26" cy="28" rx="1.1" ry="1.7" fill="#444"></ellipse>
+            <ellipse cx="34" cy="28" rx="1.1" ry="1.7" fill="#444"></ellipse>
+            <!-- Boca -->
+            <path d="M27 33 Q30 36 33 33" stroke="#b77b4b" stroke-width="1.2" fill="none"></path>
+          </svg>
+        
+                    <div class="podium-rank">3</div>
+                    </div>
+                    <div class="podium-name">Orellana Mallea Ema Alejandra</div>
+                    <div class="podium-score">🥉 Top Performer</div>
+                </div>
+                
+            </div>
+        <section class="dashboard-grid" aria-label="KPIs principales">
+        <div class="kpi-card amber" tabindex="0" aria-label="Nota EPA SNL/EP Resumen" style="grid-column: span 1; max-width: 100%;">
+          <div class="kpi-title">
+            Nota EPA SNL/EP
+            <span class="kpi-chip amber" title="Estado general de Satisfacción EP">⚠</span>
+          </div>
+          <div class="kpi-value" style="font-size: 1.1em; flex-direction: column; align-items: flex-start; gap: 0.2em;">
+            <div style="display:flex; justify-content: space-between; width: 100%;">
+              <span>Satisf. EP: <b>92.94%</b></span>
+              <span style="font-size:0.7em; font-weight:400; color:#607d8b;">Meta: 95%</span>
+            </div>
+            <div style="display:flex; justify-content: space-between; width: 100%;">
+              <span>Resol. EP: <b>93.44%</b></span>
+              <span style="font-size:0.7em; font-weight:400; color:#607d8b;">Meta: 90%</span>
+            </div>
+            <div style="display:flex; justify-content: space-between; width: 100%; border-top: 1px solid var(--kpi-line); padding-top: 0.2em; margin-top: 0.1em;">
+              <span>Satisf. SNL: <b>96.44%</b></span>
+              <span style="font-size:0.7em; font-weight:400; color:#607d8b;">Meta: 95%</span>
+            </div>
+            <div style="display:flex; justify-content: space-between; width: 100%;">
+              <span>Resol. SNL: <b>93.75%</b></span>
+              <span style="font-size:0.7em; font-weight:400; color:#607d8b;">Meta: 90%</span>
+            </div>
+          </div>
+        </div>
+      
+        <div class="kpi-card green" tabindex="0" aria-label="TMO">
+          <div class="kpi-title">
+            TMO
+            <span class="kpi-chip green" title="Estado respecto a la meta">✔</span>
+          </div>
+          <div class="kpi-value">
+            0:00
+            <span style="font-size:0.6em;font-weight:400;">Meta: 5:00</span>
+          </div>
+          <div class="kpi-meta">
+            <span title="Desviación numérica">Desviación: <b>-5.00 min</b></span>
+            <span title="Desviación normalizada">Desviación %: <b>100%</b></span>
+          </div>
+          <canvas class="kpi-sparkline" id="sparkline-tmo" aria-label="Evolución de TMO" tabindex="0" width="270" height="135" style="display: block; box-sizing: border-box; height: 135px; width: 270px;"></canvas>
+        </div>
+        <div class="kpi-card green" tabindex="0" aria-label="Tipificaciones">
+          <div class="kpi-title">
+            Tipificaciones
+            <span class="kpi-chip green" title="Estado respecto a la meta">✔</span>
+          </div>
+          <div class="kpi-value">
+            97%
+            <span style="font-size:0.6em;font-weight:400;">Meta: 95%</span>
+          </div>
+          <div class="kpi-meta">
+            <span title="Desviación numérica">Desviación: <b>2%</b></span>
+            <span title="Desviación normalizada">Desviación %: <b>2%</b></span>
+          </div>
+          <canvas class="kpi-sparkline" id="sparkline-tipificaciones" aria-label="Evolución de Tipificaciones" tabindex="0" width="270" height="135" style="display: block; box-sizing: border-box; height: 135px; width: 270px;"></canvas>
+        </div>
+        <div class="kpi-card green" tabindex="0" aria-label="Transferencia a EPA">
+          <div class="kpi-title">
+            Transferencia a EPA
+            <span class="kpi-chip green" title="Estado respecto a la meta">✔</span>
+          </div>
+          <div class="kpi-value">
+            86%
+            <span style="font-size:0.6em;font-weight:400;">Meta: 85%</span>
+          </div>
+          <div class="kpi-meta">
+            <span title="Desviación numérica">Desviación: <b>1%</b></span>
+            <span title="Desviación normalizada">Desviación %: <b>1%</b></span>
+          </div>
+          <canvas class="kpi-sparkline" id="sparkline-epa" aria-label="Evolución de Transferencia a EPA" tabindex="0" width="270" height="135" style="display: block; box-sizing: border-box; height: 135px; width: 270px;"></canvas>
+        </div></section>
+        <section class="kpi-table-section">
+          <div class="kpi-table-title" style="display:flex;align-items:center;justify-content:space-between;">
+            <span>Desempeño por Ejecutivo - Tipificaciones <span style="font-weight:400;font-size:0.9em;color:#607d8b">(Meta: 95%)</span></span>
+            <button id="toggle-ejecutivos" aria-expanded="false" aria-controls="tabla-ejecutivos" style="background:none;border:none;font-size:1.2em;cursor:pointer;" title="Mostrar/Ocultar lista">►</button>
+          </div>
+          <div id="tabla-ejecutivos-wrapper" style="display:none;">
+          <table class="kpi-table" id="tabla-ejecutivos" aria-label="Tabla de desempeño por ejecutivo">
+            <thead>
+              <tr>
+                <th>Ejecutivo</th>
+                <th>Valor</th>
+                <th>Meta</th>
+                <th>Desviación</th>
+                <th>Desviación %</th>
+                
+                <th>Barra</th>
+              </tr>
+            </thead>
+            <tbody>
+      
+          <tr class="green" tabindex="0">
+            <td>Astudillo Marin Manuela Soledad</td>
+            <td>100%</td>
+            <td>95%</td>
+            <td>5%</td>
+            <td>5%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:5%"></div>
+                <span class="kpi-table-bar-label green">5%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green predictivo-fail" tabindex="0" data-alerta="moderada" title="⚠️ Alerta: 0 críticos, 2 en riesgo">
+            <td>Castro Cáceres Marcia Nicole</td>
+            <td>99%</td>
+            <td>95%</td>
+            <td>4%</td>
+            <td>4%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:4%"></div>
+                <span class="kpi-table-bar-label green">4%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green predictivo-fail" tabindex="0" data-alerta="moderada" title="⚠️ Alerta: 0 críticos, 2 en riesgo">
+            <td>Chacón Avilés Alejandra Daniela</td>
+            <td>98%</td>
+            <td>95%</td>
+            <td>3%</td>
+            <td>3%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:3%"></div>
+                <span class="kpi-table-bar-label green">3%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green predictivo-fail" tabindex="0" data-alerta="moderada" title="⚠️ Alerta: 0 críticos, 4 en riesgo">
+            <td>Garcia Velasco Ataly Tatiana</td>
+            <td>98%</td>
+            <td>95%</td>
+            <td>3%</td>
+            <td>3%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:3%"></div>
+                <span class="kpi-table-bar-label green">3%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green" tabindex="0">
+            <td>Góngora Zuleta Elsa Susana</td>
+            <td>98%</td>
+            <td>95%</td>
+            <td>3%</td>
+            <td>3%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:3%"></div>
+                <span class="kpi-table-bar-label green">3%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green" tabindex="0">
+            <td>Hald Tello Katia Liza</td>
+            <td>98%</td>
+            <td>95%</td>
+            <td>3%</td>
+            <td>3%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:3%"></div>
+                <span class="kpi-table-bar-label green">3%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green" tabindex="0">
+            <td>Llancapichun Soto Johana Angelica</td>
+            <td>98%</td>
+            <td>95%</td>
+            <td>3%</td>
+            <td>3%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:3%"></div>
+                <span class="kpi-table-bar-label green">3%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green" tabindex="0">
+            <td>Méndez Pérez Nanci Zobeida</td>
+            <td>98%</td>
+            <td>95%</td>
+            <td>3%</td>
+            <td>3%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:3%"></div>
+                <span class="kpi-table-bar-label green">3%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green predictivo-fail" tabindex="0" data-alerta="moderada" title="⚠️ Alerta: 1 críticos, 1 en riesgo">
+            <td>Monsalve Corvacho Manuel Alejandro</td>
+            <td>97%</td>
+            <td>95%</td>
+            <td>2%</td>
+            <td>2%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:2%"></div>
+                <span class="kpi-table-bar-label green">2%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green" tabindex="0">
+            <td>Olivares González Maximiliano Alfonso</td>
+            <td>96%</td>
+            <td>95%</td>
+            <td>1%</td>
+            <td>1%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:1%"></div>
+                <span class="kpi-table-bar-label green">1%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green" tabindex="0">
+            <td>Orellana Mallea Ema Alejandra</td>
+            <td>96%</td>
+            <td>95%</td>
+            <td>1%</td>
+            <td>1%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:1%"></div>
+                <span class="kpi-table-bar-label green">1%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green predictivo-fail" tabindex="0" data-alerta="moderada" title="⚠️ Alerta: 0 críticos, 2 en riesgo">
+            <td>Penailillo Cartagena Alejandro Patricio</td>
+            <td>95%</td>
+            <td>95%</td>
+            <td>0%</td>
+            <td>0%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:0%"></div>
+                <span class="kpi-table-bar-label green">0%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green predictivo-fail" tabindex="0" data-alerta="moderada" title="⚠️ Alerta: 0 críticos, 3 en riesgo">
+            <td>Rodriguez Fernandez Daniela Paz</td>
+            <td>95%</td>
+            <td>95%</td>
+            <td>0%</td>
+            <td>0%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:0%"></div>
+                <span class="kpi-table-bar-label green">0%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green predictivo-fail" tabindex="0" data-alerta="moderada" title="⚠️ Alerta: 1 críticos, 1 en riesgo">
+            <td>Rodríguez Zenteno José Manuel</td>
+            <td>95%</td>
+            <td>95%</td>
+            <td>0%</td>
+            <td>0%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:0%"></div>
+                <span class="kpi-table-bar-label green">0%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green" tabindex="0">
+            <td>Salgado Tobar Melissa Aracelli</td>
+            <td>95%</td>
+            <td>95%</td>
+            <td>0%</td>
+            <td>0%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:0%"></div>
+                <span class="kpi-table-bar-label green">0%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="red predictivo-fail" tabindex="0" data-alerta="moderada" title="⚠️ Alerta: 0 críticos, 2 en riesgo">
+            <td>Velasquez Perez María Loreto</td>
+            <td>90%</td>
+            <td>95%</td>
+            <td>-5%</td>
+            <td>5%</td>
+            
+            <td>
+              <div class="kpi-table-bar red">
+                <div class="kpi-table-bar-inner red" style="width:5%"></div>
+                <span class="kpi-table-bar-label red">5%</span>
+              </div>
+            </td>
+          </tr>
+        </tbody></table></div></section>
+        <section class="kpi-table-section">
+          <div class="kpi-table-title" style="display:flex;align-items:center;justify-content:space-between;">
+            <span>Desempeño por Ejecutivo - Transferencia a EPA <span style="font-weight:400;font-size:0.9em;color:#607d8b">(Meta: 85%)</span></span>
+            <button id="toggle-ejecutivos-epa" aria-expanded="false" aria-controls="tabla-ejecutivos-epa" style="background:none;border:none;font-size:1.2em;cursor:pointer;" title="Mostrar/Ocultar lista">►</button>
+          </div>
+          <div id="tabla-ejecutivos-epa-wrapper" style="display:none;">
+          <table class="kpi-table" id="tabla-ejecutivos-epa" aria-label="Tabla de desempeño por ejecutivo EPA">
+            <thead>
+              <tr>
+                <th>Ejecutivo</th>
+                <th>Valor</th>
+                <th>Meta</th>
+                <th>Desviación</th>
+                <th>Desviación %</th>
+                
+                <th>Barra</th>
+              </tr>
+            </thead>
+            <tbody>
+      
+          <tr class="green predictivo-fail" tabindex="0" data-alerta="moderada" title="⚠️ Alerta: 1 críticos, 1 en riesgo">
+            <td>Monsalve Corvacho Manuel Alejandro</td>
+            <td>95%</td>
+            <td>85%</td>
+            <td>10%</td>
+            <td>12%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:12%"></div>
+                <span class="kpi-table-bar-label green">12%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green" tabindex="0">
+            <td>Méndez Pérez Nanci Zobeida</td>
+            <td>94%</td>
+            <td>85%</td>
+            <td>9%</td>
+            <td>11%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:11%"></div>
+                <span class="kpi-table-bar-label green">11%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green" tabindex="0">
+            <td>Orellana Mallea Ema Alejandra</td>
+            <td>90%</td>
+            <td>85%</td>
+            <td>5%</td>
+            <td>6%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:6%"></div>
+                <span class="kpi-table-bar-label green">6%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green" tabindex="0">
+            <td>Llancapichun Soto Johana Angelica</td>
+            <td>89%</td>
+            <td>85%</td>
+            <td>4%</td>
+            <td>5%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:5%"></div>
+                <span class="kpi-table-bar-label green">5%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green" tabindex="0">
+            <td>Astudillo Marin Manuela Soledad</td>
+            <td>88%</td>
+            <td>85%</td>
+            <td>3%</td>
+            <td>4%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:4%"></div>
+                <span class="kpi-table-bar-label green">4%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green" tabindex="0">
+            <td>Góngora Zuleta Elsa Susana</td>
+            <td>87%</td>
+            <td>85%</td>
+            <td>2%</td>
+            <td>2%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:2%"></div>
+                <span class="kpi-table-bar-label green">2%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green" tabindex="0">
+            <td>Salgado Tobar Melissa Aracelli</td>
+            <td>87%</td>
+            <td>85%</td>
+            <td>2%</td>
+            <td>2%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:2%"></div>
+                <span class="kpi-table-bar-label green">2%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green predictivo-fail" tabindex="0" data-alerta="moderada" title="⚠️ Alerta: 0 críticos, 2 en riesgo">
+            <td>Velasquez Perez María Loreto</td>
+            <td>87%</td>
+            <td>85%</td>
+            <td>2%</td>
+            <td>2%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:2%"></div>
+                <span class="kpi-table-bar-label green">2%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green predictivo-fail" tabindex="0" data-alerta="moderada" title="⚠️ Alerta: 0 críticos, 2 en riesgo">
+            <td>Castro Cáceres Marcia Nicole</td>
+            <td>86%</td>
+            <td>85%</td>
+            <td>1%</td>
+            <td>1%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:1%"></div>
+                <span class="kpi-table-bar-label green">1%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green" tabindex="0">
+            <td>Olivares González Maximiliano Alfonso</td>
+            <td>86%</td>
+            <td>85%</td>
+            <td>1%</td>
+            <td>1%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:1%"></div>
+                <span class="kpi-table-bar-label green">1%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="amber" tabindex="0">
+            <td>Hald Tello Katia Liza</td>
+            <td>83%</td>
+            <td>85%</td>
+            <td>-2%</td>
+            <td>2%</td>
+            
+            <td>
+              <div class="kpi-table-bar amber">
+                <div class="kpi-table-bar-inner amber" style="width:2%"></div>
+                <span class="kpi-table-bar-label amber">2%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="amber predictivo-fail" tabindex="0" data-alerta="moderada" title="⚠️ Alerta: 0 críticos, 3 en riesgo">
+            <td>Rodriguez Fernandez Daniela Paz</td>
+            <td>83%</td>
+            <td>85%</td>
+            <td>-2%</td>
+            <td>2%</td>
+            
+            <td>
+              <div class="kpi-table-bar amber">
+                <div class="kpi-table-bar-inner amber" style="width:2%"></div>
+                <span class="kpi-table-bar-label amber">2%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="amber predictivo-fail" tabindex="0" data-alerta="moderada" title="⚠️ Alerta: 0 críticos, 2 en riesgo">
+            <td>Chacón Avilés Alejandra Daniela</td>
+            <td>82%</td>
+            <td>85%</td>
+            <td>-3%</td>
+            <td>4%</td>
+            
+            <td>
+              <div class="kpi-table-bar amber">
+                <div class="kpi-table-bar-inner amber" style="width:4%"></div>
+                <span class="kpi-table-bar-label amber">4%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="amber predictivo-fail" tabindex="0" data-alerta="moderada" title="⚠️ Alerta: 1 críticos, 1 en riesgo">
+            <td>Rodríguez Zenteno José Manuel</td>
+            <td>82%</td>
+            <td>85%</td>
+            <td>-3%</td>
+            <td>4%</td>
+            
+            <td>
+              <div class="kpi-table-bar amber">
+                <div class="kpi-table-bar-inner amber" style="width:4%"></div>
+                <span class="kpi-table-bar-label amber">4%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="amber predictivo-fail" tabindex="0" data-alerta="moderada" title="⚠️ Alerta: 0 críticos, 2 en riesgo">
+            <td>Penailillo Cartagena Alejandro Patricio</td>
+            <td>80%</td>
+            <td>85%</td>
+            <td>-5%</td>
+            <td>6%</td>
+            
+            <td>
+              <div class="kpi-table-bar amber">
+                <div class="kpi-table-bar-inner amber" style="width:6%"></div>
+                <span class="kpi-table-bar-label amber">6%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="red predictivo-fail" tabindex="0" data-alerta="moderada" title="⚠️ Alerta: 0 críticos, 4 en riesgo">
+            <td>Garcia Velasco Ataly Tatiana</td>
+            <td>75%</td>
+            <td>85%</td>
+            <td>-10%</td>
+            <td>12%</td>
+            
+            <td>
+              <div class="kpi-table-bar red">
+                <div class="kpi-table-bar-inner red" style="width:12%"></div>
+                <span class="kpi-table-bar-label red">12%</span>
+              </div>
+            </td>
+          </tr>
+        </tbody></table></div></section>
+        <section class="kpi-table-section">
+          <div class="kpi-table-title" style="display:flex;align-items:center;justify-content:space-between;">
+            <span>Desempeño por Ejecutivo - TMO <span style="font-weight:400;font-size:0.9em;color:#607d8b">(Meta: 5 min)</span></span>
+            <button id="toggle-ejecutivos-tmo" aria-expanded="false" aria-controls="tabla-ejecutivos-tmo" style="background:none;border:none;font-size:1.2em;cursor:pointer;" title="Mostrar/Ocultar lista">►</button>
+          </div>
+          <div id="tabla-ejecutivos-tmo-wrapper" style="display:none;">
+          <table class="kpi-table" id="tabla-ejecutivos-tmo" aria-label="Tabla de desempeño por ejecutivo TMO">
+            <thead>
+              <tr>
+                <th>Ejecutivo</th>
+                <th>Valor</th>
+                <th>Meta</th>
+                <th>Desviación</th>
+                <th>Desviación %</th>
+                
+                <th>Barra</th>
+              </tr>
+            </thead>
+            <tbody>
+      
+          <tr class="green" tabindex="0">
+            <td>Astudillo Marin Manuela Soledad</td>
+            <td>0:00</td>
+            <td>5:00</td>
+            <td>-5.00 min</td>
+            <td>100%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:100%"></div>
+                <span class="kpi-table-bar-label green">100%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green predictivo-fail" tabindex="0" data-alerta="moderada" title="⚠️ Alerta: 0 críticos, 2 en riesgo">
+            <td>Castro Cáceres Marcia Nicole</td>
+            <td>0:00</td>
+            <td>5:00</td>
+            <td>-5.00 min</td>
+            <td>100%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:100%"></div>
+                <span class="kpi-table-bar-label green">100%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green predictivo-fail" tabindex="0" data-alerta="moderada" title="⚠️ Alerta: 0 críticos, 2 en riesgo">
+            <td>Chacón Avilés Alejandra Daniela</td>
+            <td>0:00</td>
+            <td>5:00</td>
+            <td>-5.00 min</td>
+            <td>100%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:100%"></div>
+                <span class="kpi-table-bar-label green">100%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green predictivo-fail" tabindex="0" data-alerta="moderada" title="⚠️ Alerta: 0 críticos, 4 en riesgo">
+            <td>Garcia Velasco Ataly Tatiana</td>
+            <td>0:00</td>
+            <td>5:00</td>
+            <td>-5.00 min</td>
+            <td>100%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:100%"></div>
+                <span class="kpi-table-bar-label green">100%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green" tabindex="0">
+            <td>Góngora Zuleta Elsa Susana</td>
+            <td>0:00</td>
+            <td>5:00</td>
+            <td>-5.00 min</td>
+            <td>100%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:100%"></div>
+                <span class="kpi-table-bar-label green">100%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green" tabindex="0">
+            <td>Hald Tello Katia Liza</td>
+            <td>0:00</td>
+            <td>5:00</td>
+            <td>-5.00 min</td>
+            <td>100%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:100%"></div>
+                <span class="kpi-table-bar-label green">100%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green" tabindex="0">
+            <td>Llancapichun Soto Johana Angelica</td>
+            <td>0:00</td>
+            <td>5:00</td>
+            <td>-5.00 min</td>
+            <td>100%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:100%"></div>
+                <span class="kpi-table-bar-label green">100%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green predictivo-fail" tabindex="0" data-alerta="moderada" title="⚠️ Alerta: 1 críticos, 1 en riesgo">
+            <td>Monsalve Corvacho Manuel Alejandro</td>
+            <td>0:00</td>
+            <td>5:00</td>
+            <td>-5.00 min</td>
+            <td>100%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:100%"></div>
+                <span class="kpi-table-bar-label green">100%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green" tabindex="0">
+            <td>Méndez Pérez Nanci Zobeida</td>
+            <td>0:00</td>
+            <td>5:00</td>
+            <td>-5.00 min</td>
+            <td>100%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:100%"></div>
+                <span class="kpi-table-bar-label green">100%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green" tabindex="0">
+            <td>Olivares González Maximiliano Alfonso</td>
+            <td>0:00</td>
+            <td>5:00</td>
+            <td>-5.00 min</td>
+            <td>100%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:100%"></div>
+                <span class="kpi-table-bar-label green">100%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green" tabindex="0">
+            <td>Orellana Mallea Ema Alejandra</td>
+            <td>0:00</td>
+            <td>5:00</td>
+            <td>-5.00 min</td>
+            <td>100%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:100%"></div>
+                <span class="kpi-table-bar-label green">100%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green predictivo-fail" tabindex="0" data-alerta="moderada" title="⚠️ Alerta: 0 críticos, 2 en riesgo">
+            <td>Penailillo Cartagena Alejandro Patricio</td>
+            <td>0:00</td>
+            <td>5:00</td>
+            <td>-5.00 min</td>
+            <td>100%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:100%"></div>
+                <span class="kpi-table-bar-label green">100%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green predictivo-fail" tabindex="0" data-alerta="moderada" title="⚠️ Alerta: 0 críticos, 3 en riesgo">
+            <td>Rodriguez Fernandez Daniela Paz</td>
+            <td>0:00</td>
+            <td>5:00</td>
+            <td>-5.00 min</td>
+            <td>100%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:100%"></div>
+                <span class="kpi-table-bar-label green">100%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green predictivo-fail" tabindex="0" data-alerta="moderada" title="⚠️ Alerta: 1 críticos, 1 en riesgo">
+            <td>Rodríguez Zenteno José Manuel</td>
+            <td>0:00</td>
+            <td>5:00</td>
+            <td>-5.00 min</td>
+            <td>100%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:100%"></div>
+                <span class="kpi-table-bar-label green">100%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green" tabindex="0">
+            <td>Salgado Tobar Melissa Aracelli</td>
+            <td>0:00</td>
+            <td>5:00</td>
+            <td>-5.00 min</td>
+            <td>100%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:100%"></div>
+                <span class="kpi-table-bar-label green">100%</span>
+              </div>
+            </td>
+          </tr>
+        
+          <tr class="green predictivo-fail" tabindex="0" data-alerta="moderada" title="⚠️ Alerta: 0 críticos, 2 en riesgo">
+            <td>Velasquez Perez María Loreto</td>
+            <td>0:00</td>
+            <td>5:00</td>
+            <td>-5.00 min</td>
+            <td>100%</td>
+            
+            <td>
+              <div class="kpi-table-bar green">
+                <div class="kpi-table-bar-inner green" style="width:100%"></div>
+                <span class="kpi-table-bar-label green">100%</span>
+              </div>
+            </td>
+          </tr>
+        </tbody></table></div></section>
+        <section class="kpi-table-section">
+          <div class="kpi-table-title" style="display:flex;align-items:center;justify-content:space-between;">
+            <span>Desempeño por Ejecutivo - Nota EPA SNL/EP</span>
+            <button id="toggle-ejecutivos-notaepa" aria-expanded="false" aria-controls="tabla-ejecutivos-notaepa" style="background:none;border:none;font-size:1.2em;cursor:pointer;" title="Mostrar/Ocultar lista">►</button>
+          </div>
+          <div id="tabla-ejecutivos-notaepa-wrapper" style="display:none;">
+          <table class="kpi-table" id="tabla-ejecutivos-notaepa" aria-label="Tabla de desempeño por ejecutivo Nota EPA SNL/EP">
+            <thead>
+              <tr>
+                <th>Agente</th>
+                <th>Satisfacción EP<br><span style="font-weight:400;font-size:0.9em;color:#607d8b">(Meta: 95%)</span></th>
+                <th>RESOLUCION EP<br><span style="font-weight:400;font-size:0.9em;color:#607d8b">(Meta: 90%)</span></th>
+                <th>Satisfacción SNL<br><span style="font-weight:400;font-size:0.9em;color:#607d8b">(Meta: 95%)</span></th>
+                <th>RESOLUCION SNL<br><span style="font-weight:400;font-size:0.9em;color:#607d8b">(Meta: 90%)</span></th>
+              </tr>
+            </thead>
+            <tbody>
+      
+          <tr class="green" tabindex="0">
+            <td>Llancapichun Soto Johana Angelica</td>
+            <td><span style="font-weight:700;">100.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+            <td><span style="font-weight:700;">94.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+            <td><span style="font-weight:700;">98.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+            <td><span style="font-weight:700;">96.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+          </tr>
+        
+          <tr class="green" tabindex="0">
+            <td>Orellana Mallea Ema Alejandra</td>
+            <td><span style="font-weight:700;">100.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+            <td><span style="font-weight:700;">97.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+            <td><span style="font-weight:700;">97.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+            <td><span style="font-weight:700;">94.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+          </tr>
+        
+          <tr class="green predictivo-fail" tabindex="0" data-alerta="moderada" title="⚠️ Alerta: 0 críticos, 2 en riesgo">
+            <td>Velasquez Perez María Loreto</td>
+            <td><span style="font-weight:700;">100.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+            <td><span style="font-weight:700;">91.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+            <td><span style="font-weight:700;">96.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+            <td><span style="font-weight:700;">88.00%</span> <span style="color:#F9A825;font-size:1.2em;vertical-align:middle;">▼</span></td>
+          </tr>
+        
+          <tr class="green" tabindex="0">
+            <td>Hald Tello Katia Liza</td>
+            <td><span style="font-weight:700;">98.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+            <td><span style="font-weight:700;">93.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+            <td><span style="font-weight:700;">95.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+            <td><span style="font-weight:700;">97.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+          </tr>
+        
+          <tr class="green" tabindex="0">
+            <td>Méndez Pérez Nanci Zobeida</td>
+            <td><span style="font-weight:700;">98.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+            <td><span style="font-weight:700;">96.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+            <td><span style="font-weight:700;">98.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+            <td><span style="font-weight:700;">98.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+          </tr>
+        
+          <tr class="green predictivo-fail" tabindex="0" data-alerta="moderada" title="⚠️ Alerta: 0 críticos, 2 en riesgo">
+            <td>Penailillo Cartagena Alejandro Patricio</td>
+            <td><span style="font-weight:700;">95.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+            <td><span style="font-weight:700;">93.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+            <td><span style="font-weight:700;">93.00%</span> <span style="color:#F9A825;font-size:1.2em;vertical-align:middle;">▼</span></td>
+            <td><span style="font-weight:700;">94.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+          </tr>
+        
+          <tr class="green" tabindex="0">
+            <td>Salgado Tobar Melissa Aracelli</td>
+            <td><span style="font-weight:700;">95.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+            <td><span style="font-weight:700;">95.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+            <td><span style="font-weight:700;">98.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+            <td><span style="font-weight:700;">94.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+          </tr>
+        
+          <tr class="amber predictivo-fail" tabindex="0" data-alerta="moderada" title="⚠️ Alerta: 0 críticos, 2 en riesgo">
+            <td>Chacón Avilés Alejandra Daniela</td>
+            <td><span style="font-weight:700;">92.00%</span> <span style="color:#F9A825;font-size:1.2em;vertical-align:middle;">▼</span></td>
+            <td><span style="font-weight:700;">92.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+            <td><span style="font-weight:700;">96.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+            <td><span style="font-weight:700;">95.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+          </tr>
+        
+          <tr class="amber" tabindex="0">
+            <td>Góngora Zuleta Elsa Susana</td>
+            <td><span style="font-weight:700;">92.00%</span> <span style="color:#F9A825;font-size:1.2em;vertical-align:middle;">▼</span></td>
+            <td><span style="font-weight:700;">94.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+            <td><span style="font-weight:700;">99.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+            <td><span style="font-weight:700;">96.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+          </tr>
+        
+          <tr class="amber" tabindex="0">
+            <td>Olivares González Maximiliano Alfonso</td>
+            <td><span style="font-weight:700;">92.00%</span> <span style="color:#F9A825;font-size:1.2em;vertical-align:middle;">▼</span></td>
+            <td><span style="font-weight:700;">93.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+            <td><span style="font-weight:700;">95.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+            <td><span style="font-weight:700;">94.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+          </tr>
+        
+          <tr class="red" tabindex="0">
+            <td>Astudillo Marin Manuela Soledad</td>
+            <td><span style="font-weight:700;">91.00%</span> <span style="color:#C62828;font-size:1.2em;vertical-align:middle;">▼</span></td>
+            <td><span style="font-weight:700;">96.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+            <td><span style="font-weight:700;">95.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+            <td><span style="font-weight:700;">94.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+          </tr>
+        
+          <tr class="red predictivo-fail" tabindex="0" data-alerta="moderada" title="⚠️ Alerta: 0 críticos, 3 en riesgo">
+            <td>Rodriguez Fernandez Daniela Paz</td>
+            <td><span style="font-weight:700;">91.00%</span> <span style="color:#C62828;font-size:1.2em;vertical-align:middle;">▼</span></td>
+            <td><span style="font-weight:700;">89.00%</span> <span style="color:#F9A825;font-size:1.2em;vertical-align:middle;">▼</span></td>
+            <td><span style="font-weight:700;">96.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+            <td><span style="font-weight:700;">94.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+          </tr>
+        
+          <tr class="red predictivo-fail" tabindex="0" data-alerta="moderada" title="⚠️ Alerta: 0 críticos, 2 en riesgo">
+            <td>Castro Cáceres Marcia Nicole</td>
+            <td><span style="font-weight:700;">90.00%</span> <span style="color:#C62828;font-size:1.2em;vertical-align:middle;">▼</span></td>
+            <td><span style="font-weight:700;">89.00%</span> <span style="color:#F9A825;font-size:1.2em;vertical-align:middle;">▼</span></td>
+            <td><span style="font-weight:700;">97.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+            <td><span style="font-weight:700;">92.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+          </tr>
+        
+          <tr class="red predictivo-fail" tabindex="0" data-alerta="moderada" title="⚠️ Alerta: 0 críticos, 4 en riesgo">
+            <td>Garcia Velasco Ataly Tatiana</td>
+            <td><span style="font-weight:700;">90.00%</span> <span style="color:#C62828;font-size:1.2em;vertical-align:middle;">▼</span></td>
+            <td><span style="font-weight:700;">87.00%</span> <span style="color:#F9A825;font-size:1.2em;vertical-align:middle;">▼</span></td>
+            <td><span style="font-weight:700;">93.00%</span> <span style="color:#F9A825;font-size:1.2em;vertical-align:middle;">▼</span></td>
+            <td><span style="font-weight:700;">94.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+          </tr>
+        
+          <tr class="red predictivo-fail" tabindex="0" data-alerta="moderada" title="⚠️ Alerta: 1 críticos, 1 en riesgo">
+            <td>Rodríguez Zenteno José Manuel</td>
+            <td><span style="font-weight:700;">86.00%</span> <span style="color:#C62828;font-size:1.2em;vertical-align:middle;">▼</span></td>
+            <td><span style="font-weight:700;">96.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+            <td><span style="font-weight:700;">97.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+            <td><span style="font-weight:700;">94.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+          </tr>
+        
+          <tr class="red predictivo-fail" tabindex="0" data-alerta="moderada" title="⚠️ Alerta: 1 críticos, 1 en riesgo">
+            <td>Monsalve Corvacho Manuel Alejandro</td>
+            <td><span style="font-weight:700;">77.00%</span> <span style="color:#C62828;font-size:1.2em;vertical-align:middle;">▼</span></td>
+            <td><span style="font-weight:700;">100.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+            <td><span style="font-weight:700;">100.00%</span> <span style="color:#2E7D32;font-size:1.2em;vertical-align:middle;">▲</span></td>
+            <td><span style="font-weight:700;">86.00%</span> <span style="color:#F9A825;font-size:1.2em;vertical-align:middle;">▼</span></td>
+          </tr>
+        </tbody></table></div></section></main>
   <aside class="kpi-config-panel" id="config-panel" aria-label="Panel de configuración" tabindex="-1">
     <button class="kpi-config-close" id="config-close" aria-label="Cerrar configuración">×</button>
     <div class="kpi-config-title">Configuración del Tablero</div>
     <form class="kpi-config-form" id="config-form" autocomplete="off">
       <div class="kpi-config-row">
         <label for="meta-tipificaciones">Meta Tipificaciones (%)</label>
-        <input type="number" id="meta-tipificaciones" name="meta-tipificaciones" min="0" max="100" step="0.1" required>
+        <input type="number" id="meta-tipificaciones" name="meta-tipificaciones" min="0" max="100" step="0.1" required="" value="">
       </div>
       <div class="kpi-config-row">
         <label for="meta-epa">Meta EPA (%)</label>
-        <input type="number" id="meta-epa" name="meta-epa" min="0" max="100" step="0.1" required>
+        <input type="number" id="meta-epa" name="meta-epa" min="0" max="100" step="0.1" required="" value="">
       </div>
       <div class="kpi-config-row">
         <label for="meta-tmo">Meta TMO (min)</label>
-        <input type="number" id="meta-tmo" name="meta-tmo" min="0" max="60" step="0.01" required>
+        <input type="number" id="meta-tmo" name="meta-tmo" min="0" max="60" step="0.01" required="" value="">
       </div>
       <div class="kpi-config-row">
         <label for="deviation-method">Método de desviación</label>
         <select id="deviation-method" name="deviation-method">
-          <option value="relativa">Relativa</option>
+          <option value="relativa" selected="">Relativa</option>
           <option value="absoluta">Absoluta</option>
         </select>
       </div>
       <div class="kpi-config-row">
         <label for="color-green">Umbral Verde (%)</label>
-        <input type="number" id="color-green" name="color-green" min="0" max="100" step="0.1">
+        <input type="number" id="color-green" name="color-green" min="0" max="100" step="0.1" value="">
       </div>
       <div class="kpi-config-row">
         <label for="color-amber">Umbral Ámbar (%)</label>
-        <input type="number" id="color-amber" name="color-amber" min="0" max="100" step="0.1">
+        <input type="number" id="color-amber" name="color-amber" min="0" max="100" step="0.1" value="">
       </div>
       <div class="kpi-config-row">
         <label for="date-range">Rango de fechas</label>
-        <input type="text" id="date-range" name="date-range" placeholder="YYYY-MM-DD a YYYY-MM-DD">
+        <input type="text" id="date-range" name="date-range" placeholder="YYYY-MM-DD a YYYY-MM-DD" value="">
       </div>
       <div class="kpi-config-row">
         <label for="kpi-focus">KPI focalizado</label>
         <select id="kpi-focus" name="kpi-focus">
-          <option value="tipificaciones">Tipificaciones</option>
+          <option value="tipificaciones" selected="">Tipificaciones</option>
           <option value="epa">EPA</option>
           <option value="tmo">TMO</option>
         </select>
@@ -5620,28 +6402,21 @@
       <button class="kpi-config-close" id="evolutivo-close" style="position:static; color:#fff;">×</button>
     </div>
     <div class="evolutivo-content">
-      <div
-        style="padding: 1em 1.5em; background: var(--kpi-card-bg); border-bottom: 1px solid var(--kpi-line); font-size: 0.85em;">
+      <div style="padding: 1em 1.5em; background: var(--kpi-card-bg); border-bottom: 1px solid var(--kpi-line); font-size: 0.85em;">
         <div style="font-weight:600; margin-bottom:0.5em; color:var(--achs-secondary);">Referencia de Niveles:</div>
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5em;">
-          <div style="display:flex; align-items:center; gap:0.4em;"><span class="status-badge status-gold"
-              style="font-size:0.65em; padding:2px 6px;">GOLD</span> <span style="font-size:0.85em;">Excelencia (Brecha
+          <div style="display:flex; align-items:center; gap:0.4em;"><span class="status-badge status-gold" style="font-size:0.65em; padding:2px 6px;">GOLD</span> <span style="font-size:0.85em;">Excelencia (Brecha
               0)</span></div>
-          <div style="display:flex; align-items:center; gap:0.4em;"><span class="status-badge status-silver"
-              style="font-size:0.65em; padding:2px 6px;">SILVER</span> <span
-              style="font-size:0.85em;">Cumplimiento</span></div>
-          <div style="display:flex; align-items:center; gap:0.4em;"><span class="status-badge status-bronze"
-              style="font-size:0.65em; padding:2px 6px;">BRONZE</span> <span style="font-size:0.85em;">Brecha
+          <div style="display:flex; align-items:center; gap:0.4em;"><span class="status-badge status-silver" style="font-size:0.65em; padding:2px 6px;">SILVER</span> <span style="font-size:0.85em;">Cumplimiento</span></div>
+          <div style="display:flex; align-items:center; gap:0.4em;"><span class="status-badge status-bronze" style="font-size:0.65em; padding:2px 6px;">BRONZE</span> <span style="font-size:0.85em;">Brecha
               Leve</span></div>
-          <div style="display:flex; align-items:center; gap:0.4em;"><span class="status-badge status-critical"
-              style="font-size:0.65em; padding:2px 6px;">CRITICAL</span> <span style="font-size:0.85em;">Riesgo
+          <div style="display:flex; align-items:center; gap:0.4em;"><span class="status-badge status-critical" style="font-size:0.65em; padding:2px 6px;">CRITICAL</span> <span style="font-size:0.85em;">Riesgo
               Alto</span></div>
         </div>
       </div>
       <div class="evolutivo-filter">
         <label for="evolutivo-search" style="font-weight:600; font-size:0.9em;">Buscar Ejecutivo:</label>
-        <input type="text" id="evolutivo-search" placeholder="Escribe un nombre..."
-          style="width:100%; padding:0.6em; border-radius:6px; border:1px solid var(--kpi-line); background: var(--kpi-card-bg); color: var(--kpi-text);">
+        <input type="text" id="evolutivo-search" placeholder="Escribe un nombre..." style="width:100%; padding:0.6em; border-radius:6px; border:1px solid var(--kpi-line); background: var(--kpi-card-bg); color: var(--kpi-text);" value="">
       </div>
 
       <div class="evolutivo-exec-list" id="evolutivo-exec-list">
@@ -5651,15 +6426,14 @@
       <div id="evolutivo-detail" style="display:none;">
         <h3 id="evolutivo-detail-name" style="margin-bottom:0.2em;">Nombre del Ejecutivo</h3>
 
-        <div class="evolutivo-tabs" id="evolutivo-kpi-tabs"
-          style="display:flex; gap:0.5em; margin-bottom:1em; overflow-x:auto; padding-bottom:5px;">
-          <button class="kpi-tab active" data-kpi="satisfaccion_snl">Satisf. SNL</button>
-          <button class="kpi-tab" data-kpi="resolucion_snl">Resol. SNL</button>
-          <button class="kpi-tab" data-kpi="satisfaccion_ep">Satisf. EP</button>
-          <button class="kpi-tab" data-kpi="resolucion_ep">Resol. EP</button>
-          <button class="kpi-tab" data-kpi="tmo">TMO</button>
-          <button class="kpi-tab" data-kpi="epa">Transf. EPA</button>
-          <button class="kpi-tab" data-kpi="tipificaciones">Tipif.</button>
+        <div class="evolutivo-tabs" id="evolutivo-kpi-tabs" style="display:flex; gap:0.5em; margin-bottom:1em; overflow-x:auto; padding-bottom:5px;">
+          <button class="kpi-tab active kpi--gris" data-kpi="satisfaccion_snl" data-kpi-id="kpi-1">Satisf. SNL</button>
+          <button class="kpi-tab kpi--gris" data-kpi="resolucion_snl" data-kpi-id="kpi-2">Resol. SNL</button>
+          <button class="kpi-tab kpi--gris" data-kpi="satisfaccion_ep" data-kpi-id="kpi-3">Satisf. EP</button>
+          <button class="kpi-tab kpi--gris" data-kpi="resolucion_ep" data-kpi-id="kpi-4">Resol. EP</button>
+          <button class="kpi-tab kpi--gris" data-kpi="tmo" data-kpi-id="kpi-5">TMO</button>
+          <button class="kpi-tab kpi--gris" data-kpi="epa" data-kpi-id="kpi-6">Transf. EPA</button>
+          <button class="kpi-tab kpi--gris" data-kpi="tipificaciones" data-kpi-id="kpi-7">Tipif.</button>
         </div>
 
         <div id="evolutivo-detail-trend" style="margin-bottom:1em;"></div>
@@ -5675,20 +6449,17 @@
           </div>
           <div class="meta-item"><span class="label">Mejor Mes</span><span class="value" id="ev-val-max">-</span>
           </div>
-          <div class="meta-item"><span class="label">Variación Periodo</span><span class="value"
-              id="ev-val-diff">-</span></div>
+          <div class="meta-item"><span class="label">Variación Periodo</span><span class="value" id="ev-val-diff">-</span></div>
         </div>
 
         <div class="action-plan-card" id="ev-action-plan">
           <!-- Generado por JS -->
         </div>
         <div id="ev-feedback-ficha" style="margin-top:24px; display:none;">
-          <div
-            style="background:#fff; border-radius:12px; box-shadow:0 2px 8px rgba(44,62,80,0.07); padding:24px 28px; border:1px solid #CFD8DC; max-width:600px; margin:auto;">
-            <div
-              style="display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid #2E7D32; padding-bottom:10px; margin-bottom:16px;">
-              <span style='font-size:1.3em; font-weight:700; color:#2E7D32;'>ACHS SNL-EP</span>
-              <span style='font-size:1.1em; font-weight:600; color:#607d8b;'>Ficha de Feedback</span>
+          <div style="background:#fff; border-radius:12px; box-shadow:0 2px 8px rgba(44,62,80,0.07); padding:24px 28px; border:1px solid #CFD8DC; max-width:600px; margin:auto;">
+            <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid #2E7D32; padding-bottom:10px; margin-bottom:16px;">
+              <span style="font-size:1.3em; font-weight:700; color:#2E7D32;">ACHS SNL-EP</span>
+              <span style="font-size:1.1em; font-weight:600; color:#607d8b;">Ficha de Feedback</span>
               <span id="ev-feedback-ficha-date" style="font-size:1em; color:#607d8b;"></span>
             </div>
             <div style="margin-bottom:12px;"><b>Nombre:</b> <span id="ev-feedback-ficha-nombre"></span></div>
@@ -5698,8 +6469,7 @@
             </div>
             <div style="margin-bottom:12px;"><b>Diagnóstico:</b> <span id="ev-feedback-ficha-diagnostico"></span></div>
             <div style="margin-bottom:12px;"><b>Compromisos:</b>
-              <textarea id="ev-feedback-ficha-compromisos"
-                style="width:100%;min-height:40px;resize:vertical;border:1px solid #B0BEC5;border-radius:5px;margin-top:4px;padding:6px;font-size:1em;"></textarea>
+              <textarea id="ev-feedback-ficha-compromisos" style="width:100%;min-height:40px;resize:vertical;border:1px solid #B0BEC5;border-radius:5px;margin-top:4px;padding:6px;font-size:1em;"></textarea>
             </div>
             <div style="display:flex; justify-content:space-between; margin-top:24px;">
               <div style="width:45%; border-top:1px solid #263238; text-align:center; padding-top:8px; color:#607d8b;">
@@ -5708,8 +6478,7 @@
                 Firma Supervisor</div>
             </div>
             <div style="text-align:right; margin-top:18px;">
-              <button id="btn-imprimir-ficha"
-                style="background:var(--achs-primary);color:white;border:none;padding:7px 16px;border-radius:6px;cursor:pointer;font-size:1em;">
+              <button id="btn-imprimir-ficha" style="background:var(--achs-primary);color:white;border:none;padding:7px 16px;border-radius:6px;cursor:pointer;font-size:1em;">
                 🖨️ Imprimir Ficha
               </button>
             </div>
@@ -5721,7 +6490,7 @@
     <div id="evolutivo-empty" class="kpi-empty-state">
       Selecciona un ejecutivo para ver su tendencia
     </div>
-    </div>
+    
   </aside>
 
   <!-- --- MODALES MANTENEDOR --- -->
@@ -5735,11 +6504,22 @@
       </div>
       <div class="modal-body">
         <div class="maintainer-tabs" id="historial-tabs">
-          <!-- Generado por JS: 7 pestañas -->
-        </div>
+        <div class="m-tab " data-metric="tmo">TMO</div>
+      
+        <div class="m-tab " data-metric="epa">Transferencia a EPA</div>
+      
+        <div class="m-tab " data-metric="tipificaciones">Tipificaciones</div>
+      
+        <div class="m-tab " data-metric="satisfaccion_ep">Satisfacción EP</div>
+      
+        <div class="m-tab " data-metric="resolucion_ep">Resolución EP</div>
+      
+        <div class="m-tab " data-metric="satisfaccion_snl">Satisfacción SNL</div>
+      
+        <div class="m-tab " data-metric="resolucion_snl">Resolución SNL</div>
+      </div>
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1em;">
-          <input type="text" id="historial-search" placeholder="Filtrar por nombre..."
-            style="padding:0.5em; border-radius:6px; border:1px solid var(--kpi-line); width:250px;">
+          <input type="text" id="historial-search" placeholder="Filtrar por nombre..." style="padding:0.5em; border-radius:6px; border:1px solid var(--kpi-line); width:250px;" value="">
           <div style="font-size:0.9em; color:#777;">Recalculando promedios automáticamente</div>
         </div>
         <div style="overflow-x:auto; max-height:50vh;">
@@ -5747,11 +6527,11 @@
             <thead>
               <tr>
                 <th style="text-align:left;">EJECUTIVO</th>
-                <th id="th-m1">MES 1</th>
-                <th id="th-m2">MES 2</th>
-                <th id="th-m3">MES 3</th>
-                <th id="th-m4">MES 4</th>
-                <th id="th-m5">MES 5</th>
+                <th id="th-m1">SEPTIEMBRE</th>
+                <th id="th-m2">OCTUBRE</th>
+                <th id="th-m3">NOVIEMBRE</th>
+                <th id="th-m4">DICIEMBRE</th>
+                <th id="th-m5">ENERO</th>
                 <th>Promedio</th>
                 <th style="width: 50px;">🗑️</th>
               </tr>
@@ -5763,12 +6543,9 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" id="btn-export-permanente"
-          style="background:var(--achs-secondary); color:var(--achs-neutral-text); border:none; padding:0.6em 1.5em; border-radius:6px; cursor:pointer; font-weight:600;"
-          title="Descargar una versiÃ³n del archivo con estos datos guardados fÃ­sicamente">ðŸ’¾ Guardar en
+        <button type="button" id="btn-export-permanente" style="background:var(--achs-secondary); color:var(--achs-neutral-text); border:none; padding:0.6em 1.5em; border-radius:6px; cursor:pointer; font-weight:600;" title="Descargar una versiÃ³n del archivo con estos datos guardados fÃ­sicamente">ðŸ’¾ Guardar en
           Programa</button>
-        <button type="button" id="btn-historial-save"
-          style="background:var(--achs-primary); color:#fff; border:none; padding:0.6em 1.5em; border-radius:6px; cursor:pointer;">Guardar
+        <button type="button" id="btn-historial-save" style="background:var(--achs-primary); color:#fff; border:none; padding:0.6em 1.5em; border-radius:6px; cursor:pointer;">Guardar
           Cambios</button>
         <button type="button" class="kpi-config-reset" id="btn-historial-close">Cerrar</button>
       </div>
@@ -5786,33 +6563,24 @@
         <div class="import-area">
           <div class="import-controls">
             <label style="font-weight:600; font-size:0.9em;">1. Métrica a actualizar:</label>
-            <select id="import-metric" style="padding:0.5em; border-radius:6px; border:1px solid var(--kpi-line);">
-              <!-- Generado por JS -->
-            </select>
+            <select id="import-metric" style="padding:0.5em; border-radius:6px; border:1px solid var(--kpi-line);"><option value="tmo" selected="">TMO</option><option value="epa">Transferencia a EPA</option><option value="tipificaciones">Tipificaciones</option><option value="satisfaccion_ep">Satisfacción EP</option><option value="resolucion_ep">Resolución EP</option><option value="satisfaccion_snl">Satisfacción SNL</option><option value="resolucion_snl">Resolución SNL</option></select>
 
             <label style="font-weight:600; font-size:0.9em; margin-top:1em;">2. Formato de pegado:</label>
             <div style="display:flex; flex-direction:column; gap:0.5em;">
-              <label style="font-weight:400; font-size:0.85em;"><input type="radio" name="import-format" value="4cols"
-                  checked> Ejecutivo, Septiembre, Octubre, Noviembre, Diciembre, Enero</label>
-              <label style="font-weight:400; font-size:0.85em;"><input type="radio" name="import-format" value="2cols">
+              <label style="font-weight:400; font-size:0.85em;"><input type="radio" name="import-format" value="4cols" checked="" id="kpi-input-27"> Ejecutivo, Septiembre, Octubre, Noviembre, Diciembre, Enero</label>
+              <label style="font-weight:400; font-size:0.85em;"><input type="radio" name="import-format" value="2cols" id="kpi-input-28">
                 Ejecutivo, Valor (un solo mes)</label>
             </div>
 
             <div id="import-month-select" style="display:none; margin-left:1.5em; flex-direction:column; gap:0.3em;">
-              <label style="font-weight:400; font-size:0.8em;"><input type="radio" name="target-month" value="m1"> <span
-                  id="label-m1">Septiembre</span></label>
-              <label style="font-weight:400; font-size:0.8em;"><input type="radio" name="target-month" value="m2"> <span
-                  id="label-m2">Octubre</span></label>
-              <label style="font-weight:400; font-size:0.8em;"><input type="radio" name="target-month" value="m3"> <span
-                  id="label-m3">Noviembre</span></label>
-              <label style="font-weight:400; font-size:0.8em;"><input type="radio" name="target-month" value="m4"> <span
-                  id="label-m4">Diciembre</span></label>
-              <label style="font-weight:400; font-size:0.8em;"><input type="radio" name="target-month" value="m5"
-                  checked> <span id="label-m5">Enero</span></label>
+              <label style="font-weight:400; font-size:0.8em;"><input type="radio" name="target-month" value="m1" id="kpi-input-29"> <span id="label-m1">Septiembre</span></label>
+              <label style="font-weight:400; font-size:0.8em;"><input type="radio" name="target-month" value="m2" id="kpi-input-30"> <span id="label-m2">Octubre</span></label>
+              <label style="font-weight:400; font-size:0.8em;"><input type="radio" name="target-month" value="m3" id="kpi-input-31"> <span id="label-m3">Noviembre</span></label>
+              <label style="font-weight:400; font-size:0.8em;"><input type="radio" name="target-month" value="m4" id="kpi-input-32"> <span id="label-m4">Diciembre</span></label>
+              <label style="font-weight:400; font-size:0.8em;"><input type="radio" name="target-month" value="m5" checked="" id="kpi-input-33"> <span id="label-m5">Enero</span></label>
             </div>
 
-            <button id="btn-download-tpl"
-              style="margin-top:auto; padding:0.6em; border-radius:6px; border:1px solid var(--achs-primary); background:transparent; color:var(--achs-primary); cursor:pointer; font-size:0.85em;">📥
+            <button id="btn-download-tpl" style="margin-top:auto; padding:0.6em; border-radius:6px; border:1px solid var(--achs-primary); background:transparent; color:var(--achs-primary); cursor:pointer; font-size:0.85em;">📥
               Descargar Plantilla</button>
           </div>
           <div style="display:flex; flex-direction:column;">
@@ -5821,8 +6589,7 @@
           </div>
         </div>
 
-        <div id="import-preview-container"
-          style="display:none; margin-top:1.5em; border-top:1px solid var(--kpi-line); padding-top:1em;">
+        <div id="import-preview-container" style="display:none; margin-top:1.5em; border-top:1px solid var(--kpi-line); padding-top:1em;">
           <h4 style="margin:0 0 0.5em 0;">Vista previa de mapeo</h4>
           <div id="import-summary" style="font-size:0.85em; margin-bottom:0.8em;"></div>
           <div class="preview-list" id="import-preview-list">
@@ -5832,8 +6599,7 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="kpi-config-reset" id="btn-actualizar-cancel">Cancelar</button>
-        <button type="button" id="btn-actualizar-apply" disabled
-          style="background:#bdbdbd; color:#fff; border:none; padding:0.6em 1.5em; border-radius:6px; cursor:not-allowed;">Reemplazar
+        <button type="button" id="btn-actualizar-apply" disabled="" style="background:#bdbdbd; color:#fff; border:none; padding:0.6em 1.5em; border-radius:6px; cursor:not-allowed;">Reemplazar
           Datos</button>
       </div>
     </div>
@@ -5844,8 +6610,7 @@
     <div class="modal-card" style="max-width: 800px;">
       <div class="modal-header">
         <h3>Guion de Transferencia a EPA</h3>
-        <button class="kpi-modal-close" onclick="closeGuionEpa()" aria-label="Cerrar modal"
-          style="background:transparent; border:none; color:white; font-size:1.5em; cursor:pointer;">&times;</button>
+        <button class="kpi-modal-close" onclick="closeGuionEpa()" aria-label="Cerrar modal" style="background:transparent; border:none; color:white; font-size:1.5em; cursor:pointer;">×</button>
       </div>
       <div class="modal-body" style="line-height: 1.6;">
         <!-- 1) Resumen Ejecutivo (desplegable) -->
@@ -5865,8 +6630,7 @@
           <summary style="color:var(--achs-secondary); font-weight:700; cursor:pointer;">2. Frase Obligatoria ▸
           </summary>
           <div style="margin-top:0.5em;">
-            <div class="mandatory-phrase"
-              style="background-color: #fff3e0; border-left: 5px solid #ff9800; padding: 15px; font-weight: bold; font-size: 1.1em; margin: 10px 0; color: #333;">
+            <div class="mandatory-phrase" style="background-color: #fff3e0; border-left: 5px solid #ff9800; padding: 15px; font-weight: bold; font-size: 1.1em; margin: 10px 0; color: #333;">
               por favor no me corte por que TIENE que evaluar mi atención, la nota máxima es un 7 y son solo dos
               preguntas.
             </div>
@@ -5919,8 +6683,7 @@
           <summary style="color:var(--achs-secondary); font-weight:700; cursor:pointer;">5. Ejemplos de Interacción ▸
           </summary>
           <div style="margin-top:0.5em;">
-            <div
-              style="background:var(--kpi-bg); padding:10px; border-left:4px solid var(--achs-primary); margin-bottom:10px;">
+            <div style="background:var(--kpi-bg); padding:10px; border-left:4px solid var(--achs-primary); margin-bottom:10px;">
               <em>Acepta de inmediato:</em><br>
               <strong>Agente:</strong> Hemos cursado su solicitud. Antes de irnos, <strong>por favor no me corte por que
                 TIENE que evaluar mi atención...</strong><br>
@@ -5928,8 +6691,7 @@
               <span style="font-size:0.85em; color:#666;">(Refuerza la cooperación y la instrucción clave
                 rápidamente)</span>
             </div>
-            <div
-              style="background:var(--kpi-bg); padding:10px; border-left:4px solid var(--achs-primary); margin-bottom:10px;">
+            <div style="background:var(--kpi-bg); padding:10px; border-left:4px solid var(--achs-primary); margin-bottom:10px;">
               <em>Duda por tiempo:</em><br>
               <strong>Agente:</strong> ¿Nos ayuda con una encuesta rápida?<br>
               <strong>Paciente:</strong> Uy, es que estoy apurado...<br>
@@ -5955,18 +6717,16 @@
 
         <!-- 7) Mejores Prácticas (Do & Don't) (desplegable) -->
         <details class="epa-practicas" style="margin-bottom:0.6em;">
-          <summary style="color:var(--achs-secondary); font-weight:700; cursor:pointer;">7. Mejores Prácticas (Do &
+          <summary style="color:var(--achs-secondary); font-weight:700; cursor:pointer;">7. Mejores Prácticas (Do &amp;
             Don't) ▸</summary>
           <div style="margin-top:0.5em;">
             <table style="width:100%; border-collapse:collapse; font-size:0.9em; margin-bottom:1em;">
               <thead>
                 <tr>
-                  <th
-                    style="border-bottom:3px solid #4caf50; text-align:left; padding:5px; background:var(--kpi-table-bg);">
+                  <th style="border-bottom:3px solid #4caf50; text-align:left; padding:5px; background:var(--kpi-table-bg);">
                     ✅
                     DO (Hacer)</th>
-                  <th
-                    style="border-bottom:3px solid #f44336; text-align:left; padding:5px; background:var(--kpi-table-bg);">
+                  <th style="border-bottom:3px solid #f44336; text-align:left; padding:5px; background:var(--kpi-table-bg);">
                     ❌
                     DON'T (Evitar)</th>
                 </tr>
@@ -6088,7 +6848,7 @@
     </div>
   </div>
 
-  <div class="kpi-tooltip" id="kpi-tooltip" role="tooltip" aria-hidden="true"></div>
+  <div class="kpi-tooltip" id="kpi-tooltip" role="tooltip" aria-hidden="true" style="left: 1408px; top: 948px;">Mostrar/Ocultar lista</div>
   <!-- Datos demo embebidos -->
   <script id="demo-data" type="application/json">
   {
@@ -6123,7 +6883,7 @@
   <div id="cuartiles-modal" role="dialog" aria-label="Resultados por cuartiles">
     <button id="cuartiles-close">✕</button>
     <h4 style="margin:6px 0 8px 0">Clasificación por cuartiles</h4>
-    <div id="cuartiles-content">Cargando...</div>
+    <button id="podio-btn" style="background: rgb(176, 0, 32); color: rgb(255, 255, 255); border: none; padding: 10px 12px; border-radius: 8px; cursor: pointer; margin: 6px 0px 8px;">Podio 3 bajos</button><div id="cuartiles-content">Cargando...</div>
     <div id="cuartiles-detalle" style="display:none;border-top:1px solid #eee;margin-top:8px;padding-top:8px;font-size:13px"></div>
   </div>
 
@@ -8732,7 +9492,7 @@
       });
     })();
   </script>
-</body>
+
 <style>
   :root {
     --kpi-verde: #1E7F4F;
@@ -9310,4 +10070,67 @@
   })();
 </script>
 
-</html>
+<script>
+(function(){
+  function downloadBlob(content, filename, type){
+    const blob = new Blob([content], { type: type || 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = filename || 'index_kpi.html';
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  }
+
+  function ensureIdsForInputs(){
+    const inputs = document.querySelectorAll('input,textarea,select');
+    inputs.forEach((el,i)=>{ if (!el.id) el.id = 'kpi-input-' + i; });
+  }
+
+  function copyFormValuesToClone(cloneDoc){
+    const cloneInputs = cloneDoc.querySelectorAll('input,textarea,select');
+    cloneInputs.forEach(cl=>{
+      const orig = document.getElementById(cl.id);
+      if (!orig) return;
+      const tag = cl.tagName.toLowerCase();
+      if (tag === 'input'){
+        const type = cl.type;
+        if (type === 'checkbox' || type === 'radio'){
+          if (orig.checked) cl.setAttribute('checked',''); else cl.removeAttribute('checked');
+        } else {
+          cl.setAttribute('value', orig.value);
+          try{ cl.value = orig.value; }catch(e){}
+        }
+      } else if (tag === 'textarea'){
+        cl.textContent = orig.value;
+      } else if (tag === 'select'){
+        // clear selected in clone
+        Array.from(cl.options).forEach(opt=> opt.removeAttribute('selected'));
+        Array.from(orig.options).forEach(o=>{ if (o.selected){ const match = Array.from(cl.options).find(x=>x.value===o.value); if (match) match.setAttribute('selected',''); }});
+      }
+    });
+  }
+
+  window.generateHTMLWithValues = function(filename){
+    ensureIdsForInputs();
+    const clone = document.documentElement.cloneNode(true);
+    copyFormValuesToClone(clone);
+    // remove controls if present
+    const ctrl = clone.querySelector('#kpi-controls'); if (ctrl) ctrl.remove();
+    const out = '<!doctype html>\n' + clone.outerHTML;
+    downloadBlob(out, filename || 'index_kpi.html');
+  };
+
+  document.addEventListener('DOMContentLoaded', ()=>{
+    // crear botón flotante si no existe
+    if (!document.getElementById('kpi-generate-btn')){
+      const btn = document.createElement('button');
+      btn.id = 'kpi-generate-btn'; btn.textContent = 'Generar HTML con KPI';
+      btn.style.position='fixed'; btn.style.right='12px'; btn.style.bottom='60px';
+      btn.style.zIndex=9999; btn.style.padding='8px 10px'; btn.style.background='#f59e0b';
+      btn.style.color='#fff'; btn.style.border='none'; btn.style.borderRadius='6px'; btn.style.cursor='pointer';
+      btn.addEventListener('click', ()=> window.generateHTMLWithValues());
+      document.body.appendChild(btn);
+    }
+  });
+
+})();
+</script>
+<div id="podio-modal" style="display: none; position: fixed; left: 18px; bottom: 70px; z-index: 12000; background: rgb(255, 255, 255); border-radius: 8px; box-shadow: rgba(0, 0, 0, 0.2) 0px 8px 30px; max-width: 520px; width: 480px; padding: 12px; font-family: &quot;Segoe UI&quot;, Arial;"><button id="podio-close" style="float:right;background:transparent;border:none;cursor:pointer">✕</button><h4 style="margin:6px 0 8px 0">Podio — 3 ejecutivos con menor score</h4><div id="podio-content">Cargando...</div></div><div style="position: fixed; right: 12px; bottom: 12px; z-index: 9999; display: flex; flex-direction: column; gap: 6px;"><button style="padding: 8px 10px; background: rgb(11, 95, 255); color: rgb(255, 255, 255); border: none; border-radius: 6px; cursor: pointer;">Exportar KPI</button><button style="padding: 8px 10px; background: rgb(16, 185, 129); color: rgb(255, 255, 255); border: none; border-radius: 6px; cursor: pointer;">Importar KPI</button><input type="file" accept="application/json" id="kpi-input-35" style="display: none;" value=""></div><button id="kpi-generate-btn" style="position: fixed; right: 12px; bottom: 60px; z-index: 9999; padding: 8px 10px; background: rgb(245, 158, 11); color: rgb(255, 255, 255); border: none; border-radius: 6px; cursor: pointer;">Generar HTML con KPI</button></body></html>
