@@ -8609,7 +8609,35 @@
         return results.sort((a,b)=>a.score - b.score).slice(0,3);
       }
 
-      function makeButton(){ if(document.getElementById('podio-btn')) return document.getElementById('podio-btn'); const b = document.createElement('button'); b.id='podio-btn'; b.textContent='Podio 3 bajos'; Object.assign(b.style,{position:'fixed',left:'18px',bottom:'18px',zIndex:12000,background:'#b00020',color:'#fff',border:'none',padding:'10px 12px',borderRadius:'8px',cursor:'pointer'}); document.body.appendChild(b); return b; }
+      function makeButton(){
+        if(document.getElementById('podio-btn')) return document.getElementById('podio-btn');
+        const b = document.createElement('button');
+        b.id = 'podio-btn';
+        b.textContent = 'Podio 3 bajos';
+        // estilos base
+        Object.assign(b.style,{
+          background: '#b00020',
+          color: '#fff',
+          border: 'none',
+          padding: '10px 12px',
+          borderRadius: '8px',
+          cursor: 'pointer'
+        });
+        // intentar insertar dentro del modal de cuartiles si existe
+        const cuartModal = document.getElementById('cuartiles-modal');
+        if(cuartModal){
+          // colocar antes del contenido principal para que quede junto al título
+          const content = cuartModal.querySelector('#cuartiles-content');
+          if(content) cuartModal.insertBefore(b, content);
+          else cuartModal.appendChild(b);
+          // ajustar margen para separación
+          b.style.margin = '6px 0 8px 0';
+        } else {
+          Object.assign(b.style,{position:'fixed',left:'18px',bottom:'18px',zIndex:12000});
+          document.body.appendChild(b);
+        }
+        return b;
+      }
       function makeModal(){ if(document.getElementById('podio-modal')) return document.getElementById('podio-modal'); const m=document.createElement('div'); m.id='podio-modal'; Object.assign(m.style,{display:'none',position:'fixed',left:'18px',bottom:'70px',zIndex:12000,background:'#fff',borderRadius:'8px',boxShadow:'0 8px 30px rgba(0,0,0,0.2)',maxWidth:'520px',width:'480px',padding:'12px',fontFamily:'Segoe UI,Arial'}); m.innerHTML='<button id="podio-close" style="float:right;background:transparent;border:none;cursor:pointer">✕</button><h4 style="margin:6px 0 8px 0">Podio — 3 ejecutivos con menor score</h4><div id="podio-content">Cargando...</div>'; document.body.appendChild(m); return m; }
 
       function render(){ const modal = makeModal(); const content = modal.querySelector('#podio-content'); content.innerHTML='Calculando...'; const top = computeTop3(); if(!top||!top.length){ content.innerHTML='<div style="color:#666">No hay datos en el historial.</div>'; return; } let html='<ol style="padding-left:18px">'; top.forEach(t=>{ html+='<li style="margin:8px 0"><strong>'+escapeHtml(t.label)+'</strong> — Score: '+(t.score!==null?Number(t.score).toFixed(2):'–')+'<div style="font-size:12px;color:#666;margin-top:6px">'; KPI_KEYS.forEach(k=>{ const meta=THRESHOLDS[k]; const raw=t.vals[k].raw; const norm=t.vals[k].normalized; let disp=(raw===null||raw===undefined)?'–':(k==='tmo'? Number(raw).toFixed(2)+' min': (Number(raw)>1? Number(raw).toFixed(1)+'%': (Number(raw)*100).toFixed(1)+'%')); let flag=''; if(raw!==null&&raw!==undefined&&!isNaN(raw)){ if(k==='tmo'){ if(Number(raw)>THRESHOLDS.tmo) flag=' ⚠️'; } else { let v=Number(raw); if(v<=1) v=v*100; if(v<meta) flag=' ⚠️'; } } html+='<div>'+escapeHtml(k)+': <strong style="float:right">'+disp+flag+'</strong></div>'; }); html+='</div></li>'; }); html+='</ol>'; content.innerHTML=html; }
@@ -8658,11 +8686,9 @@
           return;
         }
 
-        const login = createLogin();
-        const ok = login.querySelector('#podio-ok');
-        const cancel = login.querySelector('#podio-cancel');
-        ok.addEventListener('click', function(){ const rut = (document.getElementById('podio-rut').value||'').trim(); const clave = (document.getElementById('podio-clave').value||'').trim(); if(!rut||!clave){ alert('Ingrese RUT y Clave'); return; } sessionStorage.setItem('achs_auth','1'); login.style.display='none'; showUI(); });
-        cancel.addEventListener('click', function(){ login.style.display='none'; });
+        // Omite el cuadro de "Ingreso requerido" y muestra la UI directamente
+        sessionStorage.setItem('achs_auth','1');
+        showUI();
       });
     })();
   </script>
