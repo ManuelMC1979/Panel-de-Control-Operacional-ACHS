@@ -6102,6 +6102,287 @@
     "ejecutivos": []
   }
   </script>
+  <!-- Botón y lógica de cuartilización -->
+  <style>
+    #btn-cuatiles { position: fixed; right: 18px; bottom: 18px; z-index: 1200; background:#1E7F4F; color:#fff; border:none; padding:10px 14px; border-radius:8px; cursor:pointer; box-shadow:0 6px 18px rgba(0,0,0,0.12);} 
+    #cuartiles-modal { position: fixed; right: 18px; bottom: 70px; z-index:1200; background:#fff; border-radius:8px; box-shadow:0 8px 30px rgba(0,0,0,0.2); max-width:420px; width:360px; display:none; padding:12px; font-family:Segoe UI,Arial,sans-serif; }
+    #cuartiles-modal table{width:100%; border-collapse:collapse; font-size:14px}
+    #cuartiles-modal th{ text-align:left; font-weight:700; padding:6px 4px}
+    #cuartiles-modal td{ padding:6px 4px; border-top:1px solid #eee }
+    #cuartiles-close{ float:right; background:transparent;border:none;font-weight:700;cursor:pointer }
+  </style>
+
+  <button id="btn-cuatiles" title="Mostrar cuartiles">Cuartiles</button>
+  <div id="cuartiles-modal" role="dialog" aria-label="Resultados por cuartiles">
+    <button id="cuartiles-close">✕</button>
+    <h4 style="margin:6px 0 8px 0">Clasificación por cuartiles</h4>
+    <div id="cuartiles-content">Cargando...</div>
+    <div id="cuartiles-detalle" style="display:none;border-top:1px solid #eee;margin-top:8px;padding-top:8px;font-size:13px"></div>
+  </div>
+
+  <script>
+    (function(){
+      // Indicadores y umbrales solicitados (usados para normalizar valores)
+      const indicadores = [
+        { key: 'satisfaccion-snl', type:'porcentaje' },
+        { key: 'resolucion-snl', type:'porcentaje' },
+        { key: 'satisfaccion-ep', type:'porcentaje' },
+        { key: 'resolucion-ep', type:'porcentaje' },
+        { key: 'tmo', type:'minutos' },
+        { key: 'transferencia-epa', type:'porcentaje' },
+        { key: 'tipificaciones', type:'porcentaje' }
+      ];
+
+      function parsePorcentaje(str){ if (str==null) return null; let v = String(str).replace('%','').replace(',','.').trim(); let n=parseFloat(v); return isNaN(n)?null:n; }
+      function parseMinutos(str){ if (str==null) return null; let v=String(str).replace(',','.').trim(); let n=parseFloat(v); return isNaN(n)?null:n; }
+
+      // Recolecta entidades a evaluar. Asume que cada fila/registro tiene atributos data-* con los indicadores.
+      // Si su tablero usa otra estructura, podemos ajustar la recolección.
+      function collectEntities(){
+        const nodes = Array.from(document.querySelectorAll('[data-entity-id]'));
+        if(nodes.length===0){
+          // fallback: buscar filas de tablas
+          const rows = Array.from(document.querySelectorAll('table tr'));
+          return rows.slice(1).map((r,i)=>{
+            const cells = Array.from(r.querySelectorAll('td'));
+            return { id: 'row-'+i, label: (r.querySelector('th')?r.querySelector('th').textContent.trim():('Fila '+(i+1))), rawEl:r, cells };
+          });
+        }
+        return nodes.map(n=>({ id: n.getAttribute('data-entity-id')||n.id||n.dataset.entityId, label: n.getAttribute('data-entity-label')||n.dataset.entityLabel||n.id||'Entidad', rawEl: n }));
+      }
+
+      // Extrae valor de un indicador dentro de un elemento (intenta data attributes y contenido textual)
+      // También soporta extracción desde historial si el objeto entidad tiene propiedad `historial`.
+      function extractIndicator(elOrEntity, key, type){
+        // Si se pasa una entidad con historial, extraer desde allí
+        if(elOrEntity && elOrEntity.historial){
+          const hist = elOrEntity.historial;
+          // Mapear key conocido -> clave en historial
+          const map = {
+            'satisfaccion-snl': 'satisfaccion_snl',
+            'resolucion-snl': 'resolucion_snl',
+            'satisfaccion-ep': 'satisfaccion_ep',
+            'resolucion-ep': 'resolucion_ep',
+            'tmo': 'tmo',
+            'transferencia-epa': 'epa',
+            'tipificaciones': 'tipificaciones'
+          };
+          const hid = map[key] || key.replace(/[-\s]/g,'_');
+          const series = hist[hid] || hist[hid.toLowerCase()] || hist[key] || null;
+          if(series && Array.isArray(series) && series.length>0){
+            const last = series[series.length-1];
+            return (last && typeof last.valor !== 'undefined') ? last.valor : null;
+          }
+          return null;
+        }
+
+        const el = elOrEntity;
+        if(!el) return null;
+        // data attributes
+        const d = el.querySelector ? (el.querySelector('[data-'+key+']')||el.querySelector('[data-kpi="'+key+'"]')) : null;
+        if(d){ const v = d.getAttribute('data-'+key) || d.getAttribute('data-kpi-value') || d.textContent; return type==='porcentaje'?parsePorcentaje(v):parseMinutos(v); }
+        // buscar por texto dentro del bloque
+        const txt = (el.textContent||'').match(new RegExp(key.replace(/[-\s]/g,'.*'),'i')) ? el.textContent : null;
+        if(txt){ // heurística: extraer primer número
+          const m = (el.textContent||'').match(/\d+[\.,]?\d*/);
+          if(m) return type==='porcentaje'?parsePorcentaje(m[0]):parseMinutos(m[0]);
+        }
+        return null;
+      }
+
+      // Normaliza las entidades en vector numérico (omitimos nulls en promedio)
+      function buildScoreVector(entity){
+        // Si viene del historial, entity.historial estará presente
+        const vals = indicadores.map(ind=>{
+          let raw = extractIndicator(entity, ind.key, ind.type);
+          if(raw===null||raw===undefined||isNaN(raw)) return null;
+          // Normalizar formatos: si porcentaje viene en 0-1, convertir a 0-100
+          if(ind.type==='porcentaje'){
+            if(raw <= 1) raw = raw * 100;
+            return Number(raw);
+          }
+          if(ind.type==='minutos'){
+            // TMO: menor es mejor. Convertir a score 0-100 donde 100 = objetivo (5 min)
+            const tmoTarget = 5.0;
+            if(raw <= 0) return null;
+            const normalized = Math.min(100, (tmoTarget / raw) * 100);
+            return Number(normalized);
+          }
+          return Number(raw);
+        });
+
+        const numbers = [];
+        for(let i=0;i<vals.length;i++){
+          const v = vals[i]; if(v===null||v===undefined||isNaN(v)) continue; numbers.push(v);
+        }
+        const score = numbers.length? (numbers.reduce((a,b)=>a+b,0)/numbers.length) : null;
+        return { id: entity.id, label: entity.label||entity.id, vals, score };
+      }
+
+      function quartilize(list){
+        // list de objetos con .score
+        const filtered = list.filter(x=>x.score!==null && x.score!==undefined && !isNaN(x.score));
+        const sorted = filtered.slice().sort((a,b)=>b.score - a.score); // descendente: top mejores
+        const n = sorted.length;
+        const qSize = Math.max(1, Math.floor(n/4));
+        const groups = { Q1:[], Q2:[], Q3:[], Q4:[] };
+        sorted.forEach((item, idx)=>{
+          const pos = idx; // 0-based
+          if(pos < qSize) groups.Q1.push(item);
+          else if(pos < qSize*2) groups.Q2.push(item);
+          else if(pos < qSize*3) groups.Q3.push(item);
+          else groups.Q4.push(item);
+        });
+        return groups;
+      }
+
+      function renderModal(groups){
+        const container = document.getElementById('cuartiles-content');
+        if(!container) return;
+        let html = '';
+        let globalList = [];
+        for(const [k,arr] of Object.entries(groups)){
+          html += '<strong>'+k+'</strong> ('+arr.length+')<br/>';
+          if(arr.length===0){ html += '<div style="color:#666;margin-bottom:8px">(sin elementos)</div>'; continue; }
+          html += '<table>';
+          html += '<thead><tr><th>Entidad</th><th style="text-align:right">Score</th></tr></thead><tbody>';
+          arr.forEach(it=>{ html += '<tr class="cuartil-row" data-entity-id="'+escapeHtml(it.id)+'"><td>'+escapeHtml(it.label)+'</td><td style="text-align:right">'+(it.score!==null?Number(it.score).toFixed(2):'–')+'</td></tr>'; globalList.push(it); });
+          html += '</tbody></table><div style="height:8px"></div>';
+        }
+        container.innerHTML = html;
+        // Guardar lista en el contenedor para acceso posterior
+        container._globalList = globalList;
+      }
+
+      // Umbrales para explicación (coinciden con sistema_predictivo_historial.js)
+      const KPI_EXPL = {
+        'satisfaccion-snl': { nombre:'Satisfacción SNL', tipo:'porcentaje', umbral:95, sentido:'mayor' },
+        'resolucion-snl': { nombre:'Resolución SNL', tipo:'porcentaje', umbral:90, sentido:'mayor' },
+        'satisfaccion-ep': { nombre:'Satisfacción EP', tipo:'porcentaje', umbral:95, sentido:'mayor' },
+        'resolucion-ep': { nombre:'Resolución EP', tipo:'porcentaje', umbral:90, sentido:'mayor' },
+        'tmo': { nombre:'TMO', tipo:'minutos', umbral:5, sentido:'menor' },
+        'transferencia-epa': { nombre:'Transferencia EPA', tipo:'porcentaje', umbral:85, sentido:'mayor' },
+        'tipificaciones': { nombre:'Tipificaciones', tipo:'porcentaje', umbral:95, sentido:'mayor' }
+      };
+
+      // Mostrar detalle al hacer clic en una fila
+      document.getElementById('cuartiles-modal').addEventListener('click', function(e){
+        const row = e.target.closest && e.target.closest('.cuartil-row');
+        if(!row) return;
+        const id = row.getAttribute('data-entity-id');
+        const container = document.getElementById('cuartiles-content');
+        const list = container && container._globalList ? container._globalList : [];
+        const ent = list.find(x=>String(x.id)===String(id));
+        const detalle = document.getElementById('cuartiles-detalle');
+        if(!ent || !detalle) return;
+        // Construir desglose
+        let html = '<button id="detalle-back" style="float:right;background:transparent;border:none;cursor:pointer">← Volver</button>';
+        html += '<div style="font-weight:700;margin-bottom:6px">Detalle: '+escapeHtml(ent.label)+'</div>';
+        html += '<table style="width:100%;font-size:13px"><thead><tr><th>Indicador</th><th style="text-align:right">Valor</th><th style="text-align:right">Normalizado</th></tr></thead><tbody>';
+        for(let i=0;i<indicadores.length;i++){
+          const ind = indicadores[i];
+          const raw = ent.vals ? ent.vals[i] : null;
+          let norm = (raw===null||raw===undefined||isNaN(raw)) ? '–' : (()=>{
+            if(ind.type==='porcentaje'){ let v = Number(raw); if(v<=1) v = v*100; return Number(v).toFixed(1)+'%'; }
+            if(ind.type==='minutos'){ return (raw).toFixed(2)+' min'; }
+            return String(raw);
+          })();
+          // compute normalized score contribution (same as buildScoreVector)
+          let contrib = '–';
+          if(raw!==null && raw!==undefined && !isNaN(raw)){
+            if(ind.type==='porcentaje'){ let v=Number(raw); if(v<=1) v=v*100; contrib = Number(v).toFixed(1)+'%'; }
+            else if(ind.type==='minutos'){ const tmoTarget=5.0; const v=Number(raw); contrib = Math.min(100,(tmoTarget/v)*100).toFixed(1); contrib += ' (score)'; }
+          }
+          html += '<tr><td>'+escapeHtml(ind.key)+'</td><td style="text-align:right">'+norm+'</td><td style="text-align:right">'+contrib+'</td></tr>';
+        }
+        html += '</tbody></table>';
+
+        // Añadir explicación breve por qué Q4 (si score bajo o faltan indicadores)
+        html += '<div style="margin-top:8px">';
+        if(ent.score===null){ html += '<div style="color:#b00">No hay suficientes métricas para calcular un score.</div>'; }
+        else{
+          html += '<div>Score: <strong>'+Number(ent.score).toFixed(2)+'</strong></div>';
+          // detectar indicadores faltantes
+          const faltantes = indicadores.map((ind,i)=>({ ind, val: ent.vals ? ent.vals[i] : null })).filter(x=>x.val===null||x.val===undefined||isNaN(x.val));
+          if(faltantes.length>0) html += '<div style="color:#b66;margin-top:6px">Faltan métricas: '+faltantes.map(f=>f.ind.key).join(', ')+'</div>';
+          // detectar indicadores por debajo de umbral
+          const bajos = [];
+          for(let i=0;i<indicadores.length;i++){
+            const ind = indicadores[i]; const val = ent.vals ? ent.vals[i] : null;
+            if(val===null||val===undefined||isNaN(val)) continue;
+            const expl = KPI_EXPL[ind.key];
+            if(expl){
+              if(expl.tipo==='porcentaje'){
+                let v=Number(val); if(v<=1) v=v*100;
+                if(expl.sentido==='mayor' && v < expl.umbral) bajos.push({k:ind.key, v});
+              } else if(expl.tipo==='minutos'){
+                const v=Number(val);
+                if(expl.sentido==='menor' && v > expl.umbral) bajos.push({k:ind.key, v});
+              }
+            }
+          }
+          if(bajos.length>0){ html += '<div style="color:#b00;margin-top:6px">Indicadores por debajo de la meta: '+bajos.map(b=>b.k+ ' ('+b.v +')').join(', ')+'</div>'; }
+        }
+        html += '</div>';
+
+        detalle.innerHTML = html;
+        detalle.style.display = 'block';
+        document.getElementById('cuartiles-content').style.display = 'none';
+        // volver
+        document.getElementById('detalle-back').addEventListener('click', function(){ detalle.style.display='none'; document.getElementById('cuartiles-content').style.display='block'; });
+      });
+
+      function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+      // Acción del botón: primero intentar alimentar desde el Historial de Métricas
+      document.getElementById('btn-cuatiles').addEventListener('click', function(){
+        let entities = [];
+        try{
+          const raw = localStorage.getItem('dashboard_metricas_historial');
+          if(raw){
+            const datos = JSON.parse(raw);
+            // datos tiene la forma { ejecutivo: { kpiId: [ {fecha, valor, timestamp}, ... ], ... }, ... }
+            const ejecutivos = Object.keys(datos || {});
+            if(ejecutivos.length>0){
+              entities = ejecutivos.map(name => ({ id: name, label: name, historial: datos[name] }));
+            }
+          }
+        }catch(e){ console.warn('No se pudo leer historial:', e); }
+
+        if(entities.length===0){
+          entities = collectEntities();
+        }
+
+        const vectors = entities.map(buildScoreVector);
+        const groups = quartilize(vectors);
+        renderModal(groups);
+        document.getElementById('cuartiles-modal').style.display = 'block';
+      });
+      document.getElementById('cuartiles-close').addEventListener('click', function(){ document.getElementById('cuartiles-modal').style.display='none'; });
+
+      // Cerrar modal al hacer clic fuera del mismo (o al presionar Escape)
+      (function(){
+        const modal = document.getElementById('cuartiles-modal');
+        const btn = document.getElementById('btn-cuatiles');
+        document.addEventListener('click', function(e){
+          try{
+            if(!modal) return;
+            if(modal.style.display === 'none' || modal.style.display === '') return;
+            // Si el click fue dentro del modal o sobre el botón, no cerrar
+            if(modal.contains(e.target) || (btn && btn.contains(e.target))) return;
+            modal.style.display = 'none';
+          }catch(err){ /* silencioso */ }
+        }, true);
+
+        document.addEventListener('keydown', function(e){
+          if(!modal) return;
+          if(e.key === 'Escape' && modal.style.display && modal.style.display !== 'none'){
+            modal.style.display = 'none';
+          }
+        });
+      })();
+    })();
+  </script>
   <script>
     // --- Variables de configuración y estado ---
     const DEFAULTS = {
