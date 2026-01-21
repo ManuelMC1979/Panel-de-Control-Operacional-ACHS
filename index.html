@@ -21,9 +21,9 @@
 <body>
 
     <!-- Header -->
-    <header>
+    <header class="header">
         <div class="brand">
-            <i class="fas fa-shield-alt" style="color: var(--achs-green); font-size: 1.8rem;"></i>
+            <i class="fas fa-shield-alt" style="color: var(--achs-blanco); font-size: 1.8rem;"></i>
             <h1>Panel de Control Operacional ACHS</h1>
         </div>
         <div class="controls">
@@ -57,12 +57,12 @@
     <section class="filters-container">
         <div>
             <label for="monthFilter"
-                style="font-weight: 600; margin-right: 0.5rem; color: var(--text-secondary);">Mes:</label>
-            <select id="monthFilter">
+                style="font-weight: 600; margin-right: 0.5rem; color: var(--text-secondary);">Mes(es):</label>
+            <select id="monthFilter" multiple size="4" title="Selecciona uno o varios meses (Ctrl/Cmd + clic)">
                 <option value="OCTUBRE">Octubre</option>
-                <option value="Noviembre">Noviembre</option>
-                <option value="Diciembre">Diciembre</option>
-                <option value="Enero">Enero</option>
+                <option value="NOVIEMBRE">Noviembre</option>
+                <option value="DICIEMBRE">Diciembre</option>
+                <option value="ENERO">Enero</option>
             </select>
         </div>
         <div>
@@ -75,6 +75,22 @@
         </div>
     </section>
 
+        <!-- KPI Selector -->
+        <section class="kpi-selector" style="margin: 1rem 1rem; display:flex; gap:1rem; align-items:center;">
+                <label for="selectKPI" style="font-weight:600; color:var(--text-secondary);">KPI:</label>
+                <select id="selectKPI">
+                    <option value="todos">Todos</option>
+                    <option value="tmo">TMO</option>
+                    <option value="satEP">Satisfacción EP</option>
+                    <option value="resEP">Resolución EP</option>
+                    <option value="satSNL">Satisfacción SNL</option>
+                    <option value="resSNL">Resolución SNL</option>
+                    <option value="transfEPA">Transferencia a EPA</option>
+                    <option value="tipificaciones">Tipificaciones</option>
+                </select>
+
+                <div id="kpiValueDisplay" style="font-weight:700; color:var(--text-primary);">--</div>
+        </section>
     <!-- Podium -->
     <section class="podium-section" id="podiumContainer">
         <!-- Filled dynamically -->
@@ -111,7 +127,75 @@
         <p style="font-size: 0.9rem; opacity: 0.8;">Conectando con Google Sheets</p>
     </div>
 
+    <!-- Modal Evolutivo -->
+    <div class="modal-overlay" id="evolModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Evolutivo por KPI</h2>
+                <button class="close-modal" id="closeEvol"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="evolContainer">
+                <div style="padding:12px; display:flex; flex-direction:column; gap:12px;">
+                    <div style="display:flex; gap:12px; align-items:center;">
+                        <label style="font-weight:600; color:var(--text-secondary);">Ejecutivo:</label>
+                        <select id="evolExecSelect" style="min-width:220px;"></select>
+                        <label style="font-weight:600; color:var(--text-secondary);">KPI:</label>
+                        <select id="evolKpiSelect">
+                            <option value="tmo">TMO</option>
+                            <option value="satEP">Satisfacción EP</option>
+                            <option value="resEP">Resolución EP</option>
+                            <option value="satSNL">Satisfacción SNL</option>
+                            <option value="resSNL">Resolución SNL</option>
+                            <option value="transfEPA">Transferencia a EPA</option>
+                            <option value="tipificaciones">Tipificaciones</option>
+                        </select>
+                    </div>
+                    <canvas id="evolChart" style="width:100%; max-height:320px;"></canvas>
+                    <div id="evolTable" style="margin-top:12px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Predictivo -->
+    <div class="modal-overlay" id="predictModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Predicción KPI - Próximo Mes</h2>
+                <button class="close-modal" id="closePredict"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="predictContainer" style="padding:16px;">
+                <div id="predictFilters" style="display:flex; gap:1rem; align-items:center; margin-bottom:12px;">
+                    <label style="font-weight:600; color:var(--text-secondary);">Ejecutivo:</label>
+                    <select id="predictExecSelect"></select>
+                    <label style="font-weight:600; color:var(--text-secondary);">KPI:</label>
+                    <select id="predictKpiSelect">
+                        <option value="all">Todos</option>
+                        <option value="tmo">TMO</option>
+                        <option value="satEP">Satisfacción EP</option>
+                        <option value="resEP">Resolución EP</option>
+                        <option value="satSNL">Satisfacción SNL</option>
+                        <option value="resSNL">Resolución SNL</option>
+                        <option value="transfEPA">Transferencia a EPA</option>
+                        <option value="tipificaciones">Tipificaciones</option>
+                    </select>
+                </div>
+
+                <div id="predictGrid" class="predict-grid">
+                    <!-- Cards generated by JS -->
+                </div>
+
+                <div style="margin-top:12px; display:flex; gap:8px; justify-content:flex-end;">
+                    <button class="btn-secondary" id="downloadPredictJson">Descargar JSON</button>
+                    <button class="btn-primary" id="sendPredictTeams">Enviar Predicción a Teams</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
+    <!-- Chart.js for Evolutivo -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="script.js"></script>
 </body>
 

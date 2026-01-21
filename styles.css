@@ -100,20 +100,38 @@
 
 /* Base Styles (Appended) */
 :root {
-    /* ACHS Brand Colors */
-    --achs-green: #007A33;
-    --achs-green-dark: #005524;
-    --achs-green-light: #4CAF50;
-    --achs-accent: #FFC107;
-    /* Warning/Yellow */
-    --achs-red: #D32F2F;
-    /* Danger/Red */
+    /* ACHS New Brand Colors */
+    --achs-azul: #005DAA;
+    --achs-azul-oscuro: #003B73;
+    --achs-azul-claro: #4A90D9;
+    --achs-verde: #00A859;
+    --achs-verde-oscuro: #007A3D;
+    --achs-gris-texto: #2E2E2E;
+    --achs-gris: #6B7280;
+    --achs-fondo: #F3F6F9;
+    --achs-blanco: #FFFFFF;
 
-    /* Theme Colors - Light (Default) */
-    --bg-body: #f4f6f8;
-    --bg-card: #ffffff;
-    --text-main: #2c3e50;
-    --text-secondary: #7f8c8d;
+    /* Semantic Mappings for Existing Layout */
+    --achs-green: var(--achs-verde);
+    --achs-green-dark: var(--achs-verde-oscuro);
+    --achs-green-light: var(--achs-azul-claro);
+    /* Using Blue Light for accent details if applicable, or keep explicit green if needed */
+    /* Note: Keeping green-light as a green shade if it's used for success states alongside green-dark */
+    /* Actually, let's keep it safe: */
+    /* --achs-green-light: #4CAF50; */
+    /* Old value */
+
+    --achs-accent: #FFC107;
+    /* Warning/Yellow (Required for Semaphores) */
+    --achs-red: #D32F2F;
+    /* Danger/Red (Required for Semaphores) */
+
+    /* Theme Colors - Map to New Palette */
+    --bg-body: var(--achs-fondo);
+    --bg-card: var(--achs-blanco);
+    --text-main: var(--achs-gris-texto);
+    --text-secondary: var(--achs-gris);
+
     --border-color: #e0e0e0;
     --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     --glass: rgba(255, 255, 255, 0.9);
@@ -146,19 +164,20 @@ body {
 }
 
 /* === HEADER === */
-header {
+/* === HEADER === */
+.header {
+    background-color: var(--achs-azul);
+    color: var(--achs-blanco);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    /* Structural properties retained for functionality */
     position: sticky;
     top: 0;
     z-index: 100;
-    background: var(--glass);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--border-color);
-    padding: 1rem 2rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    box-shadow: var(--shadow);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
 .brand {
@@ -167,11 +186,10 @@ header {
     gap: 1rem;
 }
 
-.brand h1 {
-    font-size: 1.5rem;
-    color: var(--achs-green);
+.header h1 {
+    font-size: 20px;
     font-weight: 700;
-    letter-spacing: -0.5px;
+    /* Inherits white color from header */
 }
 
 .controls {
@@ -199,8 +217,17 @@ header {
 }
 
 .btn-primary {
-    background-color: var(--achs-green);
-    color: white;
+    background-color: var(--achs-verde);
+    color: var(--achs-blanco);
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-primary:hover {
+    background-color: var(--achs-verde-oscuro);
 }
 
 .btn-secondary {
@@ -347,16 +374,76 @@ select {
     padding: 0 2rem;
 }
 
-.card {
-    background: var(--bg-card);
-    border-radius: 16px;
-    padding: 1.5rem;
-    box-shadow: var(--shadow);
+.kpi-card {
+    background: var(--achs-blanco);
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, .08);
+    border-left: 6px solid var(--achs-azul);
+
+    /* Structural properties preserved */
     position: relative;
-    overflow: hidden;
-    border: 1px solid var(--border-color);
     animation: fadeIn 0.5s ease;
 }
+
+.kpi-ok {
+    border-left-color: #00A859;
+}
+
+.kpi-warning {
+    border-left-color: #FACC15;
+}
+
+.kpi-bad {
+    border-left-color: #DC2626;
+}
+
+/* Predictivo */
+.predict-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem;
+}
+.predict-card {
+    background: var(--bg-card);
+    border-radius: 8px;
+    padding: 12px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border-color);
+}
+.predict-card h3 {
+    font-size: 0.95rem;
+    margin-bottom: 6px;
+}
+.predict-row {
+    display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;
+}
+.predict-value { font-weight:700; font-size:1.1rem; }
+.predict-meta { font-size:0.9rem; color:var(--text-secondary); }
+.predict-indicator { font-size:1.2rem; }
+
+.predict-alert {
+    border-color: #DC2626;
+    box-shadow: 0 6px 18px rgba(220,38,38,0.12);
+}
+.predict-note {
+    margin-top:8px;
+    font-size:0.9rem;
+    color: var(--achs-red);
+    font-weight:600;
+}
+
+.predict-recommendation {
+    margin-top:10px;
+    font-size:0.95rem;
+    color: var(--text-main);
+    background: rgba(0,0,0,0.03);
+    padding:8px;
+    border-radius:6px;
+}
+
+/* Modal small tweaks */
+.modal-content { max-width: 900px; width: 95%; }
 
 .card-header {
     display: flex;
