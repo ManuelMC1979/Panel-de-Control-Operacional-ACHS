@@ -41,6 +41,17 @@ const penalizacionAlerta = {
     critica: 15
 };
 
+// 📊 CATÁLOGO DE MÉTRICAS PARA REPORTES
+const metricsCatalog = [
+    { id: 'tmo', label: 'TMO', target: metas.tmo, type: 'lower' },
+    { id: 'satEP', label: 'Satisfacción EP', target: metas.satEP, type: 'higher' },
+    { id: 'resEP', label: 'Resolución EP', target: metas.resEP, type: 'higher' },
+    { id: 'satSNL', label: 'Satisfacción SNL', target: metas.satSNL, type: 'higher' },
+    { id: 'resSNL', label: 'Resolución SNL', target: metas.resSNL, type: 'higher' },
+    { id: 'transfEPA', label: 'Transferencia a EPA', target: metas.transfEPA, type: 'higher' },
+    { id: 'tipificaciones', label: 'Tipificaciones', target: metas.tipificaciones, type: 'higher' }
+];
+
 // Resuelve la clave del selector a la propiedad real en los datos
 function resolveKpiKey(key) {
     const map = {
@@ -95,9 +106,14 @@ function matchMonth(dataMonth, targetMonth) {
 
 // STATE
 let currentData = [];
-let currentMonth = 'OCTUBRE';
+const getCurrentMonthName = () => {
+    const monthsEs = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'];
+    return monthsEs[new Date().getMonth()];
+};
+let currentMonth = MONTHS.includes(getCurrentMonthName()) ? getCurrentMonthName() : 'ENERO';
 let theme = localStorage.getItem('theme') || 'light';
 let evolChart = null;
+let forcedExecutive = null; // To handle race condition in role application
 
 // SETUP
 document.addEventListener('DOMContentLoaded', () => {
@@ -106,8 +122,15 @@ document.addEventListener('DOMContentLoaded', () => {
     populateMonthFilter();
     // Iniciar con la carga del mes actual y el historial en paralelo
     simulateInitialLoad();
+
     const initialKpi = document.getElementById('selectKPI') ? document.getElementById('selectKPI').value : 'tmo';
     updateKpiDisplay(initialKpi);
+
+    // Sync roles after data might have started loading
+    const session = JSON.parse(localStorage.getItem('userSession'));
+    if (session) {
+        aplicarRol(session.rol);
+    }
 });
 
 // Simula la carga inicial: muestra datos mock inmediatamente y luego intenta cargar la planilla real
@@ -239,8 +262,10 @@ async function fetchData(month) {
     showLoading(true);
     try {
         const parsed = await fetchSheet(month);
-        // Normalize mes field
-        parsed.forEach(d => { if (d.mes) d.mes = d.mes.toString().trim().toUpperCase(); });
+        parsed.forEach(d => {
+            if (d.mes) d.mes = d.mes.toString().trim().toUpperCase();
+            if (d.name) d.name = d.name.toString().trim();
+        });
         currentData = parsed;
         console.log(`Data loaded for ${month}`, currentData);
         processData(currentData);
@@ -394,13 +419,17 @@ function parseNumber(str) {
 // function filterDataByMonth removed.
 
 function useMockData() {
-    // Generate fake historical data for demo purposes
-    const names = ['Juan Perez', 'Maria Gonzalez', 'Carlos Lopez', 'Ana Silva', 'Pedro Dias', 'Luisa Martinez', 'Jorge Ruiz', 'Sofia Torres'];
+    // Tomar nombres reales de la base de datos de usuarios autorizados
+    const names = Object.values(USUARIOS_DB)
+        .filter(u => u.rol === 'ejecutivo')
+        .map(u => u.ejecutivo)
+        .slice(0, 8); // Tomar hasta 8 para el demo
+
     const months = MONTHS.slice(0, 4); // OCTUBRE, NOVIEMBRE, DICIEMBRE, ENERO
 
     currentData = [];
     names.forEach(n => {
-        months.forEach((m, idx) => {
+        months.forEach((m) => {
             currentData.push({
                 name: n,
                 mes: m,
@@ -535,111 +564,152 @@ function normalizePercent(val) {
 
 function initFilters(data) {
     const sel = document.getElementById('execFilter');
-    const currentVal = sel.value;
+    if (!sel) return;
+
+    // Save current selection or use forcedExecutive from role application
+    const session = JSON.parse(localStorage.getItem('userSession'));
+    const targetExec = forcedExecutive || (session && session.rol === 'ejecutivo' ? session.ejecutivo : sel.value);
+
     sel.innerHTML = '<option value="all">Mostrar Todos</option>';
 
     // Sort alphabetically for dropdown
-    const names = data.map(d => d.name).sort();
+    const names = Array.from(new Set(data.map(d => d.name).filter(Boolean))).sort();
     names.forEach(n => {
         const opt = document.createElement('option');
         opt.value = n;
         opt.innerText = n;
         sel.appendChild(opt);
     });
-    sel.value = currentVal; // Maintain selection if possible
+
+    // Attempt to restore selection
+    if (targetExec && targetExec !== 'all') {
+        const exists = names.includes(targetExec);
+        if (exists) {
+            sel.value = targetExec;
+        } else {
+            // Try fuzzy match if exact match fails
+            const fuzzyMatch = names.find(n => n.toLowerCase().includes(targetExec.toLowerCase()) || targetExec.toLowerCase().includes(n.toLowerCase()));
+            if (fuzzyMatch) sel.value = fuzzyMatch;
+        }
+    } else {
+        sel.value = 'all';
+    }
+
+    // If it's an executive, keep it disabled
+    if (session && session.rol === 'ejecutivo') {
+        sel.disabled = true;
+    }
 }
 
 // RENDERING
 function renderDashboard() {
     const grid = document.getElementById('dashboardGrid');
-    const filterVal = document.getElementById('execFilter').value;
+    const filterEl = document.getElementById('execFilter');
+    if (!grid || !filterEl) return;
+
+    const filterVal = filterEl.value;
     const selectedMonths = getSelectedMonths();
 
     grid.innerHTML = ''; // Clear
 
-    let filtered = currentData;
+    let filtered = [...currentData];
 
-    // Additional secondary filter for months (if currentData has more than what's checked)
+    // Filter by months using the robust matchMonth helper
     if (selectedMonths.length > 0) {
-        filtered = filtered.filter(d => selectedMonths.includes(d.mes));
+        filtered = filtered.filter(d => {
+            return selectedMonths.some(sm => matchMonth(d.mes, sm));
+        });
     }
 
-    if (filterVal !== 'all') {
+    if (filterVal && filterVal !== 'all') {
         filtered = filtered.filter(d => d.name === filterVal);
     }
 
+    if (filtered.length === 0) {
+        grid.innerHTML = `
+            <div style="grid-column: 1/-1; text-align: center; padding: 3rem; background: var(--bg-card); border-radius: 16px; border: 1px dashed var(--border-color);">
+                <i class="fas fa-search" style="font-size: 3rem; color: var(--text-secondary); opacity: 0.3; margin-bottom: 1rem;"></i>
+                <h3 style="color: var(--text-secondary);">No se encontraron indicadores para los criterios seleccionados</h3>
+                <p style="color: var(--text-secondary); font-size: 0.9rem;">Verifica el filtro de meses o ejecutivo.</p>
+            </div>
+        `;
+        return;
+    }
+
     filtered.forEach(d => {
-        const card = document.createElement('div');
-        let modifier = '';
-        if (d.quartile === 'Q1' || d.quartile === 'Q2') modifier = 'kpi-ok';
-        else if (d.quartile === 'Q3') modifier = 'kpi-warning';
-        else if (d.quartile === 'Q4') modifier = 'kpi-bad';
+        try {
+            const card = document.createElement('div');
+            let modifier = '';
+            if (d.quartile === 'Q1' || d.quartile === 'Q2') modifier = 'kpi-ok';
+            else if (d.quartile === 'Q3') modifier = 'kpi-warning';
+            else if (d.quartile === 'Q4') modifier = 'kpi-bad';
 
-        const kpisExec = {
-            tmo: d.tmo,
-            satEP: d.satEp,
-            resEP: d.resEp,
-            satSNL: d.satSnl,
-            resSNL: d.resSnl,
-            transfEPA: d.transfEPA,
-            tipificaciones: d.tipificaciones
-        };
+            const kpisExec = {
+                tmo: Number(d.tmo) || 0,
+                satEP: Number(d.satEp) || 0,
+                resEP: Number(d.resEp) || 0,
+                satSNL: Number(d.satSnl) || 0,
+                resSNL: Number(d.resSnl) || 0,
+                transfEPA: Number(d.transfEPA) || 0,
+                tipificaciones: Number(d.tipificaciones) || 0
+            };
 
-        const recomendaciones = generarRecomendaciones(kpisExec);
-        // Regla Principal: Solo mostrar si hay recomendaciones reales (que implican fallas o tendencias)
-        const hasFails = Object.keys(kpisExec).some(k => !cumpleMeta(k, kpisExec[k]));
-        const showBox = hasFails || recomendaciones.some(r => !r.includes("Desempeño controlado"));
+            const recomendaciones = generarRecomendaciones(kpisExec);
+            const hasFails = Object.keys(kpisExec).some(k => !cumpleMeta(k, kpisExec[k]));
 
-        if (showBox) {
-            // Auto-registrar en historial cada vez que se detectan fallas para el ejecutivo
-            // (registrarRecomendaciones ya maneja internamente que no se dupliquen)
+            // Auto-registrar en historial
             registrarRecomendaciones(recomendaciones, {
                 ejecutivo: d.name,
                 mes: d.mes
             });
-        }
 
-        card.className = `kpi-card ${modifier}`;
-        card.innerHTML = `
-            <div class="card-header">
-                <div>
-                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                        <div class="exec-name">${d.name}</div>
-                        <span style="background: var(--achs-azul); color: white; font-size: 0.65rem; padding: 2px 8px; border-radius: 4px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">${d.mes}</span>
+            // Escape names for JS calls
+            const safeName = d.name.replace(/'/g, "\\'");
+
+            card.className = `kpi-card ${modifier}`;
+            card.innerHTML = `
+                <div class="card-header">
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                            <div class="exec-name">${d.name}</div>
+                            <span style="background: var(--achs-azul); color: white; font-size: 0.65rem; padding: 2px 8px; border-radius: 4px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">${d.mes}</span>
+                        </div>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 2px;">
+                            <i class="fas fa-medal" style="color: ${d.copcColor === 'green' ? '#00A859' : (d.copcColor === 'yellow' ? '#FACC15' : '#DC2626')}"></i> 
+                            Score COPC: <strong>${d.score}</strong> (<span>${d.copcNivel}</span>)
+                        </div>
                     </div>
-                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 2px;">
-                        <i class="fas fa-medal" style="color: ${d.copcColor === 'green' ? '#00A859' : (d.copcColor === 'yellow' ? '#FACC15' : '#DC2626')}"></i> 
-                        Score COPC: <strong>${d.score}</strong> (<span>${d.copcNivel}</span>)
+                    <div class="quartile-badge ${d.quartile.toLowerCase()}">${d.quartile}</div>
+                </div>
+                <div class="kpi-grid">
+                    ${renderKpiItem('Satisfacción SNL', kpisExec.satSNL, metas.satSNL, true, safeName, 'satSNL', 'fas fa-smile')}
+                    ${renderKpiItem('Resolución SNL', kpisExec.resSNL, metas.resSNL, true, safeName, 'resSNL', 'fas fa-check-circle')}
+                    ${renderKpiItem('Satisfacción EP', kpisExec.satEP, metas.satEP, true, safeName, 'satEP', 'fas fa-star')}
+                    ${renderKpiItem('Resolución EP', kpisExec.resEP, metas.resEP, true, safeName, 'resEP', 'fas fa-clipboard-check')}
+                    <div class="kpi-item clickable-kpi" onclick="showEvolutionary('${safeName}', 'tmo')">
+                        <span class="kpi-label"><i class="fas fa-clock" style="margin-right: 6px; color: var(--achs-azul-claro);"></i> TMO</span>
+                        <span class="kpi-value">${kpisExec.tmo.toFixed(1)}</span>
+                        <div class="semaphore ${getTmoColor(kpisExec.tmo)}"></div>
+                    </div>
+                    <div class="kpi-item" style="background: var(--bg-card); border: 1px dashed var(--border-color);">
+                         <span class="kpi-label"><i class="fas fa-chart-pie" style="margin-right: 6px; color: var(--achs-azul-claro);"></i> COPC</span>
+                         <span class="kpi-value" style="color: ${d.copcColor === 'green' ? '#00A859' : (d.copcColor === 'yellow' ? '#FACC15' : '#DC2626')}">${d.score}</span>
                     </div>
                 </div>
-                <div class="quartile-badge ${d.quartile.toLowerCase()}">${d.quartile}</div>
-            </div>
-            <div class="kpi-grid">
-                ${renderKpiItem('Satisfacción SNL', d.satSnl, GOALS.satSnl, true, d.name, 'satEP', 'fas fa-smile')}
-                ${renderKpiItem('Resolución SNL', d.resSnl, GOALS.resSnl, true, d.name, 'resSNL', 'fas fa-check-circle')}
-                ${renderKpiItem('Satisfacción EP', d.satEp, GOALS.satEp, true, d.name, 'satEP', 'fas fa-star')}
-                ${renderKpiItem('Resolución EP', d.resEp, GOALS.resEp, true, d.name, 'resEP', 'fas fa-clipboard-check')}
-                <div class="kpi-item clickable-kpi" onclick="showEvolutionary('${d.name}', 'tmo')">
-                    <span class="kpi-label"><i class="fas fa-clock" style="margin-right: 6px; color: var(--achs-azul-claro);"></i> TMO</span>
-                    <span class="kpi-value">${d.tmo.toFixed(1)}</span>
-                    <div class="semaphore ${getTmoColor(d.tmo)}"></div>
+                <!-- Recomendaciones Box -->
+                <div class="recomendaciones-box" style="border-left-color: ${hasFails ? '#F9A825' : '#6BBE45'}; display: block !important;">
+                    <h4 style="color: ${hasFails ? '#92400E' : 'var(--achs-verde-oscuro)'};">
+                        <i class="fas fa-lightbulb"></i> ${hasFails ? 'Acciones Recomendadas' : 'Estado de Desempeño'}
+                    </h4>
+                    <ul>
+                        ${recomendaciones.map(acc => `<li>${acc}</li>`).join('')}
+                    </ul>
                 </div>
-                <div class="kpi-item" style="background: var(--bg-card); border: 1px dashed var(--border-color);">
-                     <span class="kpi-label"><i class="fas fa-chart-pie" style="margin-right: 6px; color: var(--achs-azul-claro);"></i> COPC</span>
-                     <span class="kpi-value" style="color: ${d.copcColor === 'green' ? '#00A859' : (d.copcColor === 'yellow' ? '#FACC15' : '#DC2626')}">${d.score}</span>
-                </div>
-            </div>
-            <!-- Recomendaciones Box -->
-            <div class="recomendaciones-box" style="border-left-color: ${hasFails ? '#F9A825' : '#6BBE45'};">
-                <h4 style="color: ${hasFails ? '#92400E' : 'var(--achs-verde-oscuro)'};">
-                    <i class="fas fa-lightbulb"></i> ${hasFails ? 'Acciones Recomendadas' : 'Estado de Desempeño'}
-                </h4>
-                <ul>
-                    ${recomendaciones.map(acc => `<li>${acc}</li>`).join('')}
-                </ul>
-            </div>
-        `;
-        grid.appendChild(card);
+            `;
+            grid.appendChild(card);
+        } catch (cardError) {
+            console.error("Error rendering card for", d.name, cardError);
+        }
     });
 }
 
@@ -878,24 +948,244 @@ function toggleCopcModal() {
 }
 
 // Placeholders for Requested Features
+// TEAMS REPORT MODAL LOGIC
 function generateTeamsReport() {
-    // Construct Payload
-    const reportData = {
-        title: "Reporte Operacional ACHS - " + currentMonth,
-        date: new Date().toISOString(),
-        summary: `Total Ejecutivos: ${currentData.length}`,
-        topPerformers: currentData.slice(0, 3).map(d => d.name),
-        criticalCases: currentData.filter(d => d.quartile === 'Q4').map(d => d.name)
+    const modal = document.getElementById('modalTeams');
+    if (!modal) return;
+    modal.classList.add('active');
+    cargarMetricasModal();
+    generarReporteTeamsActual();
+}
+
+function cerrarModalTeams() {
+    const modal = document.getElementById('modalTeams');
+    if (modal) modal.classList.remove('active');
+}
+
+function cargarMetricasModal() {
+    const cont = document.getElementById("metricSelector");
+    if (!cont) return;
+    cont.innerHTML = "";
+
+    metricsCatalog.forEach(m => {
+        const div = document.createElement('div');
+        div.innerHTML = `
+            <label style="display:flex; align-items:center; gap:8px; margin-bottom:5px;">
+                <input type="checkbox" value="${m.id}" checked onchange="generarReporteTeamsActual()">
+                <span style="font-size:0.9rem;">${m.label}</span>
+            </label>
+        `;
+        cont.appendChild(div);
+    });
+}
+
+function getStatusIcon(value, target, type) {
+    if (type === 'higher') {
+        if (value >= target) return '🟢';
+        if (value >= target - 5) return '🟡';
+        return '🔴';
+    } else {
+        if (value <= target) return '🟢';
+        if (value <= target + 1) return '🟡';
+        return '🔴';
+    }
+}
+
+function rankExecutivesForTeams(data, metricId, type) {
+    // Si no hay métrica o datos, salir
+    if (!data || data.length === 0) return { top: [], bottom: [] };
+
+    const resolved = resolveKpiKey(metricId);
+    const sorted = [...data].sort((a, b) => {
+        const valA = Number(a[resolved]) || 0;
+        const valB = Number(b[resolved]) || 0;
+        return type === 'higher' ? valB - valA : valA - valB;
+    });
+
+    return {
+        top: sorted.slice(0, 3),
+        bottom: sorted.slice(-3).reverse()
     };
+}
 
-    console.log("Generando Payload para Teams Webhook:", reportData);
-    alert('Reporte generado en consola (F12). Listo para enviar a Webhook:\n' + JSON.stringify(reportData, null, 2));
+// 🧠 LOGICA DE DESVIACIÓN PARA RANKING GLOBAL DEL INFORME
+function scoreDesviacion(e, selectedMetrics) {
+    let score = 0;
+    selectedMetrics.forEach(mId => {
+        const meta = metricsCatalog.find(x => x.id === mId);
+        if (!meta) return;
+        const val = Number(e[resolveKpiKey(mId)]) || 0;
+        // Normalizamos desviación: (valor - meta) / meta
+        // Para 'higher', queremos (val - meta) positivo. Para 'lower', (meta - val) positivo.
+        if (meta.type === 'higher') {
+            score += (val - meta.target);
+        } else {
+            score += (meta.target - val);
+        }
+    });
+    return score;
+}
 
-    // Example Fetch to Webhook (Commented out)
-    // fetch('YOUR_TEAMS_WEBHOOK_URL', {
-    //     method: 'POST',
-    //     body: JSON.stringify(reportData)
-    // });
+function obtenerTopYBottomGlobal(data, selectedMetrics) {
+    if (!data || data.length === 0) return { top: [], bottom: [] };
+
+    const ranked = data.map(e => ({
+        ...e,
+        globalScore: scoreDesviacion(e, selectedMetrics)
+    })).sort((a, b) => b.globalScore - a.globalScore);
+
+    return {
+        top: ranked.slice(0, 3),
+        bottom: ranked.slice(-3).reverse()
+    };
+}
+
+// 📋 GENERADOR DE SECCIÓN DE EQUIPO COMPLETO
+function generarBloqueEquipo(data, selectedMetrics) {
+    let txt = "📋 TEAM PERFORMANCE\n\n";
+    data.forEach(e => {
+        txt += `*${getShortName(e.name)}*\n`;
+        let metricsLine = "";
+        selectedMetrics.forEach(mId => {
+            const meta = metricsCatalog.find(x => x.id === mId);
+            const val = Number(e[resolveKpiKey(mId)]) || 0;
+            const displayVal = mId === 'tmo' ? `${val.toFixed(1)}m` : `${val.toFixed(1)}%`;
+            metricsLine += `${meta.label}: ${displayVal} ${getStatusIcon(val, meta.target, meta.type)} | `;
+        });
+        txt += metricsLine.slice(0, -3) + "\n\n";
+    });
+    return txt;
+}
+
+// 🧠 GENERADOR AUTOMÁTICO DE INFORMACIÓN (INTELIGENCIA)
+function generarInsight(data, selectedMetrics) {
+    const totalReds = data.reduce((count, e) => {
+        const hasRed = selectedMetrics.some(mId => {
+            const meta = metricsCatalog.find(x => x.id === mId);
+            const val = Number(e[resolveKpiKey(mId)]) || 0;
+            return getStatusIcon(val, meta.target, meta.type) === "🔴";
+        });
+        return count + (hasRed ? 1 : 0);
+    }, 0);
+
+    if (totalReds === 0) {
+        return "Overall performance is stable with no critical deviations detected.";
+    }
+
+    const tmoAlert = selectedMetrics.includes('tmo') && data.some(e => getStatusIcon(e.tmo, metas.tmo, 'lower') === "🔴");
+
+    let insight = `Main risk detected in ${totalReds} executive(s).\n`;
+    if (tmoAlert) insight += "Main risk detected: TMO deviation impacting satisfaction.\n";
+    insight += "Recommended action: reinforce scripts and adjust workload for affected executives.";
+
+    return insight;
+}
+
+function renderTeamsPreview(selectedMetrics, data) {
+    const cont = document.getElementById("previewResultados");
+    if (!cont) return;
+    cont.innerHTML = "";
+
+    selectedMetrics.forEach(mId => {
+        const meta = metricsCatalog.find(x => x.id === mId);
+        if (!meta) return;
+
+        const { top, bottom } = rankExecutivesForTeams(data, mId, meta.type);
+
+        const section = document.createElement('div');
+        section.style.marginBottom = '15px';
+        section.innerHTML = `<h5 style="margin-bottom:8px; border-bottom:1px solid var(--border-color); padding-bottom:4px;">${meta.label}</h5>`;
+
+        top.forEach((e, idx) => {
+            const val = Number(e[resolveKpiKey(mId)]) || 0;
+            const displayVal = mId === 'tmo' ? `${val.toFixed(1)}m` : `${val.toFixed(1)}%`;
+            section.innerHTML += `
+                <div class="report-row good">
+                    <span>${idx + 1}º ${getShortName(e.name)}</span>
+                    <span class="badge-modal">${displayVal} ${getStatusIcon(val, meta.target, meta.type)}</span>
+                </div>`;
+        });
+
+        bottom.forEach((e, idx) => {
+            const val = Number(e[resolveKpiKey(mId)]) || 0;
+            const displayVal = mId === 'tmo' ? `${val.toFixed(1)}m` : `${val.toFixed(1)}%`;
+            section.innerHTML += `
+                <div class="report-row bad">
+                    <span>▼ ${getShortName(e.name)}</span>
+                    <span class="badge-modal">${displayVal} ${getStatusIcon(val, meta.target, meta.type)}</span>
+                </div>`;
+        });
+
+        cont.appendChild(section);
+    });
+}
+
+function generarReporteTeamsActual() {
+    const selected = [...document.querySelectorAll("#metricSelector input:checked")]
+        .map(i => i.value);
+
+    // Filter current month data
+    const currentViewMonths = getSelectedMonths();
+    const data = currentData.filter(d => currentViewMonths.includes(d.mes));
+
+    if (data.length === 0) {
+        document.getElementById("teamsMessage").value = "No hay datos para el mes seleccionado.";
+        return;
+    }
+
+    const { top, bottom } = obtenerTopYBottomGlobal(data, selected);
+
+    let msg = `📊 *OPERATIONAL PERFORMANCE REPORT – ACHS*\n`;
+    msg += `📅 Month: ${currentViewMonths.join(', ')}\n\n`;
+
+    msg += `INDICATORS INCLUDED:\n`;
+    selected.forEach(mId => {
+        const meta = metricsCatalog.find(x => x.id === mId);
+        msg += `• ${meta.label}\n`;
+    });
+    msg += `\n────────────────────────────\n`;
+
+    // 1. Bloque de Equipo
+    msg += generarBloqueEquipo(data, selected);
+
+    msg += "────────────────────────────\n";
+    // 2. Top Performers
+    msg += "🥇 TOP 3 PERFORMERS (Global Score)\n";
+    top.forEach((e, idx) => {
+        msg += `• ${getShortName(e.name)} — ${idx === 0 ? 'Excellent' : (idx === 1 ? 'Strong' : 'Stable')} performance\n`;
+    });
+
+    msg += "\n🚨 BOTTOM 3 – NEED ATTENTION\n";
+    bottom.forEach(e => {
+        msg += `• ${getShortName(e.name)} — Deviations detected in selected KPIs\n`;
+    });
+
+    msg += "\n────────────────────────────\n";
+    // 3. Insights
+    msg += "🧠 SYSTEM INSIGHT\n";
+    msg += generarInsight(data, selected);
+
+    const txtArea = document.getElementById("teamsMessage");
+    if (txtArea) txtArea.value = msg;
+
+    renderTeamsPreview(selected, data);
+}
+
+function copiarReporteTeams() {
+    const text = document.getElementById("teamsMessage").value;
+    if (!text || text.includes("No hay datos")) return;
+
+    navigator.clipboard.writeText(text).then(() => {
+        const btn = document.querySelector('button[onclick="copiarReporteTeams()"]');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i> ¡Copiado!';
+        btn.style.background = 'var(--achs-verde)';
+
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.style.background = '';
+        }, 2000);
+    });
 }
 
 async function showEvolutionary(overrideExec, overrideKpi) {
@@ -1614,12 +1904,14 @@ function aplicarRol(rol) {
     const session = JSON.parse(localStorage.getItem('userSession'));
     const execFilter = document.getElementById('execFilter');
     if (rol === 'ejecutivo' && session && session.ejecutivo && execFilter) {
+        forcedExecutive = session.ejecutivo; // Save for initFilters
         execFilter.value = session.ejecutivo;
         // Impedir que cambie el filtro
         execFilter.disabled = true;
         execFilter.style.background = "#f1f5f9";
         execFilter.style.color = "#64748b";
     } else if (execFilter) {
+        forcedExecutive = null;
         execFilter.disabled = false;
         execFilter.style.background = "";
         execFilter.style.color = "";
@@ -1656,6 +1948,32 @@ document.addEventListener('DOMContentLoaded', () => {
 // --- HISTORIAL DE RECOMENDACIONES (Persistence & Management) ---
 
 let historialRecomendaciones = JSON.parse(localStorage.getItem('historialRecomendaciones')) || [];
+
+function limpiarHistorialHuerfanos() {
+    // Nombres prohibidos (Mock persistente)
+    const prohibidos = ['Pedro Dias', 'Carlos Lopez', 'Jorge Ruiz', 'Luisa Martinez', 'Juan Perez', 'Maria Gonzalez', 'Ana Silva', 'Sofia Torres'];
+
+    // Definir nombres válidos basados en USUARIOS_DB (nombres largos y cortos para evitar falsos positivos)
+    const nombresValidos = new Set(['GLOBAL', 'TODOS']);
+    Object.values(USUARIOS_DB).forEach(u => {
+        if (u.ejecutivo) nombresValidos.add(u.ejecutivo);
+        if (u.name) nombresValidos.add(u.name);
+    });
+
+    const inicial = historialRecomendaciones.length;
+    historialRecomendaciones = historialRecomendaciones.filter(item => {
+        const esProhibido = prohibidos.some(p => item.ejecutivo.includes(p));
+        return nombresValidos.has(item.ejecutivo) && !esProhibido;
+    });
+
+    if (historialRecomendaciones.length !== inicial) {
+        console.log(`Limpieza de historial: Se eliminaron ${inicial - historialRecomendaciones.length} registros no autorizados.`);
+        localStorage.setItem('historialRecomendaciones', JSON.stringify(historialRecomendaciones));
+    }
+}
+
+// Llamar a la limpieza al cargar
+limpiarHistorialHuerfanos();
 
 function registrarRecomendaciones(recomendaciones, contexto) {
     if (!recomendaciones || recomendaciones.length === 0) return;

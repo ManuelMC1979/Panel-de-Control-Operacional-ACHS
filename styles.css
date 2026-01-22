@@ -1177,3 +1177,56 @@ th {
         transform: rotate(360deg);
     }
 }
+
+/* === TEAMS REPORT MODAL STYLES === */
+.report-section {
+    background: var(--bg-body);
+    padding: 15px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+}
+
+.metric-selector-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.metric-selector-grid label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.preview-results-box {
+    max-height: 250px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+.report-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 8px;
+    border-radius: 4px;
+    margin-bottom: 4px;
+    font-size: 0.85rem;
+}
+
+.report-row.good {
+    background: rgba(31, 122, 63, 0.1);
+    color: #1f7a3f;
+    border-left: 3px solid #1f7a3f;
+}
+
+.report-row.bad {
+    background: rgba(179, 38, 30, 0.1);
+    color: #b3261e;
+    border-left: 3px solid #b3261e;
+}
+
+.badge-modal {
+    font-weight: 800;
+}

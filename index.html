@@ -112,7 +112,7 @@
                 <label><input type="checkbox" value="OCTUBRE"> Octubre</label>
                 <label><input type="checkbox" value="NOVIEMBRE"> Noviembre</label>
                 <label><input type="checkbox" value="DICIEMBRE"> Diciembre</label>
-                <label><input type="checkbox" value="ENERO"> Enero</label>
+                <label><input type="checkbox" value="ENERO" checked> Enero</label>
             </div>
         </div>
         <div>
@@ -266,6 +266,56 @@
                         <!-- Filled via JS -->
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Informe de Equipos (Teams) -->
+    <div class="modal-overlay" id="modalTeams">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h2><i class="fab fa-microsoft"></i> Informe de Desempeño para Teams</h2>
+                <button class="close-modal" onclick="cerrarModalTeams()"><i class="fas fa-times"></i></button>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <!-- Columna Izquierda: Selección y Preview -->
+                <div style="display: flex; flex-direction: column; gap: 20px;">
+                    <section class="report-section">
+                        <h4 style="margin-bottom: 12px; color: var(--achs-azul);"><i class="fas fa-tasks"></i> 1.
+                            Seleccionar Métricas</h4>
+                        <div id="metricSelector" class="metric-selector-grid">
+                            <!-- Inyectado vía JS -->
+                        </div>
+                    </section>
+
+                    <section class="report-section">
+                        <h4 style="margin-bottom: 12px; color: var(--achs-azul);"><i class="fas fa-chart-line"></i> 2.
+                            Vista Previa (Top/Bottom)</h4>
+                        <div id="previewResultados" class="preview-results-box">
+                            <!-- Inyectado vía JS -->
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Columna Derecha: Mensaje Final -->
+                <div style="display: flex; flex-direction: column; gap: 20px;">
+                    <section class="report-section" style="height: 100%; display: flex; flex-direction: column;">
+                        <h4 style="margin-bottom: 12px; color: var(--achs-azul);"><i class="fas fa-comment-dots"></i> 3.
+                            Mensaje para Teams</h4>
+                        <textarea id="teamsMessage"
+                            style="flex: 1; min-height: 300px; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-body); color: var(--text-main); font-family: 'Courier New', monospace; font-size: 0.9rem;"
+                            readonly></textarea>
+                    </section>
+                </div>
+            </div>
+
+            <div class="modal-actions" style="margin-top: 20px; display: flex; gap: 12px; justify-content: flex-end;">
+                <button class="btn btn-secondary" onclick="generarReporteTeamsActual()"><i class="fas fa-sync-alt"></i>
+                    Actualizar</button>
+                <button class="btn btn-primary" onclick="copiarReporteTeams()"><i class="fas fa-copy"></i> Copiar
+                    Reporte</button>
+                <button class="btn btn-secondary" onclick="cerrarModalTeams()">Cerrar</button>
             </div>
         </div>
     </div>
