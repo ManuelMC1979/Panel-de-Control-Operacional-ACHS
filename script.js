@@ -1,7 +1,7 @@
 // CONSTANTS
 let SHEET_ID = localStorage.getItem('SHEET_ID') || '1_Dbbjt1TC8pcBPXGbISfuQr8ilsRan21REy51nMw0hg';
 // Explicitly defining the months the user wants to access as tabs
-const MONTHS = ['OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE', 'ENERO', 'FEBRERO'];
+const MONTHS = ['OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE', 'ENERO'];
 
 // CONFIG (Thresholds)
 const GOALS = {
@@ -23,9 +23,28 @@ const metas = {
     tipificaciones: 95
 };
 
+// ⚖️ PONDERACIÓN COPC DE KPI
+const pesosCOPC = {
+    tmo: 0.15,
+    satEP: 0.15,
+    resEP: 0.20,
+    satSNL: 0.15,
+    resSNL: 0.15,
+    transfEPA: 0.10,
+    tipificaciones: 0.10
+};
+
+// 🚨 PENALIZACIÓN POR ALERTAS
+const penalizacionAlerta = {
+    OK: 0,
+    advertencia: 5,
+    critica: 15
+};
+
 // Resuelve la clave del selector a la propiedad real en los datos
 function resolveKpiKey(key) {
     const map = {
+        todos: 'score',
         satEP: 'satEp',
         resEP: 'resEp',
         satSNL: 'satSnl',
@@ -46,6 +65,34 @@ function cumpleMeta(kpiKey, valor) {
     return num >= meta;
 }
 
+// Helper to match months robustly (handles abbreviations, case, and numeric values)
+function matchMonth(dataMonth, targetMonth) {
+    if (!dataMonth || !targetMonth) return false;
+    const d = dataMonth.toString().trim().toUpperCase();
+    const t = targetMonth.toString().trim().toUpperCase();
+
+    // Direct match or abbreviation
+    if (d === t) return true;
+    if (d.startsWith(t.substring(0, 3))) return true;
+    if (t.startsWith(d.substring(0, 3)) && d.length >= 3) return true;
+
+    // Handle Spanish months and year suffixes (e.g., "DIC-23" or "DICIEMBRE 2023")
+    const monthsEs = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'];
+    const idxT = monthsEs.indexOf(t);
+    if (idxT !== -1) {
+        // Look for the month name inside the data string
+        if (d.includes(t)) return true;
+        // Check for 3-letter abbreviation
+        const abbr = t.substring(0, 3);
+        if (d.includes(abbr)) return true;
+        // Check for numeric month (1-12)
+        const monthNum = (idxT + 1).toString();
+        const monthNumZero = monthNum.padStart(2, '0');
+        if (d === monthNum || d === monthNumZero) return true;
+    }
+    return false;
+}
+
 // STATE
 let currentData = [];
 let currentMonth = 'OCTUBRE';
@@ -57,7 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
     applyTheme(theme);
     initEventListeners();
     populateMonthFilter();
-    // Simular carga inicial con datos mock mientras se conecta a la planilla real
+    // Iniciar con la carga del mes actual y el historial en paralelo
     simulateInitialLoad();
     const initialKpi = document.getElementById('selectKPI') ? document.getElementById('selectKPI').value : 'tmo';
     updateKpiDisplay(initialKpi);
@@ -92,21 +139,40 @@ function initEventListeners() {
         applyTheme(theme);
     });
 
-    // Filters
-    const monthSelect = document.getElementById('monthFilter');
-    monthSelect.addEventListener('change', async (e) => {
-        // Support multiple selected months
-        const sel = Array.from(e.target.selectedOptions).map(o => o.value);
-        if (sel.length === 0) return;
-        // Set currentMonth to first selected for compatibility
-        currentMonth = sel[0];
-        if (sel.length === 1) {
-            await fetchData(currentMonth);
-        } else {
-            // Fetch and merge all selected months
-            await fetchMultipleMonths(sel);
-        }
+    // Custom Multi-select for Months
+    const monthHeader = document.getElementById('monthHeader');
+    const monthOptions = document.getElementById('monthOptions');
+
+    if (monthHeader) {
+        monthHeader.onclick = (e) => {
+            e.stopPropagation();
+            monthOptions.classList.toggle('active');
+        };
+    }
+
+    // Close dropdown on outside click
+    document.addEventListener('click', () => {
+        if (monthOptions) monthOptions.classList.remove('active');
     });
+
+    if (monthOptions) {
+        monthOptions.onclick = (e) => e.stopPropagation();
+
+        monthOptions.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            cb.addEventListener('change', async () => {
+                updateMonthHeaderText();
+                const sel = getSelectedMonths();
+                if (sel.length === 0) return;
+
+                currentMonth = sel[0];
+                if (sel.length === 1) {
+                    await fetchData(currentMonth);
+                } else {
+                    await fetchMultipleMonths(sel);
+                }
+            });
+        });
+    }
 
     document.getElementById('execFilter').addEventListener('change', renderDashboard);
     // KPI selector listener
@@ -114,16 +180,52 @@ function initEventListeners() {
     if (kpiSel) kpiSel.addEventListener('change', (e) => updateKpiDisplay(e.target.value));
 }
 
+function getSelectedMonths() {
+    const monthOptions = document.getElementById('monthOptions');
+    if (!monthOptions) return [currentMonth];
+    const checked = Array.from(monthOptions.querySelectorAll('input:checked')).map(cb => cb.value);
+    return checked;
+}
+
+function updateMonthHeaderText() {
+    const sel = getSelectedMonths();
+    const textEl = document.getElementById('selectedMonthsText');
+    if (!textEl) return;
+
+    if (sel.length === 0) textEl.innerText = 'Seleccionar meses';
+    else if (sel.length === 1) textEl.innerText = sel[0];
+    else textEl.innerText = `${sel.length} meses seleccionados`;
+}
+
 function populateMonthFilter() {
-    const sel = document.getElementById('monthFilter');
-    sel.innerHTML = '';
+    const container = document.getElementById('monthOptions');
+    if (!container) return;
+
+    container.innerHTML = '';
     MONTHS.forEach(m => {
-        const opt = document.createElement('option');
-        opt.value = m;
-        opt.innerText = m;
-        sel.appendChild(opt);
+        const label = document.createElement('label');
+        const isChecked = m === currentMonth ? 'checked' : '';
+        label.innerHTML = `<input type="checkbox" value="${m}" ${isChecked}> ${m.charAt(0) + m.slice(1).toLowerCase()}`;
+        container.appendChild(label);
     });
-    sel.value = currentMonth;
+
+    // Add listeners to new checkboxes
+    container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        cb.addEventListener('change', async () => {
+            updateMonthHeaderText();
+            const sel = getSelectedMonths();
+            if (sel.length === 0) return;
+
+            currentMonth = sel[0];
+            if (sel.length === 1) {
+                await fetchData(currentMonth);
+            } else {
+                await fetchMultipleMonths(sel);
+            }
+        });
+    });
+
+    updateMonthHeaderText();
 }
 
 function applyTheme(t) {
@@ -135,17 +237,10 @@ function applyTheme(t) {
 // FETCHING DATA
 async function fetchData(month) {
     showLoading(true);
-    // fallback
-    if (!month) month = currentMonth;
-
-    console.log(`Fetching Month: ${month}`);
-
-    // Using Google Visualization API via Proxy to allow Tab Selection
-    const gvizUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(month)}`;
-    const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(gvizUrl);
-
     try {
         const parsed = await fetchSheet(month);
+        // Normalize mes field
+        parsed.forEach(d => { if (d.mes) d.mes = d.mes.toString().trim().toUpperCase(); });
         currentData = parsed;
         console.log(`Data loaded for ${month}`, currentData);
         processData(currentData);
@@ -158,35 +253,107 @@ async function fetchData(month) {
 }
 
 // Fetch a single sheet and return parsed rows (does not update UI)
+// Fetch a single sheet and return parsed rows (does not update UI)
+// Fetch a single sheet and return parsed rows (does not update UI)
+// Fetch a single sheet and return parsed rows (does not update UI)
 async function fetchSheet(month) {
     if (!month) throw new Error('Month required');
-    const gvizUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(month)}`;
-    const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(gvizUrl);
-    const response = await fetch(proxyUrl);
-    if (!response.ok) throw new Error('Network response was not ok');
-    const text = await response.text();
-    const jsonString = text.match(/google\.visualization\.Query\.setResponse\(([\s\S\w]+)\);/);
-    if (jsonString && jsonString[1]) {
-        const json = JSON.parse(jsonString[1]);
-        const rows = json.table.rows;
-        const parsed = rows.map(r => {
-            const c = r.c;
-            const v = (idx) => (c[idx] ? (c[idx].v !== null ? c[idx].v : 0) : 0);
-            return {
-                name: v(0),
-                mes: v(1),
-                tmo: parseFloat(v(2)),
-                transfEPA: parseFloat(v(3)),
-                tipificaciones: parseFloat(v(4)),
-                satEp: parseFloat(v(5)),
-                resEp: parseFloat(v(6)),
-                satSnl: parseFloat(v(7)),
-                resSnl: parseFloat(v(8))
-            };
-        }).filter(d => d.name && d.name !== 'Ejecutivo' && d.name !== 'Column1');
-        return parsed;
+
+    const tryFetch = async (sheetName) => {
+        try {
+            const gvizUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`;
+            const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(gvizUrl);
+            const response = await fetch(proxyUrl, { cache: 'no-cache' });
+            if (!response.ok) return null;
+            const text = await response.text();
+            const jsonString = text.match(/google\.visualization\.Query\.setResponse\(([\s\S\w]+)\);/);
+            if (jsonString && jsonString[1]) {
+                const json = JSON.parse(jsonString[1]);
+                if (json.status === 'error') return null;
+                return json;
+            }
+        } catch (e) { return null; }
+        return null;
+    };
+
+    const variations = [month.toUpperCase(), month.charAt(0).toUpperCase() + month.slice(1).toLowerCase(), month.substring(0, 3).toUpperCase()];
+    let json = null;
+    for (const name of variations) {
+        json = await tryFetch(name);
+        if (json) break;
     }
-    throw new Error('Invalid JSON format from Sheets API');
+    if (!json) throw new Error(`Hoja "${month}" no encontrada.`);
+
+    const rows = json.table.rows;
+    if (!rows || rows.length === 0) return [];
+
+    // --- HEURISTIC COLUMN DETECTION ---
+    let colMap = { name: -1, mes: -1, tmo: -1, transfEPA: -1, tipificaciones: -1, satEp: -1, resEp: -1, satSnl: -1, resSnl: -1 };
+
+    // Scan many rows to find the headers
+    for (let i = 0; i < Math.min(20, rows.length); i++) {
+        const cells = rows[i].c;
+        if (!cells) continue;
+        cells.forEach((cell, idx) => {
+            if (!cell || !cell.v) return;
+            const h = cell.v.toString().toUpperCase();
+            if ((h.includes('EJECUTIVO') || h.includes('NOMBRE')) && colMap.name === -1) colMap.name = idx;
+            else if (h.includes('MES') && colMap.mes === -1) colMap.mes = idx;
+            else if (h.includes('TMO') && colMap.tmo === -1) colMap.tmo = idx;
+            else if ((h.includes('EPA') || h.includes('TRANSF')) && colMap.transfEPA === -1) colMap.transfEPA = idx;
+            else if (h.includes('TIPI') && colMap.tipificaciones === -1) colMap.tipificaciones = idx;
+            else if (h.includes('SAT') && h.includes('EP') && colMap.satEp === -1) colMap.satEp = idx;
+            else if (h.includes('RES') && h.includes('EP') && colMap.resEp === -1) colMap.resEp = idx;
+            else if (h.includes('SAT') && (h.includes('SNL') || h.includes('PROV')) && colMap.satSnl === -1) colMap.satSnl = idx;
+            else if (h.includes('RES') && (h.includes('SNL') || h.includes('PROV')) && colMap.resSnl === -1) colMap.resSnl = idx;
+        });
+    }
+
+    // Default Fallbacks if still not found
+    if (colMap.name === -1) colMap.name = 0;
+    if (colMap.mes === -1) colMap.mes = 1;
+    // Map missing KPIs to sensible defaults if we can't find them
+    Object.keys(colMap).forEach((key, idx) => { if (colMap[key] === -1) colMap[key] = idx; });
+
+    console.log(`Detected Columns for ${month}:`, colMap);
+
+    const parsed = rows.map(r => {
+        const c = r.c;
+        if (!c) return null;
+
+        const getStr = (idx) => (c[idx] ? (c[idx].f || c[idx].v || "").toString().trim() : "");
+        const getNum = (idx) => {
+            if (!c[idx] || c[idx].v === null || c[idx].v === undefined) return 0;
+            let val = c[idx].v;
+            // Handle scientific notation and different decimal separators
+            if (typeof val === 'string') {
+                val = val.replace(/[^\d,.E+-]/g, '').replace(',', '.').trim();
+                if (val === '') return 0;
+            }
+            let n = parseFloat(val);
+            if (isNaN(n)) return 0;
+            // Heuristic: If it's a very small decimal, it's likely a percentage
+            if (n > 0 && n <= 1.0) return n * 100;
+            return n;
+        };
+
+        const name = getStr(colMap.name);
+        if (!name || ['TOTAL', 'PROMEDIO', 'EJECUTIVO', 'NOMBRE'].includes(name.toUpperCase()) || name.length < 3) return null;
+
+        return {
+            name,
+            mes: getStr(colMap.mes) || month,
+            tmo: getNum(colMap.tmo),
+            transfEPA: getNum(colMap.transfEPA),
+            tipificaciones: getNum(colMap.tipificaciones),
+            satEp: getNum(colMap.satEp),
+            resEp: getNum(colMap.resEp),
+            satSnl: getNum(colMap.satSnl),
+            resSnl: getNum(colMap.resSnl)
+        };
+    }).filter(d => d && d.name);
+
+    return parsed;
 }
 
 // Fetch multiple sheets and merge results
@@ -200,8 +367,8 @@ async function fetchMultipleMonths(months) {
         const results = await Promise.all(promises);
         // Merge arrays
         currentData = [].concat(...results);
-        // Ensure mes values are normalized to uppercase month names
-        currentData.forEach(d => { if (d.mes) d.mes = d.mes.toString().toUpperCase(); });
+        // Ensure mes values are normalized to uppercase month names and trimmed
+        currentData.forEach(d => { if (d.mes) d.mes = d.mes.toString().trim().toUpperCase(); });
         processData(currentData);
     } finally {
         showLoading(false);
@@ -253,22 +420,46 @@ function useMockData() {
 
 // LOGIC & CALCULATIONS
 function processData(data) {
-    // 1. Calculate Score for Quartiles
-    // Score = Average of 4 KPIs (normalized to 0-100)
-    // If input is 0.95 (decimal), convert to 95. If > 1, assume percent.
-
+    // 1. Calculate Score COPC for each executive
     data.forEach(d => {
-        // Normalization
+        // Normalization to percent
         d.satSnl = normalizePercent(d.satSnl);
         d.resSnl = normalizePercent(d.resSnl);
         d.satEp = normalizePercent(d.satEp);
         d.resEp = normalizePercent(d.resEp);
+        d.transfEPA = normalizePercent(d.transfEPA);
+        d.tipificaciones = normalizePercent(d.tipificaciones);
 
-        // Simple Average Score
-        d.score = (d.satSnl + d.resSnl + d.satEp + d.resEp) / 4;
+        // Map data to the format calcularScoreCOPC expects
+        const kpisValues = {
+            tmo: d.tmo,
+            satEP: d.satEp,
+            resEP: d.resEp,
+            satSNL: d.satSnl,
+            resSNL: d.resSnl,
+            transfEPA: d.transfEPA,
+            tipificaciones: d.tipificaciones
+        };
+
+        // Get individual alerts for this executive to calculate penalties
+        const alerts = [];
+        Object.keys(metas).forEach(k => {
+            const met = metas[k];
+            const val = kpisValues[k];
+            const isFailing = (k === 'tmo' ? val > met : val < met);
+            if (isFailing) {
+                const diff = k === 'tmo' ? (val - met) / met : (met - val) / met;
+                alerts.push({ nivel: diff > 0.1 ? 'critica' : 'advertencia' });
+            }
+        });
+
+        d.score = calcularScoreCOPC(kpisValues, alerts);
+        const classification = clasificarCOPC(d.score);
+        d.copcNivel = classification.nivel;
+        d.copcColor = classification.color;
     });
 
-    // 2. Sort by Score Descending
+    // 2. Sort by COPC Score Descending
     data.sort((a, b) => b.score - a.score);
 
     // 3. Assign Quartiles
@@ -283,13 +474,51 @@ function processData(data) {
 
     initFilters(data);
     renderDashboard();
-    renderPodium(data.slice(0, 3));
+    updatePodium('todos');
     renderCopcTable(data);
+    setTimeout(processIntelligentAlerts, 500);
+}
+
+// 📏 NORMALIZACIÓN DEL KPI (0–100)
+function normalizarKPI(kpi, valor) {
+    const meta = metas[kpi];
+    if (!meta) return 0;
+    let res;
+    if (kpi === "tmo") {
+        res = valor === 0 ? 100 : (meta / valor) * 100;
+    } else {
+        res = (valor / meta) * 100;
+    }
+    return Math.max(0, Math.min(100, res));
+}
+
+// 🧮 CÁLCULO DEL SCORE COPC
+function calcularScoreCOPC(datosKPIs, alertas) {
+    let score = 0;
+    for (let kpi in datosKPIs) {
+        if (pesosCOPC[kpi]) {
+            const valor = datosKPIs[kpi];
+            const normalizado = normalizarKPI(kpi, valor);
+            score += normalizado * pesosCOPC[kpi];
+        }
+    }
+    // Penalización por alertas
+    alertas.forEach(a => {
+        score -= penalizacionAlerta[a.nivel] || 0;
+    });
+    return Math.max(0, Math.round(score));
+}
+
+// 🟢🟡🔴 CLASIFICACIÓN DEL SCORE COPC
+function clasificarCOPC(score) {
+    if (score >= 90) return { nivel: "ÓPTIMO", color: "green" };
+    if (score >= 75) return { nivel: "CONTROL", color: "yellow" };
+    return { nivel: "RIESGO", color: "red" };
 }
 
 function normalizePercent(val) {
-    if (val <= 1) return val * 100;
-    return val;
+    if (val <= 1 && val > 0) return val * 100;
+    return val || 0;
 }
 
 function initFilters(data) {
@@ -312,11 +541,19 @@ function initFilters(data) {
 function renderDashboard() {
     const grid = document.getElementById('dashboardGrid');
     const filterVal = document.getElementById('execFilter').value;
+    const selectedMonths = getSelectedMonths();
+
     grid.innerHTML = ''; // Clear
 
     let filtered = currentData;
+
+    // Additional secondary filter for months (if currentData has more than what's checked)
+    if (selectedMonths.length > 0) {
+        filtered = filtered.filter(d => selectedMonths.includes(d.mes));
+    }
+
     if (filterVal !== 'all') {
-        filtered = currentData.filter(d => d.name === filterVal);
+        filtered = filtered.filter(d => d.name === filterVal);
     }
 
     filtered.forEach(d => {
@@ -326,33 +563,80 @@ function renderDashboard() {
         else if (d.quartile === 'Q3') modifier = 'kpi-warning';
         else if (d.quartile === 'Q4') modifier = 'kpi-bad';
 
+        const kpisExec = {
+            tmo: d.tmo,
+            satEP: d.satEp,
+            resEP: d.resEp,
+            satSNL: d.satSnl,
+            resSNL: d.resSnl,
+            transfEPA: d.transfEPA,
+            tipificaciones: d.tipificaciones
+        };
+
+        const recomendaciones = generarRecomendaciones(kpisExec);
+        // Regla Principal: Solo mostrar si hay recomendaciones reales (que implican fallas o tendencias)
+        const hasFails = Object.keys(kpisExec).some(k => !cumpleMeta(k, kpisExec[k]));
+        const showBox = hasFails || recomendaciones.some(r => !r.includes("Desempeño controlado"));
+
+        if (showBox) {
+            // Auto-registrar en historial cada vez que se detectan fallas para el ejecutivo
+            // (registrarRecomendaciones ya maneja internamente que no se dupliquen)
+            registrarRecomendaciones(recomendaciones, {
+                ejecutivo: d.name,
+                mes: d.mes
+            });
+        }
+
         card.className = `kpi-card ${modifier}`;
         card.innerHTML = `
             <div class="card-header">
-                <div class="exec-name">${d.name}</div>
+                <div>
+                    <div class="exec-name">${d.name}</div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 2px;">
+                        <i class="fas fa-medal" style="color: ${d.copcColor === 'green' ? '#00A859' : (d.copcColor === 'yellow' ? '#FACC15' : '#DC2626')}"></i> 
+                        Score COPC: <strong>${d.score}</strong> (<span>${d.copcNivel}</span>)
+                    </div>
+                </div>
                 <div class="quartile-badge ${d.quartile.toLowerCase()}">${d.quartile}</div>
             </div>
             <div class="kpi-grid">
-                ${renderKpiItem('Satisfacción SNL', d.satSnl, GOALS.satSnl, true)}
-                ${renderKpiItem('Resolución SNL', d.resSnl, GOALS.resSnl, true)}
-                ${renderKpiItem('Satisfacción EP', d.satEp, GOALS.satEp, true)}
-                ${renderKpiItem('Resolución EP', d.resEp, GOALS.resEp, true)}
-                <div class="kpi-item" style="grid-column: span 2;">
-                    <span class="kpi-label">TMO (Min)</span>
-                    <span class="kpi-value">${d.tmo}</span>
+                ${renderKpiItem('Satisfacción SNL', d.satSnl, GOALS.satSnl, true, d.name, 'satEP', 'fas fa-smile')}
+                ${renderKpiItem('Resolución SNL', d.resSnl, GOALS.resSnl, true, d.name, 'resSNL', 'fas fa-check-circle')}
+                ${renderKpiItem('Satisfacción EP', d.satEp, GOALS.satEp, true, d.name, 'satEP', 'fas fa-star')}
+                ${renderKpiItem('Resolución EP', d.resEp, GOALS.resEp, true, d.name, 'resEP', 'fas fa-clipboard-check')}
+                <div class="kpi-item clickable-kpi" onclick="showEvolutionary('${d.name}', 'tmo')">
+                    <span class="kpi-label"><i class="fas fa-clock" style="margin-right: 6px; color: var(--achs-azul-claro);"></i> TMO</span>
+                    <span class="kpi-value">${d.tmo.toFixed(1)}</span>
                     <div class="semaphore ${getTmoColor(d.tmo)}"></div>
                 </div>
+                <div class="kpi-item" style="background: var(--bg-card); border: 1px dashed var(--border-color);">
+                     <span class="kpi-label"><i class="fas fa-chart-pie" style="margin-right: 6px; color: var(--achs-azul-claro);"></i> COPC</span>
+                     <span class="kpi-value" style="color: ${d.copcColor === 'green' ? '#00A859' : (d.copcColor === 'yellow' ? '#FACC15' : '#DC2626')}">${d.score}</span>
+                </div>
             </div>
+            ${showBox ? `
+            <div class="recomendaciones-box" style="display: block; margin-top: 1rem;">
+                <h4 style="font-size: 0.85rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; color: #92400E;">
+                    <i class="fas fa-lightbulb"></i> Acciones Recomendadas
+                </h4>
+                <ul style="list-style: none; padding: 0;">
+                    ${recomendaciones.filter(r => !r.includes("Desempeño controlado")).map(acc => `
+                    <li style="font-size: 0.85rem; margin-bottom: 4px; padding-left: 12px; position: relative; font-weight: 500;">
+                        <span style="position: absolute; left: 0; color: #F9A825;">•</span> ${acc}
+                    </li>`).join('')}
+                </ul>
+            </div>` : ''}
         `;
         grid.appendChild(card);
     });
 }
 
-function renderKpiItem(label, val, target, isHigherBetter) {
+function renderKpiItem(label, val, target, isHigherBetter, name, kpiKey, iconClass) {
     const colorClass = getSemaphoreColor(val, target, isHigherBetter);
+    const iconHtml = iconClass ? `<i class="${iconClass}" style="margin-right: 6px; color: var(--achs-azul-claro);"></i>` : '';
     return `
-        <div class="kpi-item">
-            <span class="kpi-label">${label}</span>
+        <div class="kpi-item clickable-kpi" onclick="showEvolutionary('${name}', '${kpiKey}')">
+            <span class="kpi-label">${iconHtml}${label}</span>
             <span class="kpi-value">${val.toFixed(1)}%</span>
             <div class="semaphore ${colorClass}"></div>
         </div>
@@ -378,29 +662,64 @@ function getTmoColor(val) {
     return 'sem-red';
 }
 
-function renderPodium(top3) {
+function updatePodium(kpiKey) {
+    const top3 = getTopPerformers(currentData, kpiKey);
+    renderPodium(top3, kpiKey);
+}
+
+function getTopPerformers(data, kpiKey) {
+    if (!data || data.length === 0) return [];
+    const resolved = resolveKpiKey(kpiKey);
+    const sorted = [...data].sort((a, b) => {
+        const valA = Number(a[resolved]) || 0;
+        const valB = Number(b[resolved]) || 0;
+        // For TMO, lower is better. For others (including 'todos'/score), higher is better.
+        if (kpiKey === 'tmo') return valA - valB;
+        return valB - valA;
+    });
+    return sorted.slice(0, 3);
+}
+
+function renderPodium(top3, kpiKey) {
     const container = document.getElementById('podiumContainer');
+    if (!container) return;
     container.innerHTML = '';
 
-    if (top3.length < 3) return; // Need at least 3
+    if (top3.length < 3) {
+        container.innerHTML = '<p style="text-align:center; color:var(--text-secondary);">Cargando ranking...</p>';
+        return;
+    }
 
-    // Order: 2nd, 1st, 3rd for visual Podium
+    // Order for visual display: [2nd, 1st, 3rd]
     const order = [top3[1], top3[0], top3[2]];
     const places = [2, 1, 3];
+    const medals = ['🥈', '🥇', '🥉'];
 
     order.forEach((d, idx) => {
+        if (!d) return;
         const place = places[idx];
+        const medal = medals[place - 1]; // places are [2, 1, 3], but medals are [1st, 2nd, 3rd]
+        // medal logic: place 2 => medal[1]🥈, place 1 => medal[0]🥇, place 3 => medal[2]🥉
+        const placeMedal = place === 1 ? '🥇' : (place === 2 ? '🥈' : '🥉');
+
         const div = document.createElement('div');
         div.className = `podium-place place-${place}`;
+
+        const resolvedKpi = resolveKpiKey(kpiKey);
+        const val = Number(d[resolvedKpi]) || 0;
+        const displayVal = kpiKey === 'tmo' ? `${val.toFixed(1)}m` : `${val.toFixed(1)}%`;
+
         div.innerHTML = `
-            <div class="podium-avatar">Q${d.quartile.replace('Q', '')}</div>
+            <div class="podium-avatar">
+                <span style="font-size:1.5rem;">${placeMedal}</span>
+            </div>
             <div class="podium-bar">
-                <div>
-                  <div style="font-size:0.8rem; margin-bottom:5px;">${d.score.toFixed(1)}%</div>
-                  ${place}º
+                <div style="text-align:center;">
+                  <div style="font-size:0.9rem; font-weight:800; background:rgba(0,0,0,0.25); color:#ffffff; border-radius:12px; padding:4px 10px; margin-bottom:8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">${displayVal}</div>
+                  <div style="font-size:1.2rem;">${place}º</div>
                 </div>
             </div>
-            <div class="podium-name">${d.name}</div>
+            <div class="podium-name">${d.name.split(' ')[0]}</div>
         `;
         container.appendChild(div);
     });
@@ -477,20 +796,23 @@ function parseSheetIdFromUrl(text) {
     } catch (e) { return null; }
 }
 
-    // Actualiza la visualización del valor objetivo para la KPI seleccionada
-    function updateKpiDisplay(key) {
-        const el = document.getElementById('kpiValueDisplay');
-        if (!el) return;
-        const val = metas[key];
-        if (val === undefined) {
-            el.innerText = '--';
-            return;
-        }
+// Actualiza la visualización del valor objetivo para la KPI seleccionada
+function updateKpiDisplay(key) {
+    const el = document.getElementById('kpiValueDisplay');
+    if (!el) return;
 
-        // Formateo: TMO en minutos, resto en porcentaje
+    // Update target value text
+    const val = metas[key];
+    if (val === undefined) {
+        el.innerText = '--';
+    } else {
         if (key === 'tmo') el.innerText = `${val} min`;
         else el.innerText = `${val}%`;
     }
+
+    // Refresh Ranking/Podium based on new KPI
+    updatePodium(key);
+}
 
 async function refreshData() {
     console.log('Iniciando actualización forzada...');
@@ -541,11 +863,40 @@ function generateTeamsReport() {
     // });
 }
 
-async function showEvolutionary() {
+async function showEvolutionary(overrideExec, overrideKpi) {
+    // Si no tenemos datos de todos los meses, intentar cargarlos ahora
+    const missingMonths = MONTHS.filter(m => !currentData.some(d => matchMonth(d.mes, m)));
+
+    if (missingMonths.length > 0) {
+        console.log("Meses faltantes detectados para evolutivo:", missingMonths);
+        const overlay = document.getElementById('refreshOverlay');
+        if (overlay) {
+            overlay.classList.add('active');
+            const statusEl = overlay.querySelector('p:last-child');
+            if (statusEl) statusEl.innerText = `Cargando histórico: ${missingMonths.join(', ')}`;
+        }
+        try {
+            // No sobreescribimos currentData, sino que sumamos
+            const promises = missingMonths.map(m => fetchSheet(m).catch(() => []));
+            const results = await Promise.all(promises);
+            const flatResults = [].concat(...results);
+
+            // Unir sin duplicados (opcional, pero mejor unir todo)
+            currentData = currentData.concat(flatResults);
+            currentData.forEach(d => { if (d.mes) d.mes = d.mes.toString().trim().toUpperCase(); });
+
+            // Reprocesar para actualizar cuartiles y filtros
+            processData(currentData);
+        } catch (e) {
+            console.error("Error cargando meses para evolutivo:", e);
+        } finally {
+            if (overlay) overlay.classList.remove('active');
+        }
+    }
+
     // Mostrar evolución del KPI seleccionado usando datos ya cargados (currentData)
-    const kpiRaw = document.getElementById('selectKPI') ? document.getElementById('selectKPI').value : 'tmo';
-    const kpi = resolveKpiKey(kpiRaw);
-    const execSel = document.getElementById('execFilter') ? document.getElementById('execFilter').value : 'TODOS';
+    const kpiRaw = overrideKpi || (document.getElementById('selectKPI') ? document.getElementById('selectKPI').value : 'tmo');
+    const execSel = overrideExec || (document.getElementById('execFilter') ? document.getElementById('execFilter').value : 'all');
 
     // Render en modal (tabla en #evolTable y gráfico en canvas #evolChart)
     const modal = document.getElementById('evolModal');
@@ -558,8 +909,7 @@ async function showEvolutionary() {
 
     // Mostrar ejecutivo seleccionado en el header del modal
     try {
-        const execSelectVal = document.getElementById('execFilter') ? document.getElementById('execFilter').value : 'all';
-        const execDisplay = (execSelectVal === 'all' || execSelectVal === 'TODOS') ? 'Todos' : execSelectVal;
+        const execDisplay = (execSel === 'all' || execSel === 'TODOS') ? 'Todos' : execSel;
         const headerEl = modal.querySelector('.modal-header');
         if (headerEl) {
             let lbl = headerEl.querySelector('#evolExecLabel');
@@ -578,18 +928,19 @@ async function showEvolutionary() {
     // Poblar selects internos del modal (si existen) y sincronizar con global execFilter
     const evolExecSel = document.getElementById('evolExecSelect');
     const evolKpiSel = document.getElementById('evolKpiSelect');
-        let evolExecListener = null;
-        let evolKpiListener = null;
+    let evolExecListener = null;
+    let evolKpiListener = null;
     if (evolExecSel) {
         const names = Array.from(new Set(currentData.map(d => d.name).filter(Boolean))).sort();
         evolExecSel.innerHTML = '';
         const optAll = document.createElement('option'); optAll.value = 'all'; optAll.innerText = 'Todos'; evolExecSel.appendChild(optAll);
         names.forEach(n => { const o = document.createElement('option'); o.value = n; o.innerText = n; evolExecSel.appendChild(o); });
-        // default to global execFilter if present
-        try { evolExecSel.value = document.getElementById('execFilter') ? document.getElementById('execFilter').value : 'all'; } catch (e) {}
+
+        // Use override if provided, otherwise sync with global filter
+        evolExecSel.value = execSel === 'TODOS' ? 'all' : execSel;
 
         // When the evolExecSelect changes, update global execFilter and re-render
-            evolExecListener = function() {
+        evolExecListener = function () {
             const val = evolExecSel.value === 'all' ? 'all' : evolExecSel.value;
             const globalExec = document.getElementById('execFilter');
             if (globalExec) {
@@ -601,16 +952,17 @@ async function showEvolutionary() {
                 } catch (e) { /* ignore */ }
             }
             // update the evol content immediately
-            const kpiLocal = evolKpiSel ? evolKpiSel.value : (document.getElementById('selectKPI') ? document.getElementById('selectKPI').value : kpiRaw);
+            const kpiLocal = evolKpiSel ? evolKpiSel.value : kpiRaw;
             updateEvolContent(val === 'all' ? 'TODOS' : val, kpiLocal);
         };
         evolExecSel.addEventListener('change', evolExecListener);
     }
     if (evolKpiSel) {
-        // set default from main KPI selector
-        try { evolKpiSel.value = document.getElementById('selectKPI') ? document.getElementById('selectKPI').value : kpiRaw; } catch (e) {}
-        evolKpiListener = function() {
-            const ev = evolExecSel ? evolExecSel.value : (document.getElementById('execFilter') ? document.getElementById('execFilter').value : 'all');
+        // set from override or main KPI selector
+        evolKpiSel.value = kpiRaw === 'todos' ? 'tmo' : kpiRaw;
+
+        evolKpiListener = function () {
+            const ev = evolExecSel ? evolExecSel.value : execSel;
             updateEvolContent(ev === 'all' ? 'TODOS' : ev, evolKpiSel.value);
         };
         evolKpiSel.addEventListener('change', evolKpiListener);
@@ -618,12 +970,16 @@ async function showEvolutionary() {
 
     // Helper to build table and chart so we can re-use when filters change
     function updateEvolContent(execValue, kpiRawValue) {
-    const resolvedKpi = resolveKpiKey(kpiRawValue);
-    // Use the selected months from the monthFilter (support multi-select)
-    const monthSelEl = document.getElementById('monthFilter');
-    const selectedMonths = monthSelEl ? Array.from(monthSelEl.selectedOptions).map(o => o.value.toUpperCase()) : MONTHS;
-    const labels = selectedMonths.length ? selectedMonths : MONTHS;
-    const serieLocal = agruparPorMes(currentData, execValue === 'all' ? 'TODOS' : execValue, resolvedKpi, labels);
+        const resolvedKpi = resolveKpiKey(kpiRawValue);
+        // Use the selected months from the monthFilter (support multi-select)
+        // If only one month is selected, we still show the full evolution (MONTHS)
+        const monthSelEl = document.getElementById('monthFilter');
+        const selectedOptions = monthSelEl ? Array.from(monthSelEl.selectedOptions) : [];
+        const selectedMonths = selectedOptions.map(o => o.value.trim().toUpperCase());
+
+        // Forzar a que labels sea siempre MONTHS para ver la evolución completa independientemente del filtro externo
+        const labels = MONTHS;
+        const serieLocal = agruparPorMes(currentData, execValue, resolvedKpi, labels);
 
         // Construir tabla: si se muestran "Todos" mostramos una columna por ejecutivo con su KPI por mes,
         // si hay un ejecutivo seleccionado mostramos una sola columna con el valor promedio por mes.
@@ -640,23 +996,26 @@ async function showEvolutionary() {
             labels.forEach((m, idx) => {
                 tableHtmlLocal += `<tr><td style="padding:6px;">${m}</td>`;
                 execNames.forEach(n => {
-                    const rows = currentData.filter(d => (d.name === n) && ((d.mes || '').toString().toUpperCase() === m.toUpperCase()));
-                    let val = 0;
+                    const rows = currentData.filter(d => (d.name === n) && matchMonth(d.mes, m));
+                    let val = null;
                     if (rows.length) {
                         const suma = rows.reduce((acc, r) => acc + (Number(r[resolvedKpi]) || 0), 0);
                         val = +(suma / rows.length).toFixed(2);
                     }
-                    tableHtmlLocal += `<td style="padding:6px; text-align:right;">${formatKpiValue(kpiRawValue, val)}</td>`;
+                    const displayVal = (val === null) ? '-' : formatKpiValue(kpiRawValue, val);
+                    tableHtmlLocal += `<td style="padding:6px; text-align:right;">${displayVal}</td>`;
                 });
-                const aggVal = serieLocal[idx] || 0;
-                tableHtmlLocal += `<td style="padding:6px; text-align:right; font-weight:700;">${formatKpiValue(kpiRawValue, aggVal)}</td>`;
+                const aggVal = serieLocal[idx];
+                const displayAgg = (aggVal === null || aggVal === 0 && !currentData.some(d => matchMonth(d.mes, m))) ? '-' : formatKpiValue(kpiRawValue, aggVal);
+                tableHtmlLocal += `<td style="padding:6px; text-align:right; font-weight:700;">${displayAgg}</td>`;
                 tableHtmlLocal += '</tr>';
             });
         } else {
             tableHtmlLocal += '<thead><tr><th style="text-align:left; padding:6px;">Mes</th><th style="text-align:right; padding:6px;">Valor</th></tr></thead><tbody>';
-            labels.forEach((m, i) => {
-                const v = serieLocal[i] || 0;
-                tableHtmlLocal += `<tr><td style="padding:6px;">${m}</td><td style="padding:6px; text-align:right;">${formatKpiValue(kpiRawValue, v)}</td></tr>`;
+            labels.forEach((m, idx) => {
+                const v = serieLocal[idx];
+                const displayVal = (v === null) ? '-' : formatKpiValue(kpiRawValue, v);
+                tableHtmlLocal += `<tr><td style="padding:6px;">${m}</td><td style="padding:6px; text-align:right;">${displayVal}</td></tr>`;
             });
         }
         tableHtmlLocal += '</tbody></table>';
@@ -667,21 +1026,32 @@ async function showEvolutionary() {
             const ctxLocal = canvas.getContext('2d');
             if (evolChart) { try { evolChart.destroy(); } catch (e) { /* noop */ } evolChart = null; }
             const isPercent = kpiRawValue !== 'tmo';
+
+            // Si es porcentaje, forzamos escala a 100 para que no se vea "zoom" en 0
+            const yScaleConfig = {
+                beginAtZero: true,
+                ticks: { callback: function (value) { return isPercent ? value + '%' : value + ' min'; } }
+            };
+            if (isPercent) {
+                yScaleConfig.max = 100;
+                yScaleConfig.suggestedMax = 100;
+            }
+
             evolChart = new Chart(ctxLocal, {
                 type: 'line',
-                data: { labels: labels, datasets: [{ label: kpiRawValue, data: serieLocal, borderColor: '#2ecc71', backgroundColor: 'rgba(46,204,113,0.15)', fill: true, tension: 0.3, pointRadius: 4, pointBackgroundColor: function(ctx) { const v = ctx.raw !== undefined ? ctx.raw : (ctx.parsed ? ctx.parsed.y : 0); return cumpleMeta(kpiRawValue, v) ? '#00A859' : '#DC2626'; } }] },
-                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { callback: function(value) { return isPercent ? value + '%' : value + ' min'; } } } }, plugins: { tooltip: { callbacks: { label: function(ctx) { return formatKpiValue(kpiRawValue, ctx.parsed.y); } } } } }
+                data: { labels: labels, datasets: [{ label: kpiRawValue, data: serieLocal, borderColor: '#2ecc71', backgroundColor: 'rgba(46,204,113,0.15)', fill: true, tension: 0.3, pointRadius: 4, pointBackgroundColor: function (ctx) { const v = ctx.raw !== null ? ctx.raw : 0; return cumpleMeta(kpiRawValue, v) ? '#00A859' : '#DC2626'; } }] },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: yScaleConfig }, plugins: { tooltip: { callbacks: { label: function (ctx) { return formatKpiValue(kpiRawValue, ctx.parsed.y); } } } } }
             });
         }
     }
 
     // Inicial render
-    updateEvolContent(execSel, kpiRaw);
+    updateEvolContent(execSel === 'all' ? 'TODOS' : execSel, kpiRaw === 'todos' ? 'tmo' : kpiRaw);
 
     // Hacer reactivo el contenido: cuando cambien filtros fuera del modal, actualizar la vista
     const globalExecSel = document.getElementById('execFilter');
     const globalKpiSel = document.getElementById('selectKPI');
-        function onGlobalChange() { updateEvolContent(globalExecSel ? globalExecSel.value : 'all', globalKpiSel ? globalKpiSel.value : kpiRaw); }
+    function onGlobalChange() { updateEvolContent(globalExecSel ? globalExecSel.value : 'all', globalKpiSel ? globalKpiSel.value : kpiRaw); }
     if (globalExecSel) globalExecSel.addEventListener('change', onGlobalChange);
     if (globalKpiSel) globalKpiSel.addEventListener('change', onGlobalChange);
 
@@ -690,10 +1060,11 @@ async function showEvolutionary() {
     // Close handler (remove listeners)
     const closeBtn = document.getElementById('closeEvol');
     if (closeBtn) closeBtn.onclick = () => {
-        try { if (evolExecSel && evolExecListener) evolExecSel.removeEventListener('change', evolExecListener); } catch (e) {}
-        try { if (evolKpiSel && evolKpiListener) evolKpiSel.removeEventListener('change', evolKpiListener); } catch (e) {}
-        try { if (globalExecSel) globalExecSel.removeEventListener('change', onGlobalChange); } catch (e) {}
-        try { if (globalKpiSel) globalKpiSel.removeEventListener('change', onGlobalChange); } catch (e) {}
+        try { if (evolExecSel && evolExecListener) evolExecSel.removeEventListener('change', evolExecListener); } catch (e) { }
+        try { if (evolKpiSel && evolKpiListener) evolKpiSel.removeEventListener('change', evolKpiListener); } catch (e) { }
+        try { if (globalExecSel) globalExecSel.removeEventListener('change', onGlobalChange); } catch (e) { }
+        try { if (globalKpiSel) globalKpiSel.removeEventListener('change', onGlobalChange); } catch (e) { }
+        try { const lbl = modal.querySelector('#evolExecLabel'); if (lbl && lbl.parentNode) lbl.parentNode.removeChild(lbl); } catch (e) { }
         modal.classList.remove('active');
     };
 }
@@ -702,12 +1073,11 @@ async function showEvolutionary() {
 function agruparPorMes(datos, ejecutivo, kpi, months = MONTHS) {
     return months.map(mes => {
         const filtrados = datos.filter(d => {
-            const mesDato = (d.mes || '').toString();
-            return mesDato.toUpperCase() === mes.toUpperCase() &&
-                (ejecutivo === 'TODOS' || d.name === ejecutivo || d.ejecutivo === ejecutivo);
+            const matchesName = (ejecutivo === 'all' || ejecutivo === 'TODOS' || d.name === ejecutivo || d.ejecutivo === ejecutivo);
+            return matchMonth(d.mes, mes) && matchesName;
         });
 
-        if (filtrados.length === 0) return 0;
+        if (filtrados.length === 0) return null;
 
         const suma = filtrados.reduce((acc, d) => acc + (Number(d[kpi]) || 0), 0);
         return +(suma / filtrados.length).toFixed(2);
@@ -765,7 +1135,7 @@ function showPredictive() {
         if (confirm('Previsualizar mensaje para Teams?')) {
             alert(texto);
         }
-        try { await navigator.clipboard.writeText(texto); alert('Mensaje copiado al portapapeles. Pega en Teams o configura webhook.'); } catch(e){ /* ignore */ }
+        try { await navigator.clipboard.writeText(texto); alert('Mensaje copiado al portapapeles. Pega en Teams o configura webhook.'); } catch (e) { /* ignore */ }
     };
 
     // Initial render
@@ -956,7 +1326,7 @@ function renderPredictiveGrid(ejecutivo, kpiSelection) {
         const title = document.createElement('h3'); title.innerText = k;
         const rowVal = document.createElement('div'); rowVal.className = 'predict-row';
         const est = document.createElement('div'); est.className = 'predict-value'; est.innerText = formatPredictNumber(k, estimate);
-        const meta = document.createElement('div'); meta.className = 'predict-meta'; meta.innerText = `Meta: ${metas[k]}${k==='tmo'?' min':'%'}`;
+        const meta = document.createElement('div'); meta.className = 'predict-meta'; meta.innerText = `Meta: ${metas[k]}${k === 'tmo' ? ' min' : '%'}`;
         rowVal.appendChild(est); rowVal.appendChild(meta);
 
         const row2 = document.createElement('div'); row2.className = 'predict-row';
@@ -996,7 +1366,7 @@ function recommendAction(kpi, riesgo) {
         },
         resSNL: {
             Bajo: 'Mantener estándares de resolución SNL.',
-            Medio: 'Refuerzo operativo y revisión de procedimientos de soporte.' ,
+            Medio: 'Refuerzo operativo y revisión de procedimientos de soporte.',
             Alto: 'Auditoría de casos y coaching intensivo en protocolos SNL.'
         },
         satSnl: {
@@ -1021,4 +1391,270 @@ function recommendAction(kpi, riesgo) {
     // default generic recommendations
     if (k === 'tmo') return actions.tmo[r];
     return 'Revisar indicador y activar plan de mejora según prioridad.';
+}
+
+// --- INTELLIGENT RECOMMENDATION ENGINE (ACHS) ---
+
+function generarRecomendaciones(kpis) {
+    const acciones = [];
+    const {
+        tmo,
+        satEP,
+        resEP,
+        satSNL,
+        resSNL,
+        transfEPA,
+        tipificaciones
+    } = kpis;
+
+    // 🔴 REGLAS CRUZADAS (INTELIGENCIA REAL)
+
+    // Si el TMO es alto y la Satisfacción es baja, el problema es el tiempo de atención que afecta la percepción
+    if (tmo > metas.tmo && satEP < metas.satEP) {
+        acciones.push("Reducir carga operativa y reforzar uso de scripts.");
+    }
+
+    // Si la resolución es baja y la transferencia es alta, se está derivando sin resolver
+    if (resEP < metas.resEP && transfEPA > metas.transfEPA) {
+        acciones.push("Reforzar criterio de resolución antes de derivar a EPA.");
+    }
+
+    // Si la satisfacción es baja pero el TMO es bueno, el problema es el trato o manejo de expectativas
+    if (satSNL < metas.satSNL && tmo <= metas.tmo) {
+        acciones.push("Reforzar calidad de atención y manejo de expectativas.");
+    }
+
+    // Errores de registro
+    if (tipificaciones < metas.tipificaciones) {
+        acciones.push("Capacitación inmediata en registro y control de calidad.");
+    }
+
+    // Doble falla en calidad/resolución
+    if (resEP < metas.resEP && satEP < metas.satEP) {
+        acciones.push("Coaching operativo enfocado en cierre efectivo.");
+    }
+
+    // 🟢 SIN HALLAZGOS
+    if (acciones.length === 0) {
+        acciones.push("Desempeño controlado. Mantener estrategia actual.");
+    }
+
+    return priorizarRecomendaciones(acciones);
+}
+
+// --- HISTORIAL DE RECOMENDACIONES (Persistence & Management) ---
+
+let historialRecomendaciones = JSON.parse(localStorage.getItem('historialRecomendaciones')) || [];
+
+function registrarRecomendaciones(recomendaciones, contexto) {
+    if (!recomendaciones || recomendaciones.length === 0) return;
+
+    let added = false;
+    recomendaciones.forEach(texto => {
+        // Evitar duplicados exactos en estado Pendiente para el mismo ejecutivo y recomendación en el mismo mes
+        const exists = historialRecomendaciones.find(h =>
+            h.ejecutivo === contexto.ejecutivo &&
+            h.mes === contexto.mes &&
+            h.recomendacion === texto &&
+            h.estado === "Pendiente"
+        );
+
+        if (!exists && !texto.includes("Desempeño controlado")) {
+            historialRecomendaciones.push({
+                fecha: new Date().toLocaleString(),
+                ejecutivo: contexto.ejecutivo || "Todos",
+                mes: contexto.mes || "Actual",
+                recomendacion: texto,
+                estado: "Pendiente"
+            });
+            added = true;
+        }
+    });
+
+    if (added) {
+        localStorage.setItem('historialRecomendaciones', JSON.stringify(historialRecomendaciones));
+        renderHistorial();
+    }
+}
+
+function renderHistorial() {
+    const tbody = document.getElementById("tablaHistorial");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+
+    // Mostrar los más recientes primero
+    [...historialRecomendaciones].reverse().forEach((item, originalIdx) => {
+        // Encontrar el índice original ya que invertimos la lista para mostrarla
+        const idx = historialRecomendaciones.length - 1 - originalIdx;
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td>${item.fecha}</td>
+            <td style="font-weight:700;">${item.ejecutivo}</td>
+            <td><span class="status-badge" style="background:#DEE2E6; color:#495057;">${item.mes}</span></td>
+            <td>${item.recomendacion}</td>
+            <td>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <input type="checkbox" 
+                        class="custom-checkbox"
+                        ${item.estado === "Ejecutada" ? "checked" : ""} 
+                        onchange="marcarEjecutada(${idx})">
+                    <span class="status-badge ${item.estado === "Ejecutada" ? "status-ejecutada" : "status-pendiente"}">
+                        ${item.estado}
+                    </span>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function marcarEjecutada(index) {
+    if (historialRecomendaciones[index]) {
+        // Toggle estado
+        historialRecomendaciones[index].estado = historialRecomendaciones[index].estado === "Ejecutada" ? "Pendiente" : "Ejecutada";
+        localStorage.setItem('historialRecomendaciones', JSON.stringify(historialRecomendaciones));
+        renderHistorial();
+    }
+}
+
+function toggleHistorialModal() {
+    const modal = document.getElementById('historialModal');
+    if (modal) {
+        modal.classList.toggle('active');
+        if (modal.classList.contains('active')) renderHistorial();
+    }
+}
+
+function priorizarRecomendaciones(recomendaciones) {
+    const prioridad = {
+        "Reducir carga operativa y reforzar uso de scripts.": 1,
+        "Coaching operativo enfocado en cierre efectivo.": 2,
+        "Reforzar criterio de resolución antes de derivar a EPA.": 3,
+        "Capacitación inmediata en registro y control de calidad.": 4,
+        "Reforzar calidad de atención y manejo de expectativas.": 5
+    };
+
+    return recomendaciones.sort(
+        (a, b) => (prioridad[a] || 99) - (prioridad[b] || 99)
+    );
+}
+
+function processIntelligentAlerts() {
+    console.log("Iniciando análisis de Alertas Inteligentes...");
+    const banner = document.getElementById('alertsBanner');
+    const badge = document.getElementById('alertsCounter');
+    if (!banner) return;
+
+    banner.innerHTML = '';
+    let alertCount = 0;
+    const activeAlerts = [];
+
+    // ANALYZE GLOBAL TRENDS & RISKS
+    // We analyze the aggregate performance for each KPI
+    Object.keys(metas).forEach(kpiKey => {
+        const resolved = resolveKpiKey(kpiKey);
+        const series = agruparPorMes(currentData, 'TODOS', resolved);
+        const available = series.filter(v => v !== null && v !== 0);
+
+        if (available.length < 1) return;
+
+        const valorActual = available[available.length - 1];
+        const pred = predictKpi(series, kpiKey);
+        const valorProyectado = pred.estimate;
+        const tendencia = pred.trend; // '↑' Mejora, '↓' Deterioro, '→' Estable
+
+        const alerta = evaluateIntelligentAlert(kpiKey, valorActual, valorProyectado, tendencia);
+
+        if (alerta.nivel !== 'OK') {
+            activeAlerts.push(alerta);
+            renderAlertItem(banner, alerta);
+            alertCount++;
+
+            // Registrar Recomendación Global en el Historial
+            if (alerta.recomendacion) {
+                registrarRecomendaciones([alerta.recomendacion], {
+                    ejecutivo: "GLOBAL",
+                    mes: "Análisis " + kpiKey.toUpperCase()
+                });
+            }
+        }
+    });
+
+    // Handle counter badge
+    if (badge) {
+        badge.innerText = alertCount;
+        badge.style.display = alertCount > 0 ? 'block' : 'none';
+
+        // Add subtle animation if count > 0
+        if (alertCount > 0) {
+            badge.parentElement.classList.add('pulse');
+            setTimeout(() => badge.parentElement.classList.remove('pulse'), 2000);
+        }
+    }
+
+    if (alertCount === 0) {
+        banner.innerHTML = '<div style="text-align:center; padding:12px; color:var(--text-secondary); font-size:0.9rem;">🟢 Todos los KPIs operan dentro de los parámetros normales.</div>';
+    }
+}
+
+function evaluateIntelligentAlert(kpi, valorActual, valorProyectado, tendencia) {
+    const meta = metas[kpi];
+    const rec = recommendAction(kpi, valorProyectado < meta ? 'Alto' : 'Medio');
+
+    // 1. CRITICAL: Projected value fails meta
+    if (valorProyectado < meta && kpi !== 'tmo' || (kpi === 'tmo' && valorProyectado > meta)) {
+        return {
+            kpi: kpi.toUpperCase(),
+            nivel: "critica",
+            icon: "fas fa-exclamation-triangle",
+            titulo: `${kpi.toUpperCase()} en Riesgo Crítico`,
+            desc: `Proyección (${formatKpiValue(kpi, valorProyectado)}) incumple la meta (${formatKpiValue(kpi, meta)}).`,
+            recomendacion: rec
+        };
+    }
+
+    // 2. WARNING: Negative trend (Deterioro)
+    if (tendencia === '↓' && kpi !== 'tmo' || (kpi === 'tmo' && tendencia === '↑')) {
+        return {
+            kpi: kpi.toUpperCase(),
+            nivel: "advertencia",
+            icon: "fas fa-chart-line",
+            titulo: `Tendencia Negativa en ${kpi.toUpperCase()}`,
+            desc: `Se observa un deterioro constante en los últimos meses. Valor actual: ${formatKpiValue(kpi, valorActual)}.`,
+            recomendacion: rec
+        };
+    }
+
+    // 3. INFO: Close to meta
+    const margin = kpi === 'tmo' ? 0.5 : 2; // 0.5 min or 2%
+    const isClose = kpi === 'tmo'
+        ? (valorActual > meta - margin && valorActual <= meta)
+        : (valorActual < meta + margin && valorActual >= meta);
+
+    if (isClose) {
+        return {
+            kpi: kpi.toUpperCase(),
+            nivel: "info",
+            icon: "fas fa-info-circle",
+            titulo: `${kpi.toUpperCase()} en Observación`,
+            desc: `El KPI está operando cerca del límite de la meta (${formatKpiValue(kpi, meta)}).`,
+            recomendacion: "Mantener monitoreo preventivo."
+        };
+    }
+
+    return { nivel: "OK" };
+}
+
+function renderAlertItem(container, alert) {
+    const div = document.createElement('div');
+    div.className = `alerta ${alert.nivel}`;
+    div.innerHTML = `
+        <i class="${alert.icon}"></i>
+        <div class="alerta-content">
+            <div class="alerta-title">${alert.titulo}</div>
+            <div class="alerta-desc">${alert.desc}</div>
+            <div style="font-size:0.85rem; margin-top:4px; font-weight:600; opacity:0.8;">💡 Rec: ${alert.recomendacion}</div>
+        </div>
+    `;
+    container.appendChild(div);
 }

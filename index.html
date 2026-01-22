@@ -27,6 +27,18 @@
             <h1>Panel de Control Operacional ACHS</h1>
         </div>
         <div class="controls">
+            <!-- Intelligent Alerts Notification -->
+            <div class="notification-wrapper" id="alertsTrigger" title="Alertas Inteligentes">
+                <i class="fas fa-bell"></i>
+                <span class="notification-badge" id="alertsCounter">0</span>
+            </div>
+
+            <!-- Recommendation History Button -->
+            <div class="notification-wrapper" onclick="toggleHistorialModal()" title="Historial de Recomendaciones"
+                style="margin-right: 15px;">
+                <i class="fas fa-history"></i>
+            </div>
+
             <!-- Split Button Base de Datos -->
             <div class="split-btn-container" title="Base de Datos">
                 <button class="split-btn-main" onclick="openDatabase()">
@@ -55,15 +67,18 @@
 
     <!-- Filters -->
     <section class="filters-container">
-        <div>
-            <label for="monthFilter"
-                style="font-weight: 600; margin-right: 0.5rem; color: var(--text-secondary);">Mes(es):</label>
-            <select id="monthFilter" multiple size="4" title="Selecciona uno o varios meses (Ctrl/Cmd + clic)">
-                <option value="OCTUBRE">Octubre</option>
-                <option value="NOVIEMBRE">Noviembre</option>
-                <option value="DICIEMBRE">Diciembre</option>
-                <option value="ENERO">Enero</option>
-            </select>
+        <div class="custom-multiselect" id="monthMultiSelect">
+            <label style="font-weight: 600; margin-right: 0.5rem; color: var(--text-secondary);">Mes(es):</label>
+            <div class="multiselect-header" id="monthHeader">
+                <span id="selectedMonthsText">Seleccionar meses</span>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+            <div class="multiselect-options" id="monthOptions">
+                <label><input type="checkbox" value="OCTUBRE"> Octubre</label>
+                <label><input type="checkbox" value="NOVIEMBRE"> Noviembre</label>
+                <label><input type="checkbox" value="DICIEMBRE"> Diciembre</label>
+                <label><input type="checkbox" value="ENERO"> Enero</label>
+            </div>
         </div>
         <div>
             <label for="execFilter"
@@ -75,32 +90,33 @@
         </div>
     </section>
 
-        <!-- KPI Selector -->
-        <section class="kpi-selector" style="margin: 1rem 1rem; display:flex; gap:1rem; align-items:center;">
-                <label for="selectKPI" style="font-weight:600; color:var(--text-secondary);">KPI:</label>
-                <select id="selectKPI">
-                    <option value="todos">Todos</option>
-                    <option value="tmo">TMO</option>
-                    <option value="satEP">Satisfacción EP</option>
-                    <option value="resEP">Resolución EP</option>
-                    <option value="satSNL">Satisfacción SNL</option>
-                    <option value="resSNL">Resolución SNL</option>
-                    <option value="transfEPA">Transferencia a EPA</option>
-                    <option value="tipificaciones">Tipificaciones</option>
-                </select>
+    <!-- Main Content Wrapper -->
+    <div class="main-wrapper">
+        <!-- Sidebar for Alerts -->
+        <aside class="alerts-sidebar">
+            <h2
+                style="font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fas fa-robot" style="color: var(--achs-azul);"></i> Alertas Inteligentes
+            </h2>
+            <section class="alerts-banner" id="alertsBanner">
+                <!-- Injected via JS -->
+            </section>
+        </aside>
 
-                <div id="kpiValueDisplay" style="font-weight:700; color:var(--text-primary);">--</div>
-        </section>
-    <!-- Podium -->
-    <section class="podium-section" id="podiumContainer">
-        <!-- Filled dynamically -->
-        <div class="loader"></div>
-    </section>
+        <!-- Main Dashboard Area -->
+        <div class="content-area">
+            <!-- Podium -->
+            <section class="podium-section" id="podiumContainer">
+                <!-- Filled dynamically -->
+                <div class="loader"></div>
+            </section>
 
-    <!-- Dashboard Grid -->
-    <main class="dashboard-grid" id="dashboardGrid">
-        <!-- Cards injected via JS -->
-    </main>
+            <!-- Dashboard Grid -->
+            <main class="dashboard-grid" id="dashboardGrid">
+                <!-- Cards injected via JS -->
+            </main>
+        </div>
+    </div>
 
     <!-- Floating Button COPC -->
     <button class="fab" onclick="toggleCopcModal()" title="Ver Tabla COPC">
@@ -189,6 +205,32 @@
                     <button class="btn-secondary" id="downloadPredictJson">Descargar JSON</button>
                     <button class="btn-primary" id="sendPredictTeams">Enviar Predicción a Teams</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Historial de Recomendaciones -->
+    <div class="modal-overlay" id="historialModal">
+        <div class="modal-content" style="max-width: 1000px;">
+            <div class="modal-header">
+                <h2><i class="fas fa-history"></i> Historial de Recomendaciones Operacionales</h2>
+                <button class="close-modal" onclick="toggleHistorialModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="historial-box">
+                <table class="historial-table">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Ejecutivo</th>
+                            <th>Mes</th>
+                            <th>Recomendación</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaHistorial">
+                        <!-- Filled via JS -->
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
