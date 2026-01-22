@@ -2703,11 +2703,20 @@ function showPredictive() {
     // Inicializar filtros del modal
     const execSel = document.getElementById('predictExecSelect');
     const kpiSel = document.getElementById('predictKpiSelect');
+    const session = JSON.parse(localStorage.getItem('userSession'));
+    const isEjecutivo = session && session.rol === 'ejecutivo';
 
     if (execSel) {
-        const names = Array.from(new Set(currentData.map(d => d.name).filter(Boolean))).sort();
-        execSel.innerHTML = '<option value="all">Todo el Equipo</option>';
-        names.forEach(n => { const o = document.createElement('option'); o.value = n; o.innerText = n; execSel.appendChild(o); });
+        if (isEjecutivo) {
+            execSel.innerHTML = `<option value="${session.ejecutivo}">${session.ejecutivo}</option>`;
+            execSel.value = session.ejecutivo;
+            execSel.disabled = true;
+        } else {
+            const names = Array.from(new Set(currentData.map(d => d.name).filter(Boolean))).sort();
+            execSel.innerHTML = '<option value="all">Todo el Equipo</option>';
+            names.forEach(n => { const o = document.createElement('option'); o.value = n; o.innerText = n; execSel.appendChild(o); });
+            execSel.disabled = false;
+        }
     }
 
     // Cerrar modal
@@ -2726,8 +2735,15 @@ function showPredictive() {
 
 function renderPredictiveContent() {
     const container = document.getElementById('predictContainer');
-    const execVal = document.getElementById('predictExecSelect').value;
+    const session = JSON.parse(localStorage.getItem('userSession'));
+    const isEjecutivo = session && session.rol === 'ejecutivo';
+
+    let execVal = document.getElementById('predictExecSelect').value;
     const kpiVal = document.getElementById('predictKpiSelect').value;
+
+    if (isEjecutivo) {
+        execVal = session.ejecutivo;
+    }
 
     if (!container) return;
 
