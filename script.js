@@ -453,7 +453,19 @@ function processData(data) {
             }
         });
 
-        d.score = calcularScoreCOPC(kpisValues, alerts);
+        // Forzar recalcularScore con mapeo exacto
+        const kpisValuesRecalc = {
+            tmo: Number(d.tmo) || 0,
+            satEP: Number(d.satEp) || 0,
+            resEP: Number(d.resEp) || 0,
+            satSNL: Number(d.satSnl) || 0,
+            resSNL: Number(d.resSnl) || 0,
+            transfEPA: Number(d.transfEPA) || 0,
+            tipificaciones: Number(d.tipificaciones) || 0
+        };
+
+        const scoreCalculado = calcularScoreCOPC(kpisValuesRecalc, alerts);
+        d.score = scoreCalculado;
         const classification = clasificarCOPC(d.score);
         d.copcNivel = classification.nivel;
         d.copcColor = classification.color;
@@ -591,7 +603,10 @@ function renderDashboard() {
         card.innerHTML = `
             <div class="card-header">
                 <div>
-                    <div class="exec-name">${d.name}</div>
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <div class="exec-name">${d.name}</div>
+                        <span style="background: var(--achs-azul); color: white; font-size: 0.65rem; padding: 2px 8px; border-radius: 4px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">${d.mes}</span>
+                    </div>
                     <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 2px;">
                         <i class="fas fa-medal" style="color: ${d.copcColor === 'green' ? '#00A859' : (d.copcColor === 'yellow' ? '#FACC15' : '#DC2626')}"></i> 
                         Score COPC: <strong>${d.score}</strong> (<span>${d.copcNivel}</span>)
@@ -614,18 +629,15 @@ function renderDashboard() {
                      <span class="kpi-value" style="color: ${d.copcColor === 'green' ? '#00A859' : (d.copcColor === 'yellow' ? '#FACC15' : '#DC2626')}">${d.score}</span>
                 </div>
             </div>
-            ${showBox ? `
-            <div class="recomendaciones-box" style="display: block; margin-top: 1rem;">
-                <h4 style="font-size: 0.85rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; color: #92400E;">
-                    <i class="fas fa-lightbulb"></i> Acciones Recomendadas
+            <!-- Recomendaciones Box -->
+            <div class="recomendaciones-box" style="border-left-color: ${hasFails ? '#F9A825' : '#6BBE45'};">
+                <h4 style="color: ${hasFails ? '#92400E' : 'var(--achs-verde-oscuro)'};">
+                    <i class="fas fa-lightbulb"></i> ${hasFails ? 'Acciones Recomendadas' : 'Estado de Desempeño'}
                 </h4>
-                <ul style="list-style: none; padding: 0;">
-                    ${recomendaciones.filter(r => !r.includes("Desempeño controlado")).map(acc => `
-                    <li style="font-size: 0.85rem; margin-bottom: 4px; padding-left: 12px; position: relative; font-weight: 500;">
-                        <span style="position: absolute; left: 0; color: #F9A825;">•</span> ${acc}
-                    </li>`).join('')}
+                <ul>
+                    ${recomendaciones.map(acc => `<li>${acc}</li>`).join('')}
                 </ul>
-            </div>` : ''}
+            </div>
         `;
         grid.appendChild(card);
     });
@@ -641,6 +653,29 @@ function renderKpiItem(label, val, target, isHigherBetter, name, kpiKey, iconCla
             <div class="semaphore ${colorClass}"></div>
         </div>
     `;
+}
+
+// Utility to get a short name: "First Name + First Surname"
+function getShortName(fullName) {
+    if (!fullName) return "---";
+
+    // Si hay una coma (Formato: Apellidos, Nombres)
+    if (fullName.includes(',')) {
+        const parts = fullName.split(',');
+        const apellidos = parts[0].trim().split(' ');
+        const nombres = parts[1].trim().split(' ');
+        return `${nombres[0]} ${apellidos[0]}`;
+    }
+
+    const words = fullName.trim().split(/\s+/);
+    if (words.length >= 3) {
+        // Heurística para formato ACHS: ApellidoP ApellidoM Nombre1...
+        // Retornamos Nombre1 + ApellidoP
+        return `${words[2]} ${words[0]}`;
+    }
+
+    // Fallback: Mostrar las primeras dos palabras
+    return words.slice(0, 2).join(' ');
 }
 
 function getSemaphoreColor(val, target, isHigherBetter) {
@@ -719,7 +754,7 @@ function renderPodium(top3, kpiKey) {
                   <div style="font-size:1.2rem;">${place}º</div>
                 </div>
             </div>
-            <div class="podium-name">${d.name.split(' ')[0]}</div>
+            <div class="podium-name">${getShortName(d.name)}</div>
         `;
         container.appendChild(div);
     });
@@ -1441,6 +1476,182 @@ function generarRecomendaciones(kpis) {
 
     return priorizarRecomendaciones(acciones);
 }
+
+// --- PERSONALIZACIÓN POR ROL & ACCESO (RBAC ACHS) ---
+
+const USUARIOS_DB = {
+    // Ejecutivos
+    "msastudillom@ext.achs.cl": { rol: "ejecutivo", ejecutivo: "Astudillo Marin Manuela Soledad", name: "Manuela Astudillo" },
+    "mncastroc@ext.achs.cl": { rol: "ejecutivo", ejecutivo: "Castro Cáceres Marcia Nicole", name: "Marcia Castro" },
+    "adchacona@ext.achs.cl": { rol: "ejecutivo", ejecutivo: "Chacón Avilés Alejandra Daniela", name: "Alejandra Chacón" },
+    "atgarciav@ext.achs.cl": { rol: "ejecutivo", ejecutivo: "Garcia Velasco Ataly Tatiana", name: "Ataly Garcia" },
+    "esgongoraz@ext.achs.cl": { rol: "ejecutivo", ejecutivo: "Góngora Zuleta Elsa Susana", name: "Elsa Góngora" },
+    "klhaldt@ext.achs.cl": { rol: "ejecutivo", ejecutivo: "Hald Tello Katia Liza", name: "Katia Hald" },
+    "jallancapich@ext.achs.cl": { rol: "ejecutivo", ejecutivo: "Llancapichun Soto Johana Angelica", name: "Johana Llancapichun" },
+    "nzmendezp@ext.achs.cl": { rol: "ejecutivo", ejecutivo: "Méndez Pérez Nanci Zobeida", name: "Nanci Méndez" },
+    "mamonsalvec@achs.cl": { rol: "ejecutivo", ejecutivo: "Monsalve Corvacho Manuel Alejandro", name: "Manuel Monsalve" },
+    "malolivaresg@ext.achs.cl": { rol: "ejecutivo", ejecutivo: "Olivares González Maximiliano Alfonso", name: "Maximiliano Olivares" },
+    "eorellanam@ext.achs.cl": { rol: "ejecutivo", ejecutivo: "Orellana Mallea Ema Alejandra", name: "Ema Orellana" },
+    "appenailillc@ext.achs.cl": { rol: "ejecutivo", ejecutivo: "Penailillo Cartagena Alejandro Patricio", name: "Alejandro Penailillo" },
+    "dprodriguezf@ext.achs.cl": { rol: "ejecutivo", ejecutivo: "Rodriguez Fernandez Daniela Paz", name: "Daniela Rodriguez" },
+    "jmrodriguezz@ext.achs.cl": { rol: "ejecutivo", ejecutivo: "Rodríguez Zenteno José Manuel", name: "José Rodríguez" },
+    "masalgadot@ext.achs.cl": { rol: "ejecutivo", ejecutivo: "Salgado Tobar Melissa Aracelli", name: "Melissa Salgado" },
+    "mlvelasquezp@ext.achs.cl": { rol: "ejecutivo", ejecutivo: "Velasquez Perez María Loreto", name: "María Velasquez" },
+
+    // Jefatura
+    "rgberraf@achs.cl": { rol: "jefatura", ejecutivo: null, name: "Renzo Berra" },
+    "lsantander@ext.achs.cl": { rol: "jefatura", ejecutivo: null, name: "Luis Santander" },
+
+    // Supervisor
+    "lpgarciac@ext.achs.cl": { rol: "supervisor", ejecutivo: null, name: "Luz Garcia" },
+    "bvdiaza@ext.achs.cl": { rol: "supervisor", ejecutivo: null, name: "Barbara Diaz" }
+};
+
+const PERMISOS = {
+    jefatura: {
+        verRanking: true,
+        enviarTeams: true,
+        editarMetas: true,
+        cambiarRol: true
+    },
+    supervisor: {
+        verRanking: true,
+        enviarTeams: true,
+        editarMetas: false,
+        cambiarRol: false
+    },
+    ejecutivo: {
+        verRanking: true,
+        enviarTeams: false,
+        editarMetas: false,
+        cambiarRol: false,
+        verHistorial: true
+    }
+};
+
+const SECCIONES_BLOQUEADAS = {
+    ejecutivo: [], // Quitamos el bloqueo para que vean sus alertas
+    supervisor: [],
+    jefatura: []
+};
+
+const MENSAJES_ROL = {
+    jefatura: "Visión estratégica del desempeño operacional.",
+    supervisor: "Gestión activa y control diario de plataforma.",
+    ejecutivo: "Tu desempeño actual y acciones de mejora sugeridas."
+};
+
+function login() {
+    const email = document.getElementById("emailLogin").value.toLowerCase();
+    const errorEl = document.getElementById("loginError");
+    const user = USUARIOS_DB[email];
+
+    if (!user) {
+        if (errorEl) errorEl.style.display = "block";
+        return;
+    }
+
+    if (errorEl) errorEl.style.display = "none";
+    localStorage.setItem("userSession", JSON.stringify(user));
+
+    // Ocultar Overlay
+    document.getElementById("loginOverlay").style.display = "none";
+
+    // Configurar UI
+    const userNameTxt = document.getElementById("userNameTxt");
+    if (userNameTxt) userNameTxt.innerText = user.name;
+    document.getElementById("userInfo").style.display = "block";
+
+    aplicarRol(user.rol);
+}
+
+function logout() {
+    localStorage.removeItem("userSession");
+    location.reload();
+}
+
+function aplicarRol(rol) {
+    console.log(`Aplicando permisos para: ${rol}`);
+    const msgEl = document.getElementById("rolMessage");
+    if (msgEl) msgEl.innerText = MENSAJES_ROL[rol] || "";
+
+    // 1. Visibilidad básica por data-rol
+    document.querySelectorAll("[data-rol]").forEach(el => {
+        const allowed = el.getAttribute("data-rol").split(" ");
+        if (allowed.includes(rol)) {
+            el.style.display = ""; // Reset to default (block/flex/etc)
+        } else {
+            el.style.display = "none";
+        }
+    });
+
+    // 2. Control fino de permisos (Bloqueo)
+    const p = PERMISOS[rol];
+    if (p) {
+        // Ejemplo: si no puede ver ranking, bloqueamos el podio
+        const podio = document.getElementById("podiumContainer");
+        if (podio) {
+            if (!p.verRanking) podio.classList.add("bloqueado");
+            else podio.classList.remove("bloqueado");
+        }
+
+        // Selector manual solo si tiene permiso cambiarRol
+        const manualSelector = document.getElementById("manualRoleSelector");
+        if (manualSelector) {
+            manualSelector.style.display = p.cambiarRol ? "flex" : "none";
+        }
+    }
+
+    // 3. Aplicar bloqueos específicos
+    if (SECCIONES_BLOQUEADAS[rol]) {
+        SECCIONES_BLOQUEADAS[rol].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.classList.add("bloqueado");
+        });
+    }
+
+    // 4. Auto-filtro para Ejecutivos (Seguridad)
+    const session = JSON.parse(localStorage.getItem('userSession'));
+    const execFilter = document.getElementById('execFilter');
+    if (rol === 'ejecutivo' && session && session.ejecutivo && execFilter) {
+        execFilter.value = session.ejecutivo;
+        // Impedir que cambie el filtro
+        execFilter.disabled = true;
+        execFilter.style.background = "#f1f5f9";
+        execFilter.style.color = "#64748b";
+    } else if (execFilter) {
+        execFilter.disabled = false;
+        execFilter.style.background = "";
+        execFilter.style.color = "";
+    }
+
+    localStorage.setItem('userRole', rol);
+    renderDashboard();
+}
+
+// Escuchador para Sesión y Cambio de Rol
+document.addEventListener('DOMContentLoaded', () => {
+    // Verificar sesión activa
+    const session = JSON.parse(localStorage.getItem('userSession'));
+    const loginOverlay = document.getElementById('loginOverlay');
+
+    if (session) {
+        if (loginOverlay) loginOverlay.style.display = "none";
+        const userNameTxt = document.getElementById("userNameTxt");
+        if (userNameTxt) userNameTxt.innerText = session.name;
+        document.getElementById("userInfo").style.display = "block";
+        aplicarRol(session.rol);
+    } else {
+        if (loginOverlay) loginOverlay.style.display = "flex";
+    }
+
+    const selector = document.getElementById('rolSelector');
+    if (selector) {
+        selector.addEventListener('change', (e) => {
+            aplicarRol(e.target.value);
+        });
+    }
+});
 
 // --- HISTORIAL DE RECOMENDACIONES (Persistence & Management) ---
 

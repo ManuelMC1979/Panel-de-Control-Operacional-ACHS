@@ -157,8 +157,121 @@ body {
     overflow-x: hidden;
 }
 
+/* === LOGIN OVERLAY === */
+.login-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, var(--achs-azul-oscuro) 0%, #0f172a 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.login-card {
+    background: var(--bg-card);
+    padding: 3rem;
+    border-radius: 20px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    text-align: center;
+    width: 100%;
+    max-width: 400px;
+    animation: fadeIn 0.5s ease;
+}
+
+.login-input {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-body);
+    color: var(--text-primary);
+    margin-bottom: 1.5rem;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+}
+
+.login-input:focus {
+    border-color: var(--achs-azul);
+    outline: none;
+}
+
+.login-btn {
+    width: 100%;
+    padding: 12px;
+    background: var(--achs-azul);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.2s;
+}
+
+.login-btn:hover {
+    background: var(--achs-azul-oscuro);
+    transform: translateY(-2px);
+}
+
+.bloqueado {
+    opacity: 0.4;
+    pointer-events: none;
+    filter: grayscale(0.8);
+    position: relative;
+}
+
+.bloqueado::after {
+    content: "🔒 Bloqueado";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    z-index: 10;
+}
+
 /* === HEADER === */
 /* === HEADER === */
+.header-select {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s;
+    outline: none;
+}
+
+.header-select:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.header-select option {
+    background: var(--achs-azul-oscuro);
+    color: white;
+}
+
+.role-selector-container {
+    display: flex;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.15);
+    padding: 2px 12px;
+    border-radius: 10px;
+    margin-right: 1.5rem;
+}
+
 .header {
     background: linear-gradient(135deg, var(--achs-azul) 0%, var(--achs-azul-oscuro) 100%);
     color: var(--achs-blanco);
@@ -654,34 +767,51 @@ select {
 }
 
 .recomendaciones-box {
-    background: #FFFFFF;
-    border-left: 6px solid #F9A825;
-    /* Alerta/Advertencia */
-    padding: 16px;
+    background: var(--bg-card);
+    border-left: 6px solid #6BBE45;
+    padding: 1.2rem;
     border-radius: 12px;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, .06);
-    margin-top: 1rem;
-    display: none;
-    /* Hidden by default, shown via JS if alerts exist */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    margin-top: 1.5rem;
+    display: block !important;
+    border: 1px solid var(--border-color);
+    border-left-width: 6px;
 }
 
 [data-theme="dark"] .recomendaciones-box {
-    background: #1E293B;
-    border-color: #4ade80;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, .3);
+    background: #1e293b;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .recomendaciones-box h4 {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    color: var(--achs-verde-oscuro);
-    margin-bottom: 0.5rem;
+    gap: 0.6rem;
+    margin-bottom: 0.8rem;
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.recomendaciones-box ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
 }
 
 .recomendaciones-box li {
-    margin: 8px 0;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    margin-bottom: 0.5rem;
+    padding-left: 1.2rem;
+    position: relative;
     font-weight: 500;
+}
+
+.recomendaciones-box li::before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    font-weight: bold;
 }
 
 /* === LAYOUT REDESIGN === */

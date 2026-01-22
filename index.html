@@ -20,27 +20,62 @@
 
 <body>
 
+    <!-- Login Overlay -->
+    <div id="loginOverlay" class="login-overlay">
+        <div class="login-card">
+            <i class="fas fa-shield-alt" style="font-size: 3rem; color: var(--achs-azul); margin-bottom: 1.5rem;"></i>
+            <h2>Acceso al Sistema ACHS</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">Ingrese su correo institucional</p>
+            <input type="email" id="emailLogin" placeholder="usuario@achs.cl" class="login-input">
+            <button onclick="login()" class="login-btn">Entrar al Dashboard</button>
+            <p id="loginError" style="color: var(--achs-red); margin-top: 1rem; font-size: 0.9rem; display: none;">
+                Usuario no autorizado</p>
+        </div>
+    </div>
+
     <!-- Header -->
     <header class="header">
         <div class="brand">
             <i class="fas fa-shield-alt" style="color: var(--achs-blanco); font-size: 1.8rem;"></i>
-            <h1>Panel de Control Operacional ACHS</h1>
+            <div>
+                <h1>Panel de Control Operacional ACHS</h1>
+                <p id="rolMessage" style="font-size: 0.85rem; opacity: 0.9; margin-top: 2px;">Cargando vista...</p>
+            </div>
         </div>
         <div class="controls">
+            <!-- User Info & Logout -->
+            <div id="userInfo" style="margin-right: 1.5rem; text-align: right; display: none;">
+                <div id="userNameTxt" style="font-weight: 700; font-size: 0.9rem;">Usuario</div>
+                <div onclick="logout()"
+                    style="font-size: 0.75rem; cursor: pointer; color: var(--achs-verde-claro); text-decoration: underline;">
+                    Cerrar Sesión</div>
+            </div>
+
+            <!-- Role Selector (Hidden by default) -->
+            <div class="role-selector-container" id="manualRoleSelector" style="display: none;">
+                <i class="fas fa-user-tag" style="margin-right: 8px; font-size: 0.9rem; opacity: 0.8;"></i>
+                <select id="rolSelector" class="header-select">
+                    <option value="jefatura">Vista: Jefatura</option>
+                    <option value="supervisor">Vista: Supervisor</option>
+                    <option value="ejecutivo">Vista: Ejecutivo</option>
+                </select>
+            </div>
+
             <!-- Intelligent Alerts Notification -->
-            <div class="notification-wrapper" id="alertsTrigger" title="Alertas Inteligentes">
+            <div class="notification-wrapper" id="alertsTrigger" title="Alertas Inteligentes"
+                data-rol="jefatura supervisor ejecutivo">
                 <i class="fas fa-bell"></i>
                 <span class="notification-badge" id="alertsCounter">0</span>
             </div>
 
             <!-- Recommendation History Button -->
             <div class="notification-wrapper" onclick="toggleHistorialModal()" title="Historial de Recomendaciones"
-                style="margin-right: 15px;">
+                style="margin-right: 15px;" data-rol="jefatura supervisor ejecutivo">
                 <i class="fas fa-history"></i>
             </div>
 
             <!-- Split Button Base de Datos -->
-            <div class="split-btn-container" title="Base de Datos">
+            <div class="split-btn-container" title="Base de Datos" data-rol="jefatura supervisor">
                 <button class="split-btn-main" onclick="openDatabase()">
                     <i class="fas fa-file-excel"></i> Base de Datos
                 </button>
@@ -66,7 +101,7 @@
     </header>
 
     <!-- Filters -->
-    <section class="filters-container">
+    <section class="filters-container" data-rol="jefatura supervisor ejecutivo">
         <div class="custom-multiselect" id="monthMultiSelect">
             <label style="font-weight: 600; margin-right: 0.5rem; color: var(--text-secondary);">Mes(es):</label>
             <div class="multiselect-header" id="monthHeader">
@@ -93,7 +128,7 @@
     <!-- Main Content Wrapper -->
     <div class="main-wrapper">
         <!-- Sidebar for Alerts -->
-        <aside class="alerts-sidebar">
+        <aside class="alerts-sidebar" data-rol="jefatura supervisor ejecutivo">
             <h2
                 style="font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
                 <i class="fas fa-robot" style="color: var(--achs-azul);"></i> Alertas Inteligentes
@@ -106,13 +141,13 @@
         <!-- Main Dashboard Area -->
         <div class="content-area">
             <!-- Podium -->
-            <section class="podium-section" id="podiumContainer">
+            <section class="podium-section" id="podiumContainer" data-rol="jefatura supervisor ejecutivo">
                 <!-- Filled dynamically -->
                 <div class="loader"></div>
             </section>
 
             <!-- Dashboard Grid -->
-            <main class="dashboard-grid" id="dashboardGrid">
+            <main class="dashboard-grid" id="dashboardGrid" data-rol="jefatura supervisor ejecutivo">
                 <!-- Cards injected via JS -->
             </main>
         </div>
