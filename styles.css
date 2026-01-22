@@ -141,6 +141,70 @@
     --glass: rgba(30, 41, 59, 0.85);
 }
 
+/* === SKELETON LOADING === */
+.skeleton {
+    background: linear-gradient(90deg, var(--bg-card) 25%, var(--border-color) 50%, var(--bg-card) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s infinite;
+    border-radius: 4px;
+}
+
+@keyframes skeleton-loading {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+.skeleton-card {
+    height: 320px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    box-shadow: var(--shadow);
+}
+
+.skeleton-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.skeleton-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+}
+
+.skeleton-title {
+    height: 20px;
+    width: 60%;
+}
+
+.skeleton-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.skeleton-line {
+    height: 12px;
+    width: 100%;
+}
+
+.skeleton-line.short {
+    width: 40%;
+}
+
+
 * {
     box-sizing: border-box;
     margin: 0;
@@ -1229,4 +1293,156 @@ th {
 
 .badge-modal {
     font-weight: 800;
+}
+
+/* === EXECUTIVE SUMMARY STYLES === */
+.summary-card {
+    background: var(--bg-card);
+    border-left: 6px solid var(--achs-verde);
+    padding: 16px 20px;
+    margin: 10px 20px 20px 20px;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+}
+
+.summary-card h2 {
+    font-size: 1.1rem;
+    color: var(--achs-azul);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-top: 12px;
+}
+
+.summary-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.summary-item .label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.summary-item .value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.summary-message {
+    margin-top: 15px;
+    padding: 12px;
+    background: rgba(0, 115, 188, 0.05);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    color: var(--text-main);
+    border-left: 3px solid var(--achs-azul-claro);
+}
+
+/* Trends */
+.trend {
+    font-size: 0.8rem;
+    margin-left: 6px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.trend.up {
+    color: var(--achs-red);
+}
+
+.trend.down {
+    color: var(--achs-verde);
+}
+
+.trend.flat {
+    color: var(--text-secondary);
+}
+
+.btn-refresh-small {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 4px;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-refresh-small:hover {
+    background: rgba(0, 115, 188, 0.1);
+    color: var(--achs-azul);
+    transform: rotate(180deg);
+}
+
+/* Heatmap Styles */
+.heatmap-container {
+    background: var(--bg-card);
+    padding: 16px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    margin-top: 20px;
+    overflow-x: auto;
+}
+
+#riskHeatmap {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: center;
+    min-width: 600px;
+}
+
+#riskHeatmap th,
+#riskHeatmap td {
+    padding: 12px 8px;
+    border: 1px solid var(--border-color);
+    font-size: 0.85rem;
+}
+
+#riskHeatmap th {
+    background: var(--bg-body);
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.risk-low {
+    background-color: rgba(5, 150, 105, 0.1) !important;
+    color: #059669;
+}
+
+.risk-medium {
+    background-color: rgba(217, 119, 6, 0.1) !important;
+    color: #d97706;
+}
+
+.risk-high {
+    background-color: rgba(220, 38, 38, 0.1) !important;
+    color: #dc2626;
+}
+
+.risk-cell {
+    font-weight: 600;
+    cursor: help;
+    transition: all 0.2s ease;
+}
+
+.risk-cell:hover {
+    filter: brightness(0.9);
+    transform: scale(1.02);
 }

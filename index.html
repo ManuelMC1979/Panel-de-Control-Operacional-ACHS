@@ -125,6 +125,41 @@
         </div>
     </section>
 
+    <!-- Resumen Ejecutivo -->
+    <section id="executiveSummary" class="summary-card" data-rol="jefatura supervisor">
+        <h2><i class="fas fa-brain"></i> Análisis Operativo Ejecutivo</h2>
+        <div class="summary-grid">
+            <div class="summary-item">
+                <span class="label">Estado General</span>
+                <div>
+                    <span id="overallStatus" class="value">Calculando...</span>
+                    <span id="overallTrend" class="trend"></span>
+                </div>
+            </div>
+            <div class="summary-item">
+                <span class="label">Ejecutivos en Riesgo (Críticos)</span>
+                <div>
+                    <span id="riskCount" class="value">--</span>
+                    <span id="riskTrend" class="trend"></span>
+                </div>
+            </div>
+            <div class="summary-item">
+                <span class="label">Desviación Principal</span>
+                <div>
+                    <span id="mainDeviation" class="value">--</span>
+                    <span id="deviationTrend" class="trend"></span>
+                </div>
+            </div>
+            <div class="summary-item">
+                <span class="label">Foco Recomendado</span>
+                <span id="recommendedAction" class="value">--</span>
+            </div>
+        </div>
+        <div id="summaryMessage" class="summary-message">
+            Procesando indicadores del periodo seleccionado para generar insights...
+        </div>
+    </section>
+
     <!-- Main Content Wrapper -->
     <div class="main-wrapper">
         <!-- Sidebar for Alerts -->
@@ -142,13 +177,61 @@
         <div class="content-area">
             <!-- Podium -->
             <section class="podium-section" id="podiumContainer" data-rol="jefatura supervisor ejecutivo">
-                <!-- Filled dynamically -->
-                <div class="loader"></div>
+                <!-- Skeleton for Podium -->
+                <div style="display: flex; gap: 20px; align-items: flex-end; justify-content: center; height: 151px;">
+                    <div class="skeleton" style="width: 80px; height: 100px; border-radius: 8px 8px 0 0;"></div>
+                    <div class="skeleton" style="width: 80px; height: 140px; border-radius: 8px 8px 0 0;"></div>
+                    <div class="skeleton" style="width: 80px; height: 80px; border-radius: 8px 8px 0 0;"></div>
+                </div>
             </section>
 
             <!-- Dashboard Grid -->
             <main class="dashboard-grid" id="dashboardGrid" data-rol="jefatura supervisor ejecutivo">
-                <!-- Cards injected via JS -->
+                <!-- Skeleton Loading State -->
+                <div class="skeleton-card">
+                    <div class="skeleton-header">
+                        <div class="skeleton skeleton-avatar"></div>
+                        <div class="skeleton skeleton-title"></div>
+                    </div>
+                    <div class="skeleton-content">
+                        <div class="skeleton skeleton-line"></div>
+                        <div class="skeleton skeleton-line"></div>
+                        <div class="skeleton skeleton-line short"></div>
+                    </div>
+                </div>
+                <div class="skeleton-card">
+                    <div class="skeleton-header">
+                        <div class="skeleton skeleton-avatar"></div>
+                        <div class="skeleton skeleton-title"></div>
+                    </div>
+                    <div class="skeleton-content">
+                        <div class="skeleton skeleton-line"></div>
+                        <div class="skeleton skeleton-line"></div>
+                        <div class="skeleton skeleton-line short"></div>
+                    </div>
+                </div>
+                <div class="skeleton-card">
+                    <div class="skeleton-header">
+                        <div class="skeleton skeleton-avatar"></div>
+                        <div class="skeleton skeleton-title"></div>
+                    </div>
+                    <div class="skeleton-content">
+                        <div class="skeleton skeleton-line"></div>
+                        <div class="skeleton skeleton-line"></div>
+                        <div class="skeleton skeleton-line short"></div>
+                    </div>
+                </div>
+                <div class="skeleton-card">
+                    <div class="skeleton-header">
+                        <div class="skeleton skeleton-avatar"></div>
+                        <div class="skeleton skeleton-title"></div>
+                    </div>
+                    <div class="skeleton-content">
+                        <div class="skeleton skeleton-line"></div>
+                        <div class="skeleton skeleton-line"></div>
+                        <div class="skeleton skeleton-line short"></div>
+                    </div>
+                </div>
             </main>
         </div>
     </div>
@@ -182,7 +265,13 @@
     <div class="modal-overlay" id="evolModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Evolutivo por KPI</h2>
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <h2>Evolutivo por KPI</h2>
+                    <button class="btn-refresh-small" onclick="showEvolutionary(null, null, true)"
+                        title="Forzar actualización de todo el histórico">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
                 <button class="close-modal" id="closeEvol"><i class="fas fa-times"></i></button>
             </div>
             <div id="evolContainer">

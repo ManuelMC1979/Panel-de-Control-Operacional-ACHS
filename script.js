@@ -103,6 +103,33 @@ function matchMonth(dataMonth, targetMonth) {
     }
     return false;
 }
+// --- CACHE MANAGEMENT ---
+function getTodayDate() {
+    return new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+}
+
+const SheetCache = {
+    get: (month) => {
+        try {
+            const cache = JSON.parse(localStorage.getItem('sheet_cache') || '{}');
+            const entry = cache[month];
+            if (entry && entry.date === getTodayDate()) {
+                return entry.data;
+            }
+        } catch (e) { console.error("Cache read error", e); }
+        return null;
+    },
+    set: (month, data) => {
+        try {
+            const cache = JSON.parse(localStorage.getItem('sheet_cache') || '{}');
+            cache[month] = {
+                date: getTodayDate(),
+                data: data
+            };
+            localStorage.setItem('sheet_cache', JSON.stringify(cache));
+        } catch (e) { console.error("Cache save error", e); }
+    }
+};
 
 // STATE
 let currentData = [];
@@ -135,6 +162,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Simula la carga inicial: muestra datos mock inmediatamente y luego intenta cargar la planilla real
 async function simulateInitialLoad() {
+    // 1. Intentar cargar desde el Caché diario primero
+    const cached = SheetCache.get(currentMonth);
+    if (cached) {
+        console.log(`🚀 Carga inicial desde caché diario para ${currentMonth}`);
+        currentData = cached;
+        processData(currentData);
+        // Saltamos la animación de carga si ya tenemos datos frescos
+        return;
+    }
+
+    // 2. Si no hay caché, proceder con el flujo normal
     const overlay = document.getElementById('refreshOverlay');
     if (overlay) overlay.classList.add('active');
 
@@ -258,16 +296,16 @@ function applyTheme(t) {
 }
 
 // FETCHING DATA
-async function fetchData(month) {
+async function fetchData(month, force = false) {
     showLoading(true);
     try {
-        const parsed = await fetchSheet(month);
+        const parsed = await fetchSheet(month, force);
         parsed.forEach(d => {
             if (d.mes) d.mes = d.mes.toString().trim().toUpperCase();
             if (d.name) d.name = d.name.toString().trim();
         });
         currentData = parsed;
-        console.log(`Data loaded for ${month}`, currentData);
+        console.log(`Data loaded for ${month} (Force: ${force})`, currentData);
         processData(currentData);
     } catch (err) {
         console.error('Fetch failed:', err);
@@ -278,11 +316,17 @@ async function fetchData(month) {
 }
 
 // Fetch a single sheet and return parsed rows (does not update UI)
-// Fetch a single sheet and return parsed rows (does not update UI)
-// Fetch a single sheet and return parsed rows (does not update UI)
-// Fetch a single sheet and return parsed rows (does not update UI)
-async function fetchSheet(month) {
+async function fetchSheet(month, force = false) {
     if (!month) throw new Error('Month required');
+
+    // Revisar Caché antes de ir a la red (si no es forzado)
+    if (!force) {
+        const cached = SheetCache.get(month);
+        if (cached) {
+            console.log(`📦 Usando caché diario para la hoja: ${month}`);
+            return cached;
+        }
+    }
 
     const tryFetch = async (sheetName) => {
         try {
@@ -378,14 +422,17 @@ async function fetchSheet(month) {
         };
     }).filter(d => d && d.name);
 
+    // Guardar en caché antes de retornar
+    SheetCache.set(month, parsed);
+
     return parsed;
 }
 
 // Fetch multiple sheets and merge results
-async function fetchMultipleMonths(months) {
+async function fetchMultipleMonths(months, force = false) {
     showLoading(true);
     try {
-        const promises = months.map(m => fetchSheet(m).catch(err => {
+        const promises = months.map(m => fetchSheet(m, force).catch(err => {
             console.error(`Error loading ${m}:`, err);
             return [];
         }));
@@ -633,8 +680,24 @@ function renderDashboard() {
                 <p style="color: var(--text-secondary); font-size: 0.9rem;">Verifica el filtro de meses o ejecutivo.</p>
             </div>
         `;
+        renderExecutiveSummary([]); // Clear summary if no data
         return;
     }
+
+    // Render Executive Summary before the grid (pass current and previous filtered data)
+    let previousDataFiltered = [];
+    if (selectedMonths.length === 1) {
+        // Only calculate trends if a single month is selected
+        const currentIdx = MONTHS.indexOf(selectedMonths[0]);
+        if (currentIdx > 0) {
+            const prevMonth = MONTHS[currentIdx - 1];
+            previousDataFiltered = currentData.filter(d => matchMonth(d.mes, prevMonth));
+            if (filterVal && filterVal !== 'all') {
+                previousDataFiltered = previousDataFiltered.filter(d => d.name === filterVal);
+            }
+        }
+    }
+    renderExecutiveSummary(filtered, previousDataFiltered);
 
     filtered.forEach(d => {
         try {
@@ -923,16 +986,21 @@ async function refreshData() {
     console.log('Iniciando actualización forzada...');
     // Show Full Screen Overlay
     const overlay = document.getElementById('refreshOverlay');
-    overlay.classList.add('active');
+    if (overlay) overlay.classList.add('active');
 
     // Add artificial delay to show the user something is happening (UX)
     await new Promise(resolve => setTimeout(resolve, 800));
 
-    // Force fetch
-    await fetchData();
+    // Force fetch for currently selected months
+    const sel = getSelectedMonths();
+    if (sel.length > 1) {
+        await fetchMultipleMonths(sel, true);
+    } else {
+        await fetchData(sel[0] || currentMonth, true);
+    }
 
     // Hide Overlay
-    overlay.classList.remove('active');
+    if (overlay) overlay.classList.remove('active');
 }
 
 // UI HELPERS
@@ -991,6 +1059,13 @@ function getStatusIcon(value, target, type) {
     }
 }
 
+function getShortName(fullName) {
+    if (!fullName) return "";
+    const parts = fullName.trim().split(' ');
+    if (parts.length <= 2) return fullName;
+    return `${parts[0]} ${parts[parts.length - 1]}`;
+}
+
 function rankExecutivesForTeams(data, metricId, type) {
     // Si no hay métrica o datos, salir
     if (!data || data.length === 0) return { top: [], bottom: [] };
@@ -1040,21 +1115,79 @@ function obtenerTopYBottomGlobal(data, selectedMetrics) {
     };
 }
 
-// 📋 GENERADOR DE SECCIÓN DE EQUIPO COMPLETO
+// 📋 GENERADOR DE SECCIÓN DE EQUIPO COMPLETO (FORMATO TARJETA)
 function generarBloqueEquipo(data, selectedMetrics) {
-    let txt = "📋 TEAM PERFORMANCE\n\n";
+    let txt = "👥 RENDIMIENTO DEL EQUIPO (RESUMEN)\n\n";
+
     data.forEach(e => {
-        txt += `*${getShortName(e.name)}*\n`;
-        let metricsLine = "";
+        txt += "━━━━━━━━━━━━━━━━━━━━━━\n";
+        txt += `👤 ${e.name.toUpperCase()}\n\n`;
+
+        // TMO
+        if (selectedMetrics.includes('tmo')) {
+            const val = Number(e.tmo) || 0;
+            txt += `TMO               ${getStatusIcon(val, metas.tmo, 'lower')} ${val.toFixed(1)}m\n`;
+        }
+
+        // Grupo EP
+        if (selectedMetrics.includes('satEP') || selectedMetrics.includes('resEP')) {
+            const sVal = Number(e.satEp) || 0;
+            const rVal = Number(e.resEp) || 0;
+            const sIcon = getStatusIcon(sVal, metas.satEP, 'higher');
+            txt += `Sat EP / Res EP   ${sIcon} ${sVal.toFixed(1)}% / ${rVal.toFixed(1)}%\n`;
+        }
+
+        // Grupo SNL
+        if (selectedMetrics.includes('satSNL') || selectedMetrics.includes('resSNL')) {
+            const sVal = Number(e.satSnl) || 0;
+            const rVal = Number(e.resSnl) || 0;
+            const sIcon = getStatusIcon(sVal, metas.satSNL, 'higher');
+            txt += `Sat SNL / Res SNL ${sIcon} ${sVal.toFixed(1)}% / ${rVal.toFixed(1)}%\n`;
+        }
+
+        // Grupo EPA / Tipif
+        if (selectedMetrics.includes('transfEPA') || selectedMetrics.includes('tipificaciones')) {
+            const eVal = Number(e.transfEPA) || 0;
+            const tVal = Number(e.tipificaciones) || 0;
+            const eIcon = getStatusIcon(eVal, metas.transfEPA, 'higher');
+            txt += `EPA / Tipif.      ${eIcon} ${eVal.toFixed(1)}% / ${tVal.toFixed(1)}%\n`;
+        }
+
+        txt += "━━━━━━━━━━━━━━━━━━━━━━\n\n";
+    });
+    return txt;
+}
+
+function getPerformanceNote(e, selectedMetrics, type, rank) {
+    if (type === 'top') {
+        const notes = [
+            "Consistent performance above all targets",
+            "Strong quality and resolution indicators",
+            "Stable performance with no deviations",
+            "Excellent efficiency and customer focus",
+            "Reliable and consistent KPIs"
+        ];
+        return notes[rank] || notes[0];
+    } else {
+        // Encontrar el KPI más débil
+        let worstKpi = "";
+        let worstStatus = "";
         selectedMetrics.forEach(mId => {
             const meta = metricsCatalog.find(x => x.id === mId);
             const val = Number(e[resolveKpiKey(mId)]) || 0;
-            const displayVal = mId === 'tmo' ? `${val.toFixed(1)}m` : `${val.toFixed(1)}%`;
-            metricsLine += `${meta.label}: ${displayVal} ${getStatusIcon(val, meta.target, meta.type)} | `;
+            const status = getStatusIcon(val, meta.target, meta.type);
+            if (status === "🔴") {
+                worstKpi = meta.label;
+                worstStatus = "deviation";
+            } else if (status === "🟡" && !worstKpi) {
+                worstKpi = meta.label;
+                worstStatus = "below optimal";
+            }
         });
-        txt += metricsLine.slice(0, -3) + "\n\n";
-    });
-    return txt;
+
+        if (worstKpi) return `${worstKpi} ${worstStatus}`;
+        return "Performance trend needs monitoring";
+    }
 }
 
 // 🧠 GENERADOR AUTOMÁTICO DE INFORMACIÓN (INTELIGENCIA)
@@ -1068,15 +1201,30 @@ function generarInsight(data, selectedMetrics) {
         return count + (hasRed ? 1 : 0);
     }, 0);
 
+    let insight = "━━━━━━━━━━━━━━━━━━━━━━\n";
     if (totalReds === 0) {
-        return "Overall performance is stable with no critical deviations detected.";
+        insight += "• Overall performance is stable.\n";
+        insight += "• No critical deviations detected in current period.\n";
+    } else {
+        insight += "• Overall performance is stable.\n";
+        insight += `• ${totalReds} executives show critical deviations.\n`;
+
+        // Identificar áreas de riesgo
+        const risks = [];
+        if (selectedMetrics.includes('tmo') && data.some(e => getStatusIcon(e.tmo, metas.tmo, 'lower') === "🔴")) risks.push("TMO Efficiency");
+        if (data.some(e => getStatusIcon(e.satEp, metas.satEP, 'higher') === "🔴")) risks.push("EP Satisfaction");
+        if (data.some(e => getStatusIcon(e.transfEPA, metas.transfEPA, 'higher') === "🔴")) risks.push("EPA Transfer");
+
+        if (risks.length > 0) {
+            insight += `• Main risk identified: ${risks.join(' and ')}.\n`;
+        }
     }
 
-    const tmoAlert = selectedMetrics.includes('tmo') && data.some(e => getStatusIcon(e.tmo, metas.tmo, 'lower') === "🔴");
-
-    let insight = `Main risk detected in ${totalReds} executive(s).\n`;
-    if (tmoAlert) insight += "Main risk detected: TMO deviation impacting satisfaction.\n";
-    insight += "Recommended action: reinforce scripts and adjust workload for affected executives.";
+    insight += "• Recommended actions:\n";
+    insight += "  - Reinforce scripts\n";
+    insight += "  - Adjust workload distribution\n";
+    insight += "  - Focused coaching on affected executives\n";
+    insight += "━━━━━━━━━━━━━━━━━━━━━━";
 
     return insight;
 }
@@ -1086,90 +1234,270 @@ function renderTeamsPreview(selectedMetrics, data) {
     if (!cont) return;
     cont.innerHTML = "";
 
+    // 1. Resumen de KPIs
+    const header = document.createElement('h5');
+    header.innerText = "Resumen de Tendencias Globales";
+    header.style.marginBottom = "10px";
+    header.style.borderBottom = "1px solid var(--border-color)";
+    cont.appendChild(header);
+
+    const currentViewMonths = getSelectedMonths();
+    const currentMonthName = currentViewMonths[0] || 'ENERO';
+    const prevMonthName = MONTHS[MONTHS.indexOf(currentMonthName) - 1];
+    const prevData = prevMonthName ? currentData.filter(d => matchMonth(d.mes, prevMonthName)) : [];
+
     selectedMetrics.forEach(mId => {
         const meta = metricsCatalog.find(x => x.id === mId);
-        if (!meta) return;
+        const currentAvg = data.reduce((sum, e) => sum + (Number(e[resolveKpiKey(mId)]) || 0), 0) / data.length;
+        const unit = mId === 'tmo' ? 'm' : '%';
 
-        const { top, bottom } = rankExecutivesForTeams(data, mId, meta.type);
+        let trendIcon = "➖";
+        let trendColor = "var(--text-secondary)";
 
-        const section = document.createElement('div');
-        section.style.marginBottom = '15px';
-        section.innerHTML = `<h5 style="margin-bottom:8px; border-bottom:1px solid var(--border-color); padding-bottom:4px;">${meta.label}</h5>`;
+        if (prevData.length > 0) {
+            const prevAvg = prevData.reduce((sum, e) => sum + (Number(e[resolveKpiKey(mId)]) || 0), 0) / prevData.length;
+            const trend = getTrendInfo(currentAvg, prevAvg, mId);
+            trendIcon = trend.symbol;
+            if (trend.text === 'Mejorando') trendColor = "var(--achs-verde)";
+            else if (trend.text === 'En declive') trendColor = "var(--achs-red)";
+        }
 
-        top.forEach((e, idx) => {
-            const val = Number(e[resolveKpiKey(mId)]) || 0;
-            const displayVal = mId === 'tmo' ? `${val.toFixed(1)}m` : `${val.toFixed(1)}%`;
-            section.innerHTML += `
-                <div class="report-row good">
-                    <span>${idx + 1}º ${getShortName(e.name)}</span>
-                    <span class="badge-modal">${displayVal} ${getStatusIcon(val, meta.target, meta.type)}</span>
-                </div>`;
-        });
-
-        bottom.forEach((e, idx) => {
-            const val = Number(e[resolveKpiKey(mId)]) || 0;
-            const displayVal = mId === 'tmo' ? `${val.toFixed(1)}m` : `${val.toFixed(1)}%`;
-            section.innerHTML += `
-                <div class="report-row bad">
-                    <span>▼ ${getShortName(e.name)}</span>
-                    <span class="badge-modal">${displayVal} ${getStatusIcon(val, meta.target, meta.type)}</span>
-                </div>`;
-        });
-
-        cont.appendChild(section);
+        const row = document.createElement('div');
+        row.className = "report-row";
+        row.style.background = "var(--bg-body)";
+        row.innerHTML = `
+            <span>${meta.label}</span>
+            <span class="badge-modal" style="color: ${trendColor}">${currentAvg.toFixed(1)}${unit} ${trendIcon} ${getStatusIcon(currentAvg, meta.target, meta.type)}</span>
+        `;
+        cont.appendChild(row);
     });
+
+    // 2. Movers (Simplificado)
+    if (prevData.length > 0) {
+        const moverHeader = document.createElement('h5');
+        moverHeader.innerText = "Top Movers (Deltas)";
+        moverHeader.style.marginTop = "15px";
+        moverHeader.style.marginBottom = "10px";
+        moverHeader.style.borderBottom = "1px solid var(--border-color)";
+        cont.appendChild(moverHeader);
+
+        const moverList = data.map(e => {
+            const prevE = prevData.find(p => p.name === e.name);
+            if (!prevE) return null;
+            return { name: getShortName(e.name), delta: scoreDesviacion(e, selectedMetrics) - scoreDesviacion(prevE, selectedMetrics) };
+        }).filter(Boolean).sort((a, b) => b.delta - a.delta);
+
+        const top = moverList.slice(0, 1);
+        const bottom = moverList.slice(-1);
+
+        top.forEach(m => {
+            const div = document.createElement('div');
+            div.className = "report-row good";
+            div.innerHTML = `<span>🚀 Mejora: ${m.name}</span> <span class="badge-modal">+${m.delta.toFixed(1)} pts</span>`;
+            cont.appendChild(div);
+        });
+
+        bottom.forEach(m => {
+            const div = document.createElement('div');
+            div.className = "report-row bad";
+            div.innerHTML = `<span>📉 Declive: ${m.name}</span> <span class="badge-modal">${m.delta.toFixed(1)} pts</span>`;
+            cont.appendChild(div);
+        });
+    }
 }
+
 
 function generarReporteTeamsActual() {
     const selected = [...document.querySelectorAll("#metricSelector input:checked")]
         .map(i => i.value);
 
-    // Filter current month data
+    // Identificar mes actual y anterior
     const currentViewMonths = getSelectedMonths();
-    const data = currentData.filter(d => currentViewMonths.includes(d.mes));
+    const currentMonthName = currentViewMonths[0] || 'ENERO';
+    const prevMonthName = MONTHS[MONTHS.indexOf(currentMonthName) - 1];
+
+    const data = currentData.filter(d => matchMonth(d.mes, currentMonthName));
+    const prevData = prevMonthName ? currentData.filter(d => matchMonth(d.mes, prevMonthName)) : [];
 
     if (data.length === 0) {
         document.getElementById("teamsMessage").value = "No hay datos para el mes seleccionado.";
         return;
     }
 
-    const { top, bottom } = obtenerTopYBottomGlobal(data, selected);
+    let msg = `📊 *INFORME DE DESEMPEÑO OPERATIVO – ACHS*\n\n`;
+    msg += `📅 Periodo: ${currentMonthName}${prevMonthName ? ' vs ' + prevMonthName : ''}\n\n`;
 
-    let msg = `📊 *OPERATIONAL PERFORMANCE REPORT – ACHS*\n`;
-    msg += `📅 Month: ${currentViewMonths.join(', ')}\n\n`;
+    // A. RESUMEN DE INDICADORES CLAVE (TENDENCIAS GLOBALES)
+    msg += `🔹 RESUMEN DE INDICADORES CLAVE\n`;
+    msg += `KPI | Valor | Tendencia | Estado\n`;
+    msg += `---|---|---|---\n`;
 
-    msg += `INDICATORS INCLUDED:\n`;
     selected.forEach(mId => {
         const meta = metricsCatalog.find(x => x.id === mId);
-        msg += `• ${meta.label}\n`;
+        const currentAvg = data.reduce((sum, e) => sum + (Number(e[resolveKpiKey(mId)]) || 0), 0) / data.length;
+
+        let trendStr = "➖ Estable";
+        let trendIcon = "➖";
+
+        if (prevData.length > 0) {
+            const prevAvg = prevData.reduce((sum, e) => sum + (Number(e[resolveKpiKey(mId)]) || 0), 0) / prevData.length;
+            const trend = getTrendInfo(currentAvg, prevAvg, mId);
+            trendStr = trend.text;
+            trendIcon = trend.symbol;
+        }
+
+        const statusIcon = getStatusIcon(currentAvg, meta.target, meta.type);
+        const unit = mId === 'tmo' ? ' min' : '%';
+        msg += `${meta.label} | ${currentAvg.toFixed(1)}${unit} | ${trendIcon} ${trendStr} | ${statusIcon}\n`;
     });
-    msg += `\n────────────────────────────\n`;
+    msg += `\n`;
 
-    // 1. Bloque de Equipo
-    msg += generarBloqueEquipo(data, selected);
+    // B. INSIGHTS SOBRE LAS TENDENCIAS (INTELIGENCIA)
+    msg += `🧠 INFORMACIÓN SOBRE TENDENCIAS DEL SISTEMA\n`;
+    msg += generarInsightTendencial(data, prevData, selected);
+    msg += `\n`;
 
-    msg += "────────────────────────────\n";
-    // 2. Top Performers
-    msg += "🥇 TOP 3 PERFORMERS (Global Score)\n";
-    top.forEach((e, idx) => {
-        msg += `• ${getShortName(e.name)} — ${idx === 0 ? 'Excellent' : (idx === 1 ? 'Strong' : 'Stable')} performance\n`;
-    });
+    // C. MEJORES MOVIMIENTOS (MOVERS)
+    if (prevData.length > 0) {
+        const moverList = data.map(e => {
+            const prevE = prevData.find(p => p.name === e.name);
+            if (!prevE) return null;
+            const currentScore = scoreDesviacion(e, selected);
+            const prevScore = scoreDesviacion(prevE, selected);
 
-    msg += "\n🚨 BOTTOM 3 – NEED ATTENTION\n";
-    bottom.forEach(e => {
-        msg += `• ${getShortName(e.name)} — Deviations detected in selected KPIs\n`;
-    });
+            // Buscar el KPI con mayor cambio
+            const kpiDeltas = selected.map(mId => {
+                const meta = metricsCatalog.find(x => x.id === mId);
+                const cVal = Number(e[resolveKpiKey(mId)]) || 0;
+                const pVal = Number(prevE[resolveKpiKey(mId)]) || 0;
+                const diff = cVal - pVal;
+                return { label: meta.label, diff, unit: mId === 'tmo' ? ' min' : '%' };
+            }).sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
 
-    msg += "\n────────────────────────────\n";
-    // 3. Insights
-    msg += "🧠 SYSTEM INSIGHT\n";
-    msg += generarInsight(data, selected);
+            return { name: getShortName(e.name), delta: currentScore - prevScore, bestKpi: kpiDeltas[0] };
+        }).filter(Boolean);
+
+        const posMovers = [...moverList].sort((a, b) => b.delta - a.delta).slice(0, 2);
+        const negMovers = [...moverList].sort((a, b) => a.delta - b.delta).slice(0, 2);
+
+        msg += `🏆 MEJORES MOVIMIENTOS\n`;
+        msg += `🥇 Mejora superior\n`;
+        posMovers.forEach(m => {
+            const sign = m.bestKpi.diff > 0 ? '+' : '';
+            msg += `• ${m.name} – ${sign}${m.bestKpi.diff.toFixed(1)}${m.bestKpi.unit} en ${m.bestKpi.label}\n`;
+        });
+
+        msg += `\n🚨 Tendencia negativa\n`;
+        negMovers.forEach(m => {
+            const sign = m.bestKpi.diff > 0 ? '+' : '';
+            msg += `• ${m.name} – ${sign}${m.bestKpi.diff.toFixed(1)}${m.bestKpi.unit} en ${m.bestKpi.label}\n`;
+        });
+        msg += `\n`;
+    }
+
+    // D. RECOMENDACIÓN EJECUTIVA
+    msg += `🎯 RECOMENDACIÓN EJECUTIVA\n`;
+    msg += generarRecomendacionConsolidada(data, selected);
+    msg += `\n\n`;
+
+    // E. PRONÓSTICO DE RIESGO PRÓXIMO MES (PREDICTIVO)
+    if (prevData.length > 0) {
+        msg += `📈 PRONÓSTICO DE RIESGO PRÓXIMO MES\n`;
+        let topRisks = [];
+        selected.forEach(mId => {
+            const meta = metricsCatalog.find(x => x.id === mId);
+            const currentAvg = data.reduce((sum, e) => sum + (Number(e[resolveKpiKey(mId)]) || 0), 0) / data.length;
+            const prevAvg = prevData.reduce((sum, e) => sum + (Number(e[resolveKpiKey(mId)]) || 0), 0) / prevData.length;
+            const score = calculateRiskScore({ values: [prevAvg, currentAvg], target: meta.target, higherIsBetter: meta.type === 'higher' });
+            topRisks.push({ label: meta.label, ...classifyRisk(score) });
+        });
+
+        topRisks.sort((a, b) => (a.label === "RIESGO ALTO" ? -1 : 1)).forEach(r => {
+            msg += `• ${r.label} → ${r.color} ${r.label}\n`;
+        });
+
+        const highRiskKpi = topRisks.find(r => r.label === "RIESGO ALTO");
+        if (highRiskKpi) {
+            msg += `\n🧠 Insight Predictivo:\nSin acciones correctivas, es probable que ${highRiskKpi.label} caiga por debajo de la meta el próximo mes.`;
+        }
+    }
 
     const txtArea = document.getElementById("teamsMessage");
     if (txtArea) txtArea.value = msg;
 
     renderTeamsPreview(selected, data);
 }
+
+function getTrendInfo(current, previous, kpiId) {
+    const meta = metricsCatalog.find(m => m.id === kpiId);
+    const tolerance = kpiId === 'tmo' ? 0.2 : 1.0;
+    const diff = current - previous;
+
+    if (meta.type === 'higher') {
+        if (diff > tolerance) return { symbol: '🔼', text: 'Mejorando' };
+        if (diff < -tolerance) return { symbol: '🔽', text: 'En declive' };
+        return { symbol: '➖', text: 'Estable' };
+    } else {
+        if (diff < -tolerance) return { symbol: '🔼', text: 'Mejorando' };
+        if (diff > tolerance) return { symbol: '🔽', text: 'En declive' };
+        return { symbol: '➖', text: 'Estable' };
+    }
+}
+
+function generarInsightTendencial(data, prevData, selected) {
+    let txt = "";
+    const momentum = [];
+    const watch = [];
+    const risk = [];
+
+    selected.forEach(mId => {
+        const meta = metricsCatalog.find(x => x.id === mId);
+        const currentAvg = data.reduce((sum, e) => sum + (Number(e[resolveKpiKey(mId)]) || 0), 0) / data.length;
+
+        // Alerta de Riesgo (Valores absolutos críticos)
+        if (getStatusIcon(currentAvg, meta.target, meta.type) === '🔴') {
+            risk.push(`${meta.label} por debajo del umbral crítico.`);
+        }
+
+        if (prevData.length > 0) {
+            const prevAvg = prevData.reduce((sum, e) => sum + (Number(e[resolveKpiKey(mId)]) || 0), 0) / prevData.length;
+            const trend = getTrendInfo(currentAvg, prevAvg, mId);
+
+            if (trend.text === 'Mejorando') {
+                momentum.push(`El ${meta.label} mejoró consistentemente.`);
+            } else if (trend.text === 'En declive') {
+                const diff = (currentAvg - prevAvg).toFixed(1);
+                watch.push(`La ${meta.label} disminuyó ligeramente (${diff}%).`);
+            }
+        }
+    });
+
+    txt += `🟢 Impulso positivo\n${momentum.slice(0, 2).map(m => `• ${m}`).join('\n') || '• Tendencias estables en indicadores principales.'}\n\n`;
+    txt += `🟡 Zonas de vigilancia\n${watch.slice(0, 2).map(w => `• ${w}`).join('\n') || '• No se detectan debilidades tendenciales significativas.'}\n\n`;
+    txt += `🔴 Alerta de riesgo\n${risk.map(r => `• ${r}`).join('\n') || '• No se detectó deterioro crítico de los KPI en este periodo.'}\n`;
+
+    return txt;
+}
+
+function generarRecomendacionConsolidada(data, selected) {
+    let rec = "";
+    const worstKpi = selected.map(mId => {
+        const meta = metricsCatalog.find(x => x.id === mId);
+        const avg = data.reduce((sum, e) => sum + (Number(e[resolveKpiKey(mId)]) || 0), 0) / data.length;
+        const dist = meta.type === 'higher' ? meta.target - avg : avg - meta.target;
+        return { label: meta.label, dist };
+    }).sort((a, b) => b.dist - a.dist)[0];
+
+    if (worstKpi.dist > 0) {
+        rec = `• Centrar la capacitación correctiva en el desempeño de ${worstKpi.label}.\n`;
+        rec += `• Reforzar guiones y procesos operativos para revertir desviaciones detectadas.`;
+    } else {
+        rec = `• Mantener la distribución actual de la carga de trabajo.\n`;
+        rec += `• Continuar con el monitoreo preventivo para asegurar la estabilidad del servicio.`;
+    }
+    return rec;
+}
+
 
 function copiarReporteTeams() {
     const text = document.getElementById("teamsMessage").value;
@@ -1188,34 +1516,68 @@ function copiarReporteTeams() {
     });
 }
 
-async function showEvolutionary(overrideExec, overrideKpi) {
+async function showEvolutionary(overrideExec, overrideKpi, force = false) {
     // Si no tenemos datos de todos los meses, intentar cargarlos ahora
-    const missingMonths = MONTHS.filter(m => !currentData.some(d => matchMonth(d.mes, m)));
+    let missingMonths = MONTHS.filter(m => !currentData.some(d => matchMonth(d.mes, m)));
+
+    if (force) {
+        missingMonths = [...MONTHS]; // Refrescar todo si es forzado
+    }
 
     if (missingMonths.length > 0) {
-        console.log("Meses faltantes detectados para evolutivo:", missingMonths);
-        const overlay = document.getElementById('refreshOverlay');
-        if (overlay) {
-            overlay.classList.add('active');
-            const statusEl = overlay.querySelector('p:last-child');
-            if (statusEl) statusEl.innerText = `Cargando histórico: ${missingMonths.join(', ')}`;
-        }
-        try {
-            // No sobreescribimos currentData, sino que sumamos
-            const promises = missingMonths.map(m => fetchSheet(m).catch(() => []));
-            const results = await Promise.all(promises);
-            const flatResults = [].concat(...results);
+        console.log("Meses faltantes o forzados detectados para evolutivo:", missingMonths);
 
-            // Unir sin duplicados (opcional, pero mejor unir todo)
-            currentData = currentData.concat(flatResults);
-            currentData.forEach(d => { if (d.mes) d.mes = d.mes.toString().trim().toUpperCase(); });
+        // ⚡ Optimización: Intentar cargar desde Caché primero para reducir parpadeos
+        const monthsToFetch = [];
+        missingMonths.forEach(m => {
+            const cached = !force ? SheetCache.get(m) : null;
+            if (cached) {
+                console.log(`📦 Histórico desde caché para ${m}`);
+                // Unir al currentData filtrando duplicados (por nombre y mes)
+                const existingHash = new Set(currentData.map(d => `${d.name}|${d.mes}`));
+                cached.forEach(d => {
+                    const key = `${d.name}|${d.mes}`;
+                    if (!existingHash.has(key)) {
+                        currentData.push(d);
+                        existingHash.add(key);
+                    }
+                });
+            } else {
+                monthsToFetch.push(m);
+            }
+        });
 
-            // Reprocesar para actualizar cuartiles y filtros
+        if (monthsToFetch.length > 0) {
+            const overlay = document.getElementById('refreshOverlay');
+            if (overlay) {
+                overlay.classList.add('active');
+                const statusEl = overlay.querySelector('p:last-child');
+                if (statusEl) statusEl.innerText = `Cargando histórico: ${monthsToFetch.join(', ')}`;
+            }
+            try {
+                const promises = monthsToFetch.map(m => fetchSheet(m, force).catch(() => []));
+                const results = await Promise.all(promises);
+                const flatResults = [].concat(...results);
+
+                const existingHash = new Set(currentData.map(d => `${d.name}|${d.mes}`));
+                flatResults.forEach(d => {
+                    const key = `${d.name}|${d.mes}`;
+                    if (!existingHash.has(key)) {
+                        currentData.push(d);
+                        existingHash.add(key);
+                    }
+                });
+
+                currentData.forEach(d => { if (d.mes) d.mes = d.mes.toString().trim().toUpperCase(); });
+                processData(currentData);
+            } catch (e) {
+                console.error("Error cargando meses para evolutivo:", e);
+            } finally {
+                if (overlay) overlay.classList.remove('active');
+            }
+        } else {
+            // Si todo estaba en caché, re-procesar para asegurar que cuartiles están al día
             processData(currentData);
-        } catch (e) {
-            console.error("Error cargando meses para evolutivo:", e);
-        } finally {
-            if (overlay) overlay.classList.remove('active');
         }
     }
 
@@ -2186,4 +2548,348 @@ function renderAlertItem(container, alert) {
         </div>
     `;
     container.appendChild(div);
+}
+
+// --- LOGICA RESUMEN EJECUTIVO (INTELIGENCIA) ---
+
+function calculateSummaryTrend(current, previous) {
+    if (previous === 0 || previous === null || previous === undefined) {
+        return { icon: "—", class: "flat", delta: "" };
+    }
+
+    const diff = current - previous;
+    const percent = Math.abs(((diff / previous) * 100)).toFixed(1);
+
+    if (diff > 0) return { icon: "⬆️", class: "up", delta: `+${percent}%` };
+    if (diff < 0) return { icon: "⬇️", class: "down", delta: `-${percent}%` };
+
+    return { icon: "➡️", class: "flat", delta: "0%" };
+}
+
+function getExecutivesAtRiskCount(data) {
+    const metricsToTrack = metricsCatalog.map(m => m.id);
+    return data.filter(e => {
+        return metricsToTrack.some(mId => {
+            const meta = metricsCatalog.find(x => x.id === mId);
+            const val = Number(e[resolveKpiKey(mId)]) || 0;
+            return getSemaphoreColor(val, meta.target, meta.type === 'higher') === "semaphore-red";
+        });
+    }).length;
+}
+
+function renderExecutiveSummary(data, prevData = []) {
+    const summarySection = document.getElementById("executiveSummary");
+    if (!summarySection) return;
+
+    if (!data || data.length === 0) {
+        summarySection.style.display = "none";
+        return;
+    }
+    summarySection.style.display = "block";
+
+    // 1. Ejecutivos en Riesgo
+    const riskCount = getExecutivesAtRiskCount(data);
+    const prevRiskCount = prevData.length > 0 ? getExecutivesAtRiskCount(prevData) : null;
+    const riskTrend = calculateSummaryTrend(riskCount, prevRiskCount);
+
+    // 2. Desviación Principal
+    const metricsToTrack = metricsCatalog.map(m => m.id);
+    const getCounter = (dataset) => {
+        const counter = {};
+        dataset.forEach(e => {
+            metricsToTrack.forEach(mId => {
+                const meta = metricsCatalog.find(x => x.id === mId);
+                const val = Number(e[resolveKpiKey(mId)]) || 0;
+                if (getSemaphoreColor(val, meta.target, meta.type === 'higher') === "semaphore-red") {
+                    counter[mId] = (counter[mId] || 0) + 1;
+                }
+            });
+        });
+        return counter;
+    };
+
+    const currentCounter = getCounter(data);
+    const mainDevEntry = Object.entries(currentCounter).sort((a, b) => b[1] - a[1])[0];
+    const mainDevLabel = mainDevEntry ? metricsCatalog.find(x => x.id === mainDevEntry[0]).label : "Sin desviaciones críticas";
+
+    let devTrend = { icon: "—", class: "flat", delta: "" };
+    if (mainDevEntry && prevData.length > 0) {
+        const prevCounter = getCounter(prevData);
+        const currentVal = currentCounter[mainDevEntry[0]] || 0;
+        const prevVal = prevCounter[mainDevEntry[0]] || 0;
+        devTrend = calculateSummaryTrend(currentVal, prevVal);
+    }
+
+    // 3. Estado General
+    const ratio = riskCount / data.length;
+    let overallStatus = "🟢 Estable";
+    let statusClass = "down"; // Green trend usually means improvement in this context
+    if (riskCount > 0) {
+        overallStatus = ratio > 0.3 ? "🔴 Crítico" : "🟡 Riesgo Controlado";
+    }
+
+    // Overall trend based on risk ratio
+    let overallTrend = { icon: "—", class: "flat", delta: "" };
+    if (prevData.length > 0) {
+        const prevRatio = getExecutivesAtRiskCount(prevData) / prevData.length;
+        overallTrend = calculateSummaryTrend(ratio, prevRatio);
+        // Invert classes for overall/risk because DOWN is GOOD for risks
+        if (overallTrend.class === 'up') overallTrend.label = "Empeorando";
+        else if (overallTrend.class === 'down') {
+            overallTrend.label = "Mejorando";
+            overallTrend.class = "down"; // stay green
+        }
+    }
+
+    // 4. Acción recomendada
+    let recommendation = "Mantener controles operacionales actuales.";
+    if (mainDevEntry) {
+        const mKey = mainDevEntry[0];
+        if (mKey === 'transfEPA') recommendation = "Reforzar criterios de escalamiento y balance de carga.";
+        else if (mKey.includes('sat')) recommendation = "Reforzar scripts y sesiones de coaching de calidad.";
+        else if (mKey === 'tmo') recommendation = "Revisar complejidad de llamadas y distribución de tiempos.";
+        else recommendation = `Focalizar mejora en indicadores de ${mainDevLabel.toLowerCase()}.`;
+    }
+
+    // Actualizar UI
+    document.getElementById("overallStatus").innerText = overallStatus;
+    const overallTrendEl = document.getElementById("overallTrend");
+    overallTrendEl.innerHTML = overallTrend.delta ? `${overallTrend.icon} ${overallTrend.label || ''}` : '';
+    overallTrendEl.className = `trend ${overallTrend.class}`;
+
+    document.getElementById("riskCount").innerText = `${riskCount} / ${data.length}`;
+    const riskTrendEl = document.getElementById("riskTrend");
+    riskTrendEl.innerText = riskTrend.delta ? `${riskTrend.icon} ${riskTrend.delta}` : '';
+    riskTrendEl.className = `trend ${riskTrend.class}`;
+
+    document.getElementById("mainDeviation").innerText = mainDevLabel;
+    const devTrendEl = document.getElementById("deviationTrend");
+    devTrendEl.innerText = devTrend.delta ? `${devTrend.icon} ${devTrend.class === 'down' ? 'Reducida' : 'Aumentada'}` : '';
+    devTrendEl.className = `trend ${devTrend.class}`;
+
+    document.getElementById("recommendedAction").innerText = recommendation;
+
+    const msgEl = document.getElementById("summaryMessage");
+    let narrative = "";
+    if (prevData.length > 0) {
+        if (overallTrend.class === "down") narrative = "El riesgo operativo está disminuyendo respecto al periodo anterior. ";
+        else if (overallTrend.class === "up") narrative = "El riesgo operativo ha aumentado y requiere atención inmediata. ";
+        else narrative = "El riesgo operativo se mantiene estable respecto al periodo anterior. ";
+    }
+
+    if (riskCount > 0) {
+        msgEl.innerHTML = `${narrative}Identificamos <strong>${riskCount} ejecutivo(s)</strong> con desviaciones críticas. 
+                           Prioridad: <strong>${mainDevLabel}</strong>.`;
+        msgEl.style.background = ratio > 0.3 ? "rgba(220, 38, 38, 0.05)" : "rgba(217, 119, 6, 0.05)";
+    } else {
+        msgEl.innerHTML = `${narrative}Excelente desempeño general. No se detectan anomalías críticas.`;
+        msgEl.style.background = "rgba(5, 150, 105, 0.05)";
+    }
+}
+
+// --- LÓGICA PREDICTIVA (NEXT MONTH FORECAST) ---
+
+function showPredictive() {
+    const modal = document.getElementById('predictModal');
+    if (!modal) return;
+
+    modal.classList.add('active');
+
+    // Inicializar filtros del modal
+    const execSel = document.getElementById('predictExecSelect');
+    const kpiSel = document.getElementById('predictKpiSelect');
+
+    if (execSel) {
+        const names = Array.from(new Set(currentData.map(d => d.name).filter(Boolean))).sort();
+        execSel.innerHTML = '<option value="all">Todo el Equipo</option>';
+        names.forEach(n => { const o = document.createElement('option'); o.value = n; o.innerText = n; execSel.appendChild(o); });
+    }
+
+    // Cerrar modal
+    const closeBtn = document.getElementById('closePredict');
+    if (closeBtn) {
+        closeBtn.onclick = () => modal.classList.remove('active');
+    }
+
+    // Render inicial
+    renderPredictiveContent();
+
+    // Listeners
+    if (execSel) execSel.onchange = renderPredictiveContent;
+    if (kpiSel) kpiSel.onchange = renderPredictiveContent;
+}
+
+function renderPredictiveContent() {
+    const container = document.getElementById('predictContainer');
+    const execVal = document.getElementById('predictExecSelect').value;
+    const kpiVal = document.getElementById('predictKpiSelect').value;
+
+    if (!container) return;
+
+    // Si no hay datos históricos suficientes, avisar
+    const monthsLoaded = Array.from(new Set(currentData.map(d => d.mes))).length;
+    if (monthsLoaded < 2) {
+        container.innerHTML = `
+            <div style="text-align:center; padding:40px; color:var(--text-secondary);">
+                <i class="fas fa-info-circle" style="font-size:2rem; margin-bottom:10px;"></i>
+                <p>Se requieren al menos 2 meses de datos cargados para generar predicción.</p>
+                <button class="btn btn-primary" onclick="showEvolutionary()" style="margin-top:10px;">Cargar Histórico</button>
+            </div>`;
+        return;
+    }
+
+    let html = `<div style="display:grid; gap:16px;">`;
+
+    // Filtramos métricas a mostrar
+    const metricsToShow = kpiVal === 'all' ? metricsCatalog : metricsCatalog.filter(m => m.id === kpiVal);
+
+    metricsToShow.forEach(meta => {
+        let riskInfo;
+        let trendData = [];
+
+        if (execVal === 'all') {
+            // Predicción para el EQUIPO (Promedio)
+            MONTHS.forEach(m => {
+                const mesData = currentData.filter(d => matchMonth(d.mes, m));
+                if (mesData.length > 0) {
+                    const avg = mesData.reduce((sum, e) => sum + (Number(e[resolveKpiKey(meta.id)]) || 0), 0) / mesData.length;
+                    trendData.push(avg);
+                }
+            });
+        } else {
+            // Predicción para EJECUTIVO INDIVIDUAL
+            MONTHS.forEach(m => {
+                const entry = currentData.find(d => d.name === execVal && matchMonth(d.mes, m));
+                if (entry) trendData.push(Number(entry[resolveKpiKey(meta.id)]) || 0);
+            });
+        }
+
+        const score = calculateRiskScore({ values: trendData, target: meta.target, higherIsBetter: meta.type === 'higher' });
+        riskInfo = classifyRisk(score);
+        const insight = generatePredictiveInsight(meta.label, riskInfo);
+
+        html += `
+            <div class="summary-card" style="margin:0; border-left: 5px solid ${riskInfo.hex};">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <h4 style="margin:0; color:var(--achs-azul);">${meta.label}</h4>
+                        <p style="font-size:0.85rem; color:var(--text-secondary); margin:4px 0;">Pronóstico próximo periodo</p>
+                    </div>
+                    <div style="text-align:right;">
+                        <span style="font-size:1.2rem; font-weight:bold; color:${riskInfo.hex};">${riskInfo.color} ${riskInfo.label}</span>
+                        <div style="font-size:0.75rem; opacity:0.7;">Score de Riesgo: ${score.toFixed(0)}/100</div>
+                    </div>
+                </div>
+                <div style="margin-top:12px; padding:10px; background:var(--bg-body); border-radius:8px; font-size:0.9rem;">
+                    <strong>🧠 Análisis Predictivo:</strong> ${insight}
+                </div>
+            </div>`;
+    });
+
+    html += `</div>`;
+
+    // Si es vista de equipo, añadir el Heatmap al final
+    if (execVal === 'all') {
+        html += renderRiskHeatmap();
+    }
+
+    container.innerHTML = html;
+}
+
+function getRiskClass(riskLabel) {
+    if (riskLabel === "RIESGO ALTO") return "risk-high";
+    if (riskLabel === "RIESGO MEDIO") return "risk-medium";
+    return "risk-low";
+}
+
+function renderRiskHeatmap() {
+    const kpis = metricsCatalog;
+    const executives = Array.from(new Set(currentData.map(d => d.name).filter(Boolean))).sort();
+
+    let html = `
+        <div class="heatmap-container">
+            <h3>📊 Mapa de Riesgo Predictivo – Próximo Mes</h3>
+            <div style="overflow-x:auto;">
+                <table id="riskHeatmap">
+                    <thead>
+                        <tr>
+                            <th style="text-align:left; position:sticky; left:0; z-index:2; background:var(--bg-body);">Ejecutivo</th>
+                            ${kpis.map(kpi => `<th>${kpi.label}</th>`).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
+    `;
+
+    executives.forEach(name => {
+        html += `<tr><td style="text-align:left; font-weight:bold; position:sticky; left:0; z-index:1; background:var(--bg-card);">${getShortName(name)}</td>`;
+
+        kpis.forEach(meta => {
+            const trendData = [];
+            MONTHS.forEach(m => {
+                const entry = currentData.find(d => d.name === name && matchMonth(d.mes, m));
+                if (entry) trendData.push(Number(entry[resolveKpiKey(meta.id)]) || 0);
+            });
+
+            const score = calculateRiskScore({ values: trendData, target: meta.target, higherIsBetter: meta.type === 'higher' });
+            const risk = classifyRisk(score);
+
+            html += `
+                <td class="risk-cell ${getRiskClass(risk.label)}" title="Score: ${score.toFixed(0)}">
+                    ${risk.color}
+                </td>
+            `;
+        });
+        html += `</tr>`;
+    });
+
+    html += `
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-top:12px; font-size:0.8rem; color:var(--text-secondary); display:flex; gap:15px; justify-content:center;">
+                <span>🟢 Bajo Riesgo</span>
+                <span>🟡 Vigilancia</span>
+                <span>🔴 Intervención</span>
+            </div>
+        </div>
+    `;
+    return html;
+}
+
+
+// MATH PREDICTIVE ENGINE
+function calculateRiskScore({ values, target, higherIsBetter = true }) {
+    if (values.length < 2) return 0;
+
+    const current = values[values.length - 1];
+    const prev = values[values.length - 2];
+    const trend = current - prev;
+
+    // Distancia al objetivo (Normalizada a 0-50)
+    let distance = higherIsBetter ? (target - current) : (current - target);
+    let distScore = Math.max(0, Math.min(distance * 5, 50));
+
+    // Factor de Inercia/Tendencia (Normalizada a 0-50)
+    let trendScore = 0;
+    const isBadTrend = higherIsBetter ? trend < 0 : trend > 0;
+    if (isBadTrend) {
+        trendScore = Math.min(Math.abs(trend) * 15, 50);
+    } else {
+        // Si la tendencia es buena, amortiguamos el riesgo de distancia
+        distScore *= 0.7;
+    }
+
+    return Math.min(distScore + trendScore, 100);
+}
+
+function classifyRisk(score) {
+    if (score >= 70) return { label: "RIESGO ALTO", color: "🔴", hex: "#dc2626" };
+    if (score >= 40) return { label: "RIESGO MEDIO", color: "🟡", hex: "#d97706" };
+    return { label: "RIESGO BAJO", color: "🟢", hex: "#059669" };
+}
+
+function generatePredictiveInsight(kpiName, risk) {
+    if (risk.label === "RIESGO ALTO") return `Se proyecta un deterioro crítico en ${kpiName}. Se recomienda intervención inmediata y plan de acción preventivo.`;
+    if (risk.label === "RIESGO MEDIO") return `Posible inestabilidad detectada en ${kpiName}. Los niveles actuales sugieren una probabilidad de no cumplir la meta el próximo mes.`;
+    return `${kpiName} muestra una trayectoria saludable y se espera que permanezca estable o mejore en el próximo periodo.`;
 }
