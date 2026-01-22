@@ -760,13 +760,18 @@ function renderDashboard() {
                     </div>
                 </div>
                 <!-- Recomendaciones Box -->
-                <div class="recomendaciones-box" style="border-left-color: ${hasFails ? '#F9A825' : '#6BBE45'}; display: block !important;">
+                <div class="recomendaciones-box" style="border-left-color: ${hasFails ? '#F9A825' : '#6BBE45'}; display: block !important; position: relative; padding-bottom: 45px;">
                     <h4 style="color: ${hasFails ? '#92400E' : 'var(--achs-verde-oscuro)'};">
                         <i class="fas fa-lightbulb"></i> ${hasFails ? 'Acciones Recomendadas' : 'Estado de Desempeño'}
                     </h4>
                     <ul>
                         ${recomendaciones.map(acc => `<li>${acc}</li>`).join('')}
                     </ul>
+                    <button class="btn-1-1" onclick="openOneOnOneModal('${safeName}')" 
+                        style="position: absolute; bottom: 10px; right: 10px; font-size: 0.75rem; padding: 4px 10px; background: var(--achs-azul); color: white; border: none; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 5px;"
+                        data-rol="jefatura supervisor">
+                        <i class="fas fa-comments"></i> Puntos 1:1
+                    </button>
                 </div>
             `;
             grid.appendChild(card);
@@ -887,7 +892,7 @@ function renderPodium(top3, kpiKey) {
                   <div style="font-size:1.2rem;">${place}º</div>
                 </div>
             </div>
-            <div class="podium-name">${getShortName(d.name)}</div>
+            <div class="podium-name">${d.name}</div>
         `;
         container.appendChild(div);
     });
@@ -2833,11 +2838,21 @@ function renderRiskHeatmap() {
             const score = calculateRiskScore({ values: trendData, target: meta.target, higherIsBetter: meta.type === 'higher' });
             const risk = classifyRisk(score);
 
+            // Lógica de Activación de Coaching IA (Reglas de prioridad)
+            const currentVal = trendData[trendData.length - 1] || 0;
+            const prevVal = trendData[trendData.length - 2] || 0;
+            const isDeclining = score > 40 && (meta.type === 'higher' ? currentVal < prevVal : currentVal > prevVal);
+            const isResolutionGap = meta.label.includes('Resolución') && currentVal < meta.target;
+            const needsPriorityCoaching = isResolutionGap || (isDeclining && risk.label === 'RIESGO ALTO') || (meta.label.includes('Satisfacción') && currentVal < 6.3);
+
             html += `
-                <td class="risk-cell ${getRiskClass(risk.label)}" title="Score: ${score.toFixed(0)}">
-                    ${risk.color}
+                <td class="risk-cell ${getRiskClass(risk.label)}" 
+                    onclick="openRecommendation('${name.replace(/'/g, "\\'")}', '${meta.label}', '${risk.label}', ${score.toFixed(0)})"
+                    title="${needsPriorityCoaching ? 'Prioridad: Coaching Recomendado' : 'Haga clic para ver recomendación'}">
+                    ${risk.color} ${needsPriorityCoaching ? '<span style="font-size:0.7rem; vertical-align:middle;" title="Coaching Sugerido">🤖</span>' : ''}
                 </td>
             `;
+
         });
         html += `</tr>`;
     });
@@ -2888,8 +2903,424 @@ function classifyRisk(score) {
     return { label: "RIESGO BAJO", color: "🟢", hex: "#059669" };
 }
 
+const KPI_BEHAVIOR_MAP = {
+    "Satisfacción SNL": "la calidad de comunicación y empatía percibida por el paciente en Salud No Laboral (SNL)",
+    "Resolución SNL": "la efectividad y precisión en la respuesta de Salud No Laboral (SNL)",
+    "Satisfacción EP": "la confianza y claridad en la guía proporcionada al paciente",
+    "Resolución EP": "el empoderamiento y la ejecución correcta del proceso operativo",
+    "TMO": "la eficiencia operativa sin sacrificar la calidad del servicio",
+    "Transferencia a EPA": "la autonomía y propiedad en la toma de decisiones",
+    "Tipificaciones": "la disciplina post-llamada y exactitud del registro"
+};
+
 function generatePredictiveInsight(kpiName, risk) {
     if (risk.label === "RIESGO ALTO") return `Se proyecta un deterioro crítico en ${kpiName}. Se recomienda intervención inmediata y plan de acción preventivo.`;
     if (risk.label === "RIESGO MEDIO") return `Posible inestabilidad detectada en ${kpiName}. Los niveles actuales sugieren una probabilidad de no cumplir la meta el próximo mes.`;
     return `${kpiName} muestra una trayectoria saludable y se espera que permanezca estable o mejore en el próximo periodo.`;
+}
+
+// 🎯 RECOMENDACIONES PREDICTIVAS
+function getRecommendation(kpi, riskLabel) {
+    const rules = {
+        "Satisfacción EP": {
+            "RIESGO ALTO": "Coaching inmediato requerido. Revisar scripts de EP y reducir carga de trabajo temporalmente para asegurar calidad.",
+            "RIESGO MEDIO": "Monitorear de cerca. Reforzar mejores prácticas y fomentar mentoría entre pares.",
+            "RIESGO BAJO": "Mantener la estrategia actual. Se observa estabilidad."
+        },
+        "TMO": {
+            "RIESGO ALTO": "Analizar flujo de llamadas y reducir pasos innecesarios en la gestión. Sesión de calibración de tiempos.",
+            "RIESGO MEDIO": "Revisar distribución de tiempos y reforzar disciplina en la llamada (scripts concisos).",
+            "RIESGO BAJO": "Desempeño dentro del rango esperado. Eficiencia operativa óptima."
+        },
+        "Transferencia a EPA": {
+            "RIESGO ALTO": "Re-capacitar en criterios de decisión para transferencias y reforzar la autonomía del ejecutivo.",
+            "RIESGO MEDIO": "Revisar patrones de transferencia y casos borderline. Reforzar matriz de escalamiento.",
+            "RIESGO BAJO": "El comportamiento de transferencias es estable. Buen criterio de resolución inicial."
+        },
+        "Resolución EP": {
+            "RIESGO ALTO": "Reforzar empoderamiento para cierre de casos en el primer contacto. Revisar herramientas de apoyo.",
+            "RIESGO MEDIO": "Auditar llamadas con rellamadas para identificar brechas de resolución rápida.",
+            "RIESGO BAJO": "Excelente tasa de resolución. Proyecta estabilidad."
+        }
+    };
+
+    return rules[kpi]?.[riskLabel] || "Continuar con el monitoreo preventivo y reforzar los puntos clave del KPI en las sesiones de equipo.";
+}
+
+function openRecommendation(executive, kpi, riskLabel, score) {
+    const modal = document.getElementById("recommendationModal");
+    const title = document.getElementById("modalTitle");
+    const body = document.getElementById("modalBody");
+    const btnAi = document.getElementById("btnGenAICoaching");
+
+    const recommendation = getRecommendation(kpi, riskLabel);
+
+    title.innerHTML = `<i class="fas fa-lightbulb"></i> ${kpi} – ${riskLabel}`;
+    body.innerHTML = `
+        <div id="recMainContent">
+            <div style="background:var(--bg-body); padding:15px; border-radius:8px; margin-bottom:15px; border-left:4px solid ${riskLabel === 'RIESGO ALTO' ? '#dc2626' : (riskLabel === 'RIESGO MEDIO' ? '#d97706' : '#059669')}">
+                <strong>👤 Ejecutivo:</strong> ${executive}<br>
+                <strong>📊 Score de Riesgo:</strong> ${score}/100<br>
+                <strong>🚩 Nivel:</strong> ${riskLabel}
+            </div>
+            <div style="font-size:1.1rem; color:var(--achs-azul); margin-bottom:10px; font-weight:bold;">
+                🚀 Acción Recomendada:
+            </div>
+            <div style="font-size:0.95rem;">
+                ${recommendation}
+            </div>
+        </div>
+        <div id="coachingAiContent" style="display:none;">
+            <!-- AI Content here -->
+        </div>
+    `;
+
+    // Configurar botón de IA
+    if (btnAi) {
+        btnAi.style.display = "block";
+        btnAi.onclick = () => runAICoachingSim(executive, kpi, riskLabel, score);
+    }
+
+    // Botón adicional para 1:1 directo desde recomendación
+    let btnOneOnOne = modal.querySelector('#btnDirect1a1');
+    if (!btnOneOnOne) {
+        btnOneOnOne = document.createElement('button');
+        btnOneOnOne.id = 'btnDirect1a1';
+        btnOneOnOne.className = 'btn btn-secondary';
+        btnOneOnOne.style.cssText = 'background: var(--achs-verde); color: white; margin-left: 10px;';
+        btnOneOnOne.innerHTML = '<i class="fas fa-comments"></i> Generar 1:1';
+        const footer = modal.querySelector('.modal-footer');
+        if (footer) footer.insertBefore(btnOneOnOne, footer.firstChild);
+    }
+    btnOneOnOne.onclick = () => {
+        closeRecommendationModal();
+        openOneOnOneModal(executive);
+    };
+
+    if (modal) modal.classList.add("active");
+}
+
+function runAICoachingSim(name, kpi, risk, score) {
+    const main = document.getElementById("recMainContent");
+    const aiCont = document.getElementById("coachingAiContent");
+    const btnAi = document.getElementById("btnGenAICoaching");
+
+    if (!aiCont || !main) return;
+
+    main.style.display = "none";
+    if (btnAi) btnAi.style.display = "none";
+
+    aiCont.style.display = "block";
+    aiCont.innerHTML = `
+        <div style="text-align:center; padding:20px;">
+            <i class="fas fa-robot fa-spin" style="font-size:2rem; color:var(--achs-azul); margin-bottom:15px;"></i>
+            <p>Generando Plan de Coaching Personalizado vía IA COPC...</p>
+        </div>
+    `;
+
+    setTimeout(() => {
+        const plan = generateAICoachingPlan(name, kpi, risk, score);
+        aiCont.innerHTML = plan;
+    }, 1500);
+}
+
+function generateAICoachingPlan(name, kpi, risk, score) {
+    const date = new Date().toLocaleDateString();
+    const behavior = KPI_BEHAVIOR_MAP[kpi] || "la conducta operativa general";
+
+    // Lógica de Priorización y Reglas COPC
+    let objective = "";
+    let observations = [];
+    let actions = [];
+    let impact = "";
+
+    if (kpi.includes("Resolución")) {
+        objective = `Mejorar la propiedad del caso y la resolución al primer contacto en ${kpi}.`;
+        observations = [
+            `Se detecta una brecha en ${behavior} que impacta directamente en la experiencia final.`,
+            `La tendencia indica cierres de llamada sin confirmación de solución efectiva.`
+        ];
+        actions = [
+            `Reforzar el checklist de validación de cierre antes de finalizar la interacción.`,
+            `Aplicar técnica de parafraseo para asegurar comprensión total del requerimiento del paciente.`,
+            `Analizar 3 casos no resueltos para identificar el punto de quiebre en el proceso.`
+        ];
+        impact = `Aumento inmediato en la tasa de resolución y reducción de rellamadas.`;
+    } else if (kpi.includes("Satisfacción")) {
+        objective = `Elevar los estándares de servicio y empatía en las interacciones de ${kpi}.`;
+        observations = [
+            `El score de riesgo sugiere una desconexión emocional o falta de claridad percibida.`,
+            `El paciente evalúa ${behavior} por debajo del umbral de excelencia.`
+        ];
+        actions = [
+            `Utilizar frases de empatía y validación activa durante toda la conversación.`,
+            `Ajustar el tono de voz para proyectar seguridad y disposición de ayuda.`,
+            `Simular una interacción de alta complejidad enfocada en el manejo de objeciones.`
+        ];
+        impact = `Mejora en el indicador de satisfacción y fidelización del paciente.`;
+    } else if (kpi === "TMO") {
+        objective = `Optimizar la eficiencia operativa manteniendo el equilibrio con la calidad.`;
+        observations = [
+            `Se observa un tiempo de gestión que se desvía de los 5 minutos meta.`,
+            `Es necesario equilibrar ${behavior} para no afectar la resolución.`
+        ];
+        actions = [
+            `Identificar y eliminar tiempos muertos durante la búsqueda de información.`,
+            `Mejorar la agilidad en el uso de herramientas de soporte y tipificación.`,
+            `Practicar el control de la llamada para evitar desviaciones del tema principal.`
+        ];
+        impact = `Reducción del TMO a niveles de meta sin degradar la resolución o satisfacción.`;
+    } else {
+        objective = `Reforzar la adherencia a procesos y autonomía en ${kpi}.`;
+        observations = [
+            `Se detectan inconsistencias en ${behavior}.`,
+            `El nivel de riesgo ${risk} exige un ajuste en la disciplina operativa.`
+        ];
+        actions = [
+            `Revisar y aplicar rigurosamente la matriz de toma de decisiones.`,
+            `Asegurar la tipificación correcta en Genesys antes de pasar a la siguiente llamada.`,
+            `Participar en una sesión de calibración sobre criterios de transferencia.`
+        ];
+        impact = `Estabilización de los indicadores de proceso y cumplimiento normativo.`;
+    }
+
+    return `
+        <div class="ai-coaching-plan" style="animation: fadeIn 0.5s ease; color: var(--text-main);">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px; padding-bottom:10px; border-bottom:2px solid var(--achs-azul);">
+                <i class="fas fa-robot" style="font-size:1.5rem; color:var(--achs-azul);"></i>
+                <h3 style="margin:0;">Plan de Coaching Predictivo IA (COPC)</h3>
+            </div>
+            
+            <p style="font-size:0.85rem; color:var(--text-secondary);"><strong>Fecha:</strong> ${date} | <strong>Ejecutivo:</strong> ${name}</p>
+
+            <div style="margin-top:10px;">
+                <h4 style="color:var(--achs-azul); margin-bottom:4px; font-size:1rem;">1. Objetivo del Coaching</h4>
+                <p style="margin:0; font-size:0.9rem;">${objective}</p>
+            </div>
+
+            <div style="margin-top:15px;">
+                <h4 style="color:var(--achs-azul); margin-bottom:4px; font-size:1rem;">2. Observaciones Clave</h4>
+                <ul style="margin:0; padding-left:20px; font-size:0.9rem;">
+                    ${observations.map(obs => `<li>${obs}</li>`).join('')}
+                </ul>
+            </div>
+
+            <div style="margin-top:15px;">
+                <h4 style="color:var(--achs-azul); margin-bottom:4px; font-size:1rem;">3. Acciones Recomendadas</h4>
+                <ul style="margin:0; padding-left:20px; font-size:0.9rem;">
+                    ${actions.map(act => `<li>${act}</li>`).join('')}
+                </ul>
+            </div>
+
+            <div style="margin-top:15px;">
+                <h4 style="color:var(--achs-azul); margin-bottom:4px; font-size:1rem;">4. Impacto Esperado</h4>
+                <p style="margin:0; font-size:0.9rem;">${impact}</p>
+            </div>
+
+            <div style="margin-top:15px; padding:12px; background:rgba(0,115,188,0.05); border-radius:8px; border:1px solid rgba(0,115,188,0.1);">
+                <p style="margin:0; font-size:0.9rem;"><strong>5. Métrica y Plazo de Seguimiento:</strong> ${kpi} – Revisión semanal por los próximos 15 días.</p>
+                <p style="margin:6px 0 0 0; font-size:0.75rem; opacity:0.7; font-style:italic;">Generado siguiendo el Marco de Gestión COPC para servicios de salud.</p>
+            </div>
+            
+            <button class="btn btn-secondary" onclick="restoreRecommendationMain()" style="margin-top:15px; width:100%; border:1px solid var(--border-color); font-weight:600;">
+                <i class="fas fa-arrow-left"></i> Volver al Análisis de Riesgo
+            </button>
+        </div>
+    `;
+}
+
+
+// --- LÓGICA DE PUNTOS DE CONVERSACIÓN 1:1 (IA) ---
+
+function openOneOnOneModal(executiveName) {
+    const modal = document.getElementById('oneOnOneModal');
+    if (!modal) return;
+
+    modal.classList.add('active');
+    const loading = document.getElementById('oneOnOneLoading');
+    const content = document.getElementById('oneOnOneContent');
+
+    if (loading) loading.style.display = 'block';
+    if (content) content.innerHTML = '';
+
+    // Simular retraso de IA
+    setTimeout(() => {
+        generateOneOnOnePoints(executiveName).then(data => {
+            if (loading) loading.style.display = 'none';
+            renderOneOnOneContent(data);
+        });
+    }, 1200);
+}
+
+function closeOneOnOneModal() {
+    const modal = document.getElementById('oneOnOneModal');
+    if (modal) modal.classList.remove('active');
+}
+
+async function generateOneOnOnePoints(name) {
+    // 1. Gather all required data
+    const currentMonthData = currentData.find(d => d.name === name && matchMonth(d.mes, currentMonth));
+    const latestData = currentData.filter(d => d.name === name)[0];
+    const data = currentMonthData || latestData;
+
+    if (!data) return { error: "No hay datos para este ejecutivo" };
+
+    const kpisValues = {
+        tmo: Number(data.tmo) || 0,
+        satEP: Number(data.satEp) || 0,
+        resEP: Number(data.resEp) || 0,
+        satSNL: Number(data.satSnl) || 0,
+        resSNL: Number(data.resSnl) || 0,
+        transfEPA: Number(data.transfEPA) || 0,
+        tipificaciones: Number(data.tipificaciones) || 0
+    };
+
+    const riskKPIs = [];
+    const positiveKPIs = [];
+    Object.keys(metas).forEach(k => {
+        if (!cumpleMeta(k, kpisValues[k])) {
+            riskKPIs.push(k.toUpperCase());
+        } else {
+            positiveKPIs.push(k.toUpperCase());
+        }
+    });
+
+    // 2. Trend analysis (comparing with previous month if possible)
+    let trend = "Estable";
+    const currentIdx = MONTHS.indexOf(currentMonth);
+    if (currentIdx > 0) {
+        const prevMonth = MONTHS[currentIdx - 1];
+        const prevData = currentData.find(d => d.name === name && matchMonth(d.mes, prevMonth));
+        if (prevData) {
+            const currentScore = data.score;
+            const prevScore = prevData.score;
+            if (currentScore > prevScore + 3) trend = "Al alza";
+            else if (currentScore < prevScore - 3) trend = "A la baja";
+        }
+    }
+
+    // 3. Previous actions
+    const previousActions = historialRecomendaciones
+        .filter(h => h.ejecutivo === name && h.estado === "Ejecutada")
+        .slice(-2)
+        .map(h => h.recomendacion)
+        .join(", ") || "Ninguna registrada recientemente";
+
+    return simulateAIOneOnOne(name, kpisValues, riskKPIs, positiveKPIs, trend, previousActions, data.copcNivel);
+}
+
+function simulateAIOneOnOne(name, values, riskKPIs, positiveKPIs, trend, previousActions, riskLevel) {
+    const kpiDefinitions = {
+        'SATISFACCION SNL': 'calidad de servicio, empatía y claridad en Salud No Laboral',
+        'RESOLUCION SNL': 'efectividad y resolución al primer contacto',
+        'TMO': 'eficiencia operativa equilibrada con calidad',
+        'TRANSFERENCIA A EPA': 'autonomía en la toma de decisiones vs sobre-derivación',
+        'TIPIFICACIONES': 'disciplina post-llamada y cumplimiento normativo'
+    };
+
+    const mainTopicKey = riskKPIs.length > 0 ? riskKPIs[0] : (positiveKPIs.length > 0 ? positiveKPIs[0] : "DESEMPEÑO GENERAL");
+    const definition = kpiDefinitions[mainTopicKey] || "la conducta operativa general";
+
+    const opening = positiveKPIs.length > 0
+        ? `Reconocer la consistencia en ${positiveKPIs.slice(0, 2).join(' y ')}. Se observa un manejo profesional que impacta positivamente en la experiencia del paciente y cumple con los estándares de calidad ACHS.`
+        : `Valorar el esfuerzo por mantener la continuidad operativa. El compromiso con el servicio es fundamental en nuestra gestión de salud.`;
+
+    const topics = riskKPIs.length > 0
+        ? `• Análisis detallado de ${riskKPIs.join(' y ')}, enfocándonos en ${kpiDefinitions[riskKPIs[0]] || 'los comportamientos clave'}.\n• Revisión de tendencias: El desempeño se muestra ${trend.toLowerCase()} en el último periodo.`
+        : `• Mantener los niveles de excelencia en los KPIs actuales.\n• Oportunidad de mentoría: Cómo tu manejo de ${mainTopicKey} puede servir de modelo para el equipo.`;
+
+    const questions = riskKPIs.includes('TMO')
+        ? `• ¿Qué situaciones específicas en tus llamadas están extendiendo el tiempo de gestión más allá de la meta de 5 minutos?\n• ¿Cómo podemos optimizar el uso de las herramientas de consulta para no sacrificar la calidad por la rapidez?`
+        : (riskKPIs.includes('RESOLUCION') || riskKPIs.includes('RESEP') || riskKPIs.includes('RESSNL') ? `• ¿En qué tipo de solicitudes de pacientes sientes que pierdes autonomía y decides derivar a EPA?\n• ¿Qué información o herramienta te haría sentir más seguro para resolver el caso en el primer contacto?` : `• ¿Cómo percibes tu propia evolución en el manejo de casos complejos este mes?\n• ¿Qué barreras operativas has identificado que dificulten tu ${mainTopicKey.toLowerCase()}?`);
+
+    const actions = riskKPIs.length > 0
+        ? `• Aplicar el checklist de resolución ACHS antes de cada cierre o transferencia.\n• Sesión de escucha cruzada con un referente del equipo para identificar puntos de decisión en la llamada.`
+        : `• Continuar con el monitoreo preventivo y registrar un caso de éxito para el próximo huddle.\n• Liderar una breve cápsula de conocimiento sobre ${mainTopicKey} para el equipo.`;
+
+    return {
+        name,
+        opening,
+        topics,
+        questions,
+        actions,
+        metric: `${mainTopicKey} - Índice de cumplimiento s/ meta`,
+        date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toLocaleDateString()
+    };
+}
+
+function renderOneOnOneContent(data) {
+    const container = document.getElementById('oneOnOneContent');
+    if (!container) return;
+
+    if (data.error) {
+        container.innerHTML = `<p style="color: var(--achs-red); text-align: center;">${data.error}</p>`;
+        return;
+    }
+
+    container.innerHTML = `
+        <div style="background: linear-gradient(135deg, var(--achs-azul), var(--achs-azul-claro)); color: white; padding: 18px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h3 style="margin: 0; font-size: 1.2rem; font-weight: 700;">Guía 1:1 Inteligente</h3>
+                    <p style="margin: 4px 0 0 0; font-size: 0.85rem; opacity: 0.9;">Colaborador: <strong>${data.name}</strong></p>
+                </div>
+                <i class="fas fa-robot" style="font-size: 2rem; opacity: 0.3;"></i>
+            </div>
+        </div>
+        
+        <div class="one-on-one-sections">
+            <section style="margin-bottom: 20px; padding: 15px; background: rgba(0,115,188,0.03); border-radius: 8px; border-left: 4px solid var(--achs-verde);">
+                <h4 style="color: var(--achs-azul); margin: 0 0 10px 0; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px;"><i class="fas fa-certificate" style="margin-right: 8px;"></i> 1. Refuerzo Positivo</h4>
+                <p style="margin: 0; font-size: 0.95rem; color: var(--text-main); line-height: 1.5;">${data.opening}</p>
+            </section>
+
+            <section style="margin-bottom: 20px; padding: 15px; background: rgba(0,115,188,0.03); border-radius: 8px; border-left: 4px solid var(--achs-azul);">
+                <h4 style="color: var(--achs-azul); margin: 0 0 10px 0; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px;"><i class="fas fa-list-check" style="margin-right: 8px;"></i> 2. Temas Centrales</h4>
+                <div style="margin: 0; font-size: 0.95rem; color: var(--text-main); line-height: 1.5; white-space: pre-line;">${data.topics}</div>
+            </section>
+
+            <section style="margin-bottom: 20px; padding: 15px; background: rgba(0,115,188,0.03); border-radius: 8px; border-left: 4px solid var(--achs-azul-claro);">
+                <h4 style="color: var(--achs-azul); margin: 0 0 10px 0; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px;"><i class="fas fa-comments-question" style="margin-right: 8px;"></i> 3. Preguntas de Coaching</h4>
+                <div style="margin: 0; font-size: 0.95rem; color: var(--text-main); line-height: 1.5; white-space: pre-line;">${data.questions}</div>
+            </section>
+
+            <section style="margin-bottom: 20px; padding: 15px; background: rgba(0,115,188,0.03); border-radius: 8px; border-left: 4px solid #FACC15;">
+                <h4 style="color: var(--achs-azul); margin: 0 0 10px 0; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px;"><i class="fas fa-handshake" style="margin-right: 8px;"></i> 4. Acuerdos y Compromisos</h4>
+                <div style="margin: 0; font-size: 0.95rem; color: var(--text-main); line-height: 1.5; white-space: pre-line;">${data.actions}</div>
+            </section>
+
+            <section style="padding: 15px; background: var(--bg-body); border-radius: 8px; border: 1px dashed var(--border-color);">
+                <h4 style="color: var(--achs-azul); margin: 0 0 10px 0; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px;"><i class="fas fa-calendar-check" style="margin-right: 8px;"></i> 5. Seguimiento</h4>
+                <p style="margin: 0; font-size: 0.9rem; color: var(--text-secondary);"><strong>Métrica:</strong> ${data.metric}</p>
+                <p style="margin: 4px 0 0 0; font-size: 0.9rem; color: var(--text-secondary);"><strong>Fecha Revisión:</strong> ${data.date}</p>
+            </section>
+        </div>
+    `;
+}
+
+function exportOneOnOne() {
+    const content = document.getElementById('oneOnOneContent').innerText;
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Puntos_1a1_${currentMonth}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function closeOneOnOneModal() {
+    document.getElementById('oneOnOneModal').classList.remove('active');
+}
+
+function restoreRecommendationMain() {
+    document.getElementById("recMainContent").style.display = "block";
+    document.getElementById("coachingAiContent").style.display = "none";
+    const btnAi = document.getElementById("btnGenAICoaching");
+    if (btnAi) btnAi.style.display = "block";
+}
+
+function closeRecommendationModal() {
+    const modal = document.getElementById("recommendationModal");
+    if (modal) modal.classList.remove("active");
 }

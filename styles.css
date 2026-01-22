@@ -1446,3 +1446,54 @@ th {
     filter: brightness(0.9);
     transform: scale(1.02);
 }
+
+/* === 1:1 CONVERSATION POINTS STYLES === */
+.one-on-one-sections section {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.one-on-one-sections section:hover {
+    transform: translateX(5px);
+    box-shadow: 2px 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.btn-1-1 {
+    transition: all 0.2s ease;
+}
+
+.btn-1-1:hover {
+    background: var(--achs-azul-oscuro) !important;
+    transform: scale(1.05);
+}
+
+#oneOnOneModal .modal-content {
+    border-radius: 16px;
+    overflow: hidden;
+    border: none;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+[data-theme="dark"] #oneOnOneModal .modal-content {
+    background: #1e293b;
+    border: 1px solid #334155;
+}
+
+#oneOnOneLoading i {
+    filter: drop-shadow(0 0 8px rgba(0, 93, 170, 0.4));
+}
+
+@keyframes fadeInRow {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.one-on-one-sections>* {
+    animation: fadeInRow 0.4s ease forwards;
+}
