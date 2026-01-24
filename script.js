@@ -630,6 +630,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Iniciar con la carga del mes actual y el historial en paralelo
     simulateInitialLoad();
 
+    // Registrar Service Worker para habilitar navigation preload/handling (si está disponible)
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js')
+            .then(reg => console.log('ServiceWorker registrado:', reg.scope))
+            .catch(err => console.warn('Error registro ServiceWorker:', err));
+    }
+
     const initialKpi = document.getElementById('selectKPI') ? document.getElementById('selectKPI').value : 'tmo';
     updateKpiDisplay(initialKpi);
 
