@@ -27,6 +27,7 @@
             <h2>Acceso al Sistema ACHS</h2>
             <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">Ingrese su correo institucional</p>
             <input type="email" id="emailLogin" placeholder="usuario@achs.cl" class="login-input">
+            <input type="password" id="passwordLogin" placeholder="Clave" class="login-input" style="margin-top:8px;">
             <button onclick="login()" class="login-btn">Entrar al Dashboard</button>
             <p id="loginError" style="color: var(--achs-red); margin-top: 1rem; font-size: 0.9rem; display: none;">
                 Usuario no autorizado</p>
@@ -68,6 +69,11 @@
                 <span class="notification-badge" id="alertsCounter">0</span>
             </div>
 
+            <button id="btnReturnJefatura" class="btn btn-secondary" title="Volver a Jefatura" style="display:none; margin-left:8px;">
+                <i class="fas fa-user-shield" aria-hidden="true"></i>
+                <span class="btn-text" style="margin-left:6px;">Volver Jefatura</span>
+            </button>
+
             <!-- Recommendation History Button -->
             <div class="notification-wrapper" onclick="toggleHistorialModal()" title="Historial de Recomendaciones"
                 style="margin-right: 15px;" data-rol="jefatura supervisor ejecutivo">
@@ -85,7 +91,7 @@
                 </button>
             </div>
 
-            <button class="btn btn-secondary" onclick="generateTeamsReport()">
+            <button class="btn btn-secondary" data-rol="jefatura supervisor" onclick="generateTeamsReport()">
                 <i class="fab fa-microsoft"></i> Reporte Teams
             </button>
             <button class="btn btn-secondary" onclick="showEvolutionary()">
@@ -158,6 +164,7 @@
         <div id="summaryMessage" class="summary-message">
             Procesando indicadores del periodo seleccionado para generar insights...
         </div>
+        <!-- Mini KPIs removed: moved to data-driven widgets -->
     </section>
 
     <!-- Main Content Wrapper -->
@@ -455,6 +462,29 @@
     <!-- Scripts -->
     <!-- Chart.js for Evolutivo -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Modal Tips: Banco de Tips -->
+    <div class="modal-overlay" id="tipsModal" style="z-index:2002; display:none;">
+        <div class="modal-content modal-tips" style="max-width:700px;">
+            <div class="modal-header">
+                <h2><i class="fas fa-lightbulb"></i> Banco de Tips</h2>
+                <button class="close-modal" onclick="toggleTipsModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body" id="tipsBody" style="padding:16px; max-height:60vh; overflow:auto;">
+                                <!-- Tips serán inyectados por `script.js` -->
+                                <div class="tip-block yellow" data-user-provided="true">
+                                    <strong>📉 SATISFACCIÓN EP</strong>
+                                    <ul>
+                                        <li>Llama al paciente por su nombre</li>
+                                        <li>Evita silencios sin explicación</li>
+                                        <li>Confirma entendimiento antes de cerrar</li>
+                                    </ul>
+                                </div>
+            </div>
+            <div class="modal-footer" style="padding:12px; border-top:1px solid var(--border-color); display:flex; justify-content:flex-end;">
+                <button class="btn btn-primary" onclick="toggleTipsModal()">Cerrar</button>
+            </div>
+        </div>
+    </div>
     <script src="script.js"></script>
 </body>
 

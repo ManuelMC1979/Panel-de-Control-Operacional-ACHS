@@ -1,5 +1,13 @@
 // CONSTANTS
 let SHEET_ID = localStorage.getItem('SHEET_ID') || '1_Dbbjt1TC8pcBPXGbISfuQr8ilsRan21REy51nMw0hg';
+const GOOGLE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzvy78fivAWc2KNHSUY4THSbHLCmCiyv7kfm99S3L-Ji7J-q7zDThcRHaghtx0vxGlX/exec";
+const GOOGLE_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSceoBX3pg8im7kgdISr4t26EHQA8xQNiARLFtXox1UP3MeLRQ/viewform?usp=publish-editor";
+const FORM_FIELDS = {
+    email: 'entry.123456789',
+    // agregar más campos según el formulario, por ejemplo:
+    // nombre: 'entry.987654321',
+    // comentario: 'entry.1112131415'
+};
 // Explicitly defining the months the user wants to access as tabs
 const MONTHS = ['OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE', 'ENERO'];
 
@@ -22,6 +30,478 @@ const metas = {
     transfEPA: 85,
     tipificaciones: 95
 };
+
+// Formateadores globales (porcentajes sin decimales, TMO en minutos)
+function formatPercent(value) {
+    return Math.round(Number(value)) + '%';
+}
+
+// Nota: valores por defecto ahora vienen del HTML; no asignar ejemplos desde JS.
+
+function formatTMO(value) {
+    return Math.round(Number(value)) + ' min';
+}
+
+// 🧠 NORMAS KPI (configurable)
+const KPI_NORMAS = {
+    satisfaccionSNL: { tipo: 'mayorIgual', valor: 95 },
+    resolucionSNL:   { tipo: 'mayorIgual', valor: 90 },
+    satisfaccionEP:  { tipo: 'mayorIgual', valor: 95 },
+    resolucionEP:    { tipo: 'mayorIgual', valor: 90 },
+    tmo:             { tipo: 'menorIgual', valor: 5 },
+    transferenciaEPA:{ tipo: 'mayorIgual', valor: 85 },
+    tipificaciones:  { tipo: 'mayorIgual', valor: 95 }
+};
+
+// Alias mapping between norma keys and data properties
+const KPI_ALIASES = {
+    satisfaccionSNL: 'satSnl',
+    resolucionSNL: 'resSnl',
+    satisfaccionEP: 'satEp',
+    resolucionEP: 'resEp',
+    transferenciaEPA: 'transfEPA',
+    tipificaciones: 'tipificaciones',
+    tmo: 'tmo'
+};
+
+function getKpiValue(ejecutivo, kpiKey) {
+    // Try direct property first
+    if (ejecutivo[kpiKey] !== undefined) return Number(ejecutivo[kpiKey]) || 0;
+    const alias = KPI_ALIASES[kpiKey];
+    if (alias && ejecutivo[alias] !== undefined) return Number(ejecutivo[alias]) || 0;
+    // Try common normalized keys
+    const normalized = { satSNL: 'satSnl', resSNL: 'resSnl', satEP: 'satEp', resEP: 'resEp', transfEPA: 'transfEPA' };
+    if (normalized[kpiKey] && ejecutivo[normalized[kpiKey]] !== undefined) return Number(ejecutivo[normalized[kpiKey]]) || 0;
+    return 0;
+}
+
+// 🧮 Evaluar KPIs de un ejecutivo
+function evaluarKPIs(ejecutivo) {
+    let puntos = 0;
+    const detalle = {};
+
+    for (const kpi in KPI_NORMAS) {
+        const norma = KPI_NORMAS[kpi];
+        const valor = getKpiValue(ejecutivo, kpi);
+
+        let cumple = false;
+
+        if (norma.tipo === 'mayorIgual') {
+            cumple = valor >= norma.valor;
+        } else if (norma.tipo === 'menorIgual') {
+            cumple = valor <= norma.valor;
+        }
+
+        detalle[kpi] = cumple ? 1 : 0;
+        puntos += cumple ? 1 : 0;
+    }
+
+    return Object.assign({}, ejecutivo, {
+        kpiTotal: puntos,
+        kpiDetalle: detalle
+    });
+}
+
+// 📊 Cuartilizar el equipo completo
+function cuartilizarEquipo(ejecutivos) {
+    // 1️⃣ Evaluar KPIs
+    const evaluados = ejecutivos.map(evaluarKPIs);
+
+    // 2️⃣ Ordenar de mayor a menor por KPIs cumplidos
+    evaluados.sort((a, b) => (b.kpiTotal || 0) - (a.kpiTotal || 0));
+
+    const total = evaluados.length;
+
+    // 3️⃣ Asignar cuartil (añadimos ambas propiedades para compatibilidad)
+    return evaluados.map((ej, index) => {
+        const posicion = index + 1;
+        const percentil = posicion / total;
+
+        let cuartil;
+        if (percentil <= 0.25) cuartil = 'Q1';
+        else if (percentil <= 0.50) cuartil = 'Q2';
+        else if (percentil <= 0.75) cuartil = 'Q3';
+        else cuartil = 'Q4';
+
+        return Object.assign({}, ej, {
+            cuartil,
+            quartile: cuartil
+        });
+    });
+}
+
+// 🎨 Opcional: Color/emoji por cuartil
+function colorCuartil(cuartil) {
+    return {
+        Q1: '🟢',
+        Q2: '🟡',
+        Q3: '🟠',
+        Q4: '🔴'
+    }[cuartil];
+}
+
+// 🧭 CRITERIO DE UMBRALES - CONFIGURACIÓN DE SEMÁFOROS
+const KPI_SEMAFORO_CONFIG = {
+    satisfaccionSNL: { tipo: 'mayor', norma: 95, tolerancia: 3 },
+    resolucionSNL:   { tipo: 'mayor', norma: 90, tolerancia: 3 },
+    satisfaccionEP:  { tipo: 'mayor', norma: 95, tolerancia: 3 },
+    resolucionEP:    { tipo: 'mayor', norma: 90, tolerancia: 3 },
+    transferenciaEPA:{ tipo: 'mayor', norma: 85, tolerancia: 3 },
+    tipificaciones:  { tipo: 'mayor', norma: 95, tolerancia: 3 },
+
+    tmo:             { tipo: 'menor', norma: 5, tolerancia: 0.5 }
+};
+
+// 🟢🟡🔴 TIPS POR KPI (lista compacta para modal de mejora)
+const tipsKPI = {
+    satisfaccionSNL: {
+        VERDE: [
+            'Mantén saludo empático en los primeros 10 segundos',
+            'Continúa cerrando la llamada confirmando solución',
+            'Refuerza el uso del nombre del paciente durante la llamada'
+        ],
+        AMARILLO: [
+            'Llama al paciente por su nombre al menos 2 veces',
+            'Evita silencios largos sin explicar qué estás haciendo',
+            'Usa frases de transición cortas para mantener flujo'
+        ],
+        ROJO: [
+            'Usa frases de contención (“entiendo su preocupación”)',
+            'Resume el problema antes de entregar la solución',
+            'Evita respuestas automáticas o cortantes'
+        ]
+    },
+    resolucionSNL: {
+        VERDE: [
+            'Continúa validando: “¿Quedó clara la respuesta?”',
+            'Confirma el siguiente paso cuando corresponda',
+            'Cierra con una frase de verificación final'
+        ],
+        AMARILLO: [
+            'Confirma explícitamente si la duda quedó resuelta',
+            'Evita cerrar la llamada sin check final',
+            'Resume la acción tomada durante la llamada'
+        ],
+        ROJO: [
+            'No asumas que el paciente entendió',
+            'Reformula la respuesta en palabras simples',
+            'Si no resuelves, explica el siguiente paso con claridad'
+        ]
+    },
+    satisfaccionEP: {
+        VERDE: [
+            'Mantén tono cordial y ritmo constante',
+            'Usa frases positivas durante la interacción',
+            'Asegura que la despedida sea cálida y personalizada'
+        ],
+        AMARILLO: [
+            'Sonríe al hablar (se nota en la voz)',
+            'Evita frases negativas (“no se puede”)',
+            'Aclara expectativas cuando haya demoras'
+        ],
+        ROJO: [
+            'Baja la velocidad de la llamada',
+            'Repite instrucciones paso a paso',
+            'Evita multitarea mientras atiendes'
+        ]
+    },
+    resolucionEP: {
+        VERDE: [
+            'Continúa validando resultado final',
+            'Confirma acción concreta tomada',
+            'Cierra con confirmación de satisfacción'
+        ],
+        AMARILLO: [
+            'Asegúrate de revisar toda la información antes de cerrar',
+            'Verifica datos críticos (email/teléfono)',
+            'Documenta pasos en observaciones'
+        ],
+        ROJO: [
+            'Usa checklist mental por tipo de caso',
+            'No cierres sin confirmar acción concreta',
+            'Escala cuando el caso excede tu alcance'
+        ]
+    },
+    tmo: {
+        VERDE: [
+            'Buen ritmo: mantén foco en objetivo de la llamada',
+            'Prepárate con atajos y scripts frecuentes',
+            'Anticipa preguntas comunes para ahorrar tiempo'
+        ],
+        AMARILLO: [
+            'Evita conversaciones paralelas',
+            'Ten a mano scripts frecuentes',
+            'Usa preguntas cerradas para reconducir'
+        ],
+        ROJO: [
+            'Dirige la llamada con preguntas cerradas',
+            'Evita explicaciones largas innecesarias',
+            'Usa frases de reconducción (“para avanzar…”)'
+        ]
+    },
+    transferenciaEPA: {
+        VERDE: [
+            'Mantén explicación clara del beneficio de la transferencia',
+            'Confirma disponibilidad del paciente antes de derivar',
+            'Prepara al paciente indicando qué le preguntarán'
+        ],
+        AMARILLO: [
+            'Explica el propósito de la encuesta antes de transferir',
+            'Indica tiempos estimados de atención',
+            'Solicita permiso para transferir cuando corresponda'
+        ],
+        ROJO: [
+            'Usa guion fijo de traspaso',
+            'Confirma disponibilidad del paciente antes de derivar',
+            'Evita transferir sin explicar el motivo'
+        ]
+    },
+    tipificaciones: {
+        VERDE: [
+            'Tipifica EN VIVO, no después',
+            'Sigue el flujo: categoría → resultado → motivo',
+            'Verifica siempre el ✓ verde de guardado'
+        ],
+        AMARILLO: [
+            'Revisa categoría antes de guardar',
+            'Evita postergar tipificación',
+            'Usa observaciones para detalles importantes'
+        ],
+        ROJO: [
+            'Tipifica apenas corte el paciente',
+            'Usa categorías frecuentes como favoritos',
+            'No dejes llamadas sin cerrar'
+        ]
+    }
+};
+
+function obtenerTips(kpiKey, estado) {
+    if (!tipsKPI[kpiKey]) return [];
+    // esperar estado en MAYUS (VERDE/AMARILLO/ROJO)
+    return tipsKPI[kpiKey][estado] || [];
+}
+
+function showTipsModal(ejecutivoName) {
+    const name = (ejecutivoName || '').replace(/\\'/g, "'");
+    const exec = (currentData || []).find(e => e.name === name || e.ejecutivo === name || getShortName(e.name) === name);
+    const semaforos = exec ? semaforosEjecutivo(exec) : {};
+
+    const kpis = Object.keys(KPI_SEMAFORO_CONFIG);
+
+    // Buscar modal de indicadores activo (contenido real)
+    const refContent = document.querySelector('.modal-overlay.active .modal-content') || document.querySelector('.modal-content');
+
+    // Construir panel lateral compacto para tips
+    const panel = document.createElement('div');
+    panel.id = 'tipsPanel';
+    panel.style.position = 'fixed';
+    panel.style.width = '420px';
+    panel.style.maxHeight = '80vh';
+    panel.style.overflow = 'auto';
+    panel.style.background = 'var(--bg-card)';
+    panel.style.border = '1px solid var(--border-color)';
+    panel.style.borderRadius = '12px';
+    panel.style.boxShadow = '0 12px 30px rgba(0,0,0,0.12)';
+    panel.style.zIndex = 11000;
+
+    // Inicialmente oculto para medir dimensiones
+    panel.style.visibility = 'hidden';
+    panel.innerHTML = `
+        <div style="padding:12px 14px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color);">
+            <div>
+                <strong>Tips de Mejora</strong>
+                <div style="font-size:0.85rem; color:var(--text-secondary);">${name || 'Ejecutivo'}</div>
+            </div>
+            <button onclick="document.getElementById('tipsPanel')?.remove()" style="background:none; border:none; font-size:1.1rem; cursor:pointer">✖</button>
+        </div>
+        <div style="display:flex; gap:12px; padding:12px;">
+            <div style="min-width:140px;">
+                ${kpis.map(k => {
+                    const s = semaforos[k] || { estado: 'VERDE', color: '🟢' };
+                    return `<button class="tips-tab" data-kpi="${k}" style="display:block; width:100%; text-align:left; padding:8px; margin-bottom:8px; border-radius:8px; border:1px solid var(--border-color); background: var(--bg-card); cursor:pointer;">${s.color} <strong style="margin-left:8px">${k}</strong> <div style="font-size:0.75rem; color:var(--text-secondary);">${s.estado}</div></button>`;
+                }).join('')}
+            </div>
+            <div style="flex:1; padding:6px;">
+                <div id="tipsContent" style="min-height:120px; color:var(--text-main); font-size:0.95rem;">
+                    <p style="color:var(--text-secondary); margin:0;">Selecciona una KPI para ver tips específicos.</p>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(panel);
+
+    // Si existe un modal de referencia, reposicionar el panel para alinear verticalmente
+    if (refContent) {
+        const refRect = refContent.getBoundingClientRect();
+        const panelRect = panel.getBoundingClientRect();
+        // Calcular top centrado respecto al modal de referencia
+        let top = Math.max(12, Math.round(refRect.top + (refRect.height / 2) - (panelRect.height / 2)));
+        // Solapamiento parcial: distancia en px que queremos solapar sobre el modal
+        const overlapPx = 40; // se puede ajustar (por defecto 40px)
+        // Posicionar panel de modo que solape `overlapPx` desde el borde derecho del modal de referencia
+        let left = Math.round(refRect.right - overlapPx);
+        // Clamp para que no se salga de la pantalla
+        const minLeft = 12;
+        const maxLeft = Math.max(12, window.innerWidth - panelRect.width - 12);
+        if (left < minLeft) left = minLeft;
+        if (left > maxLeft) left = maxLeft;
+        // Ajustes para no salirse de la pantalla
+        if (left + panelRect.width > window.innerWidth - 8) left = window.innerWidth - panelRect.width - 12;
+        if (top + panelRect.height > window.innerHeight - 12) top = Math.max(12, window.innerHeight - panelRect.height - 12);
+        panel.style.left = `${left}px`;
+        panel.style.top = `${top}px`;
+        panel.style.transform = '';
+    } else {
+        // Centrado fallback
+        panel.style.left = '50%';
+        panel.style.top = '50%';
+        panel.style.transform = 'translate(-50%, -50%)';
+    }
+    panel.style.visibility = 'visible';
+
+    // Agregar manejador a tabs (panel)
+    panel.querySelectorAll('.tips-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+            panel.querySelectorAll('.tips-tab').forEach(b => b.style.boxShadow = '');
+            btn.style.boxShadow = '0 6px 20px rgba(0,0,0,0.08)';
+            const k = btn.dataset.kpi;
+            const estado = (semaforos[k] && semaforos[k].estado) ? semaforos[k].estado : 'VERDE';
+            const tips = obtenerTips(k, estado);
+            const content = document.getElementById('tipsContent');
+            content.innerHTML = `
+                <h4 style="margin:0 0 8px 0">${k} — ${estado}</h4>
+                <ul style="list-style:none; padding-left:0; margin:0;">
+                    ${tips.map(t => `<li style="padding:8px 0; display:flex; gap:10px; align-items:start;\"><span style=\"font-size:1.05rem; line-height:1.2; color:var(--achs-verde)\">✔</span><div style=\"color:var(--text-main)\">${t}</div></li>`).join('')}
+                </ul>
+            `;
+        });
+    });
+
+}
+
+// 🧮 Obtener semáforo para un KPI específico
+function obtenerSemaforoKPI(kpi, valor) {
+    const cfg = KPI_SEMAFORO_CONFIG[kpi];
+    if (!cfg) return null;
+
+    let estado = 'ROJO';
+    let color = '🔴';
+
+    if (cfg.tipo === 'mayor') {
+        if (valor >= cfg.norma) {
+            estado = 'VERDE'; color = '🟢';
+        } else if (valor >= cfg.norma - cfg.tolerancia) {
+            estado = 'AMARILLO'; color = '🟡';
+        }
+    }
+
+    if (cfg.tipo === 'menor') {
+        if (valor <= cfg.norma) {
+            estado = 'VERDE'; color = '🟢';
+        } else if (valor <= cfg.norma + cfg.tolerancia) {
+            estado = 'AMARILLO'; color = '🟡';
+        }
+    }
+
+    return {
+        estado,
+        color,
+        norma: cfg.norma
+    };
+}
+
+// 📊 Obtener semáforos completos para un ejecutivo
+function semaforosEjecutivo(ejecutivo) {
+    const resultado = {};
+    for (const kpi in KPI_SEMAFORO_CONFIG) {
+        const valor = getKpiValue(ejecutivo, kpi);
+        resultado[kpi] = obtenerSemaforoKPI(kpi, valor);
+    }
+    return resultado;
+}
+
+// Función auxiliar: clase CSS para heatmap según estado
+function claseHeatmap(estado) {
+    if (!estado) return 'heat-na';
+    if (estado === 'VERDE') return 'heat-green';
+    if (estado === 'AMARILLO') return 'heat-yellow';
+    if (estado === 'ROJO') return 'heat-red';
+    return 'heat-na';
+}
+
+// Generar HTML dinámico para mapa de calor
+function generarMapaCalor(ejecutivos, opciones = {}) {
+    const kpis = Object.keys(KPI_SEMAFORO_CONFIG);
+    let html = `<table class="heatmap">
+        <thead>
+            <tr>
+                <th>Ejecutivo</th>
+                ${kpis.map(k => `<th>${k}</th>`).join('')}
+            </tr>
+        </thead>
+        <tbody>
+    `;
+
+    ejecutivos.forEach(ej => {
+        const semaforos = semaforosEjecutivo(ej);
+        const displayName = ej.nombre || ej.name || ej.ejecutivo || '—';
+
+        html += `<tr>`;
+        html += `<td class="exec-name">${displayName}</td>`;
+
+        kpis.forEach(kpi => {
+            const s = semaforos[kpi] || { estado: null, color: '', norma: '' };
+            const valor = getKpiValue(ej, kpi);
+            const clase = claseHeatmap(s.estado);
+            const tooltip = `Valor: ${valor} | Norma: ${s.norma || '-'} | Estado: ${s.estado || 'N/A'}`;
+
+            // Click handler: opcional mostrar recomendación si se define `mostrarRecomendacion`
+            const onclick = opciones.onclick ? `onclick="${opciones.onclick}(\'${displayName.replace(/'/g, "\\'")}\', \"${kpi}\")"` : '';
+
+            html += `
+                <td class="${clase}" title="${tooltip}" ${onclick}>
+                    ${s.color || ''}
+                </td>
+            `;
+        });
+
+        html += `</tr>`;
+    });
+
+    html += `</tbody></table>`;
+    return html;
+}
+
+// === RANKING POR Nº DE KPIs CUMPLIDOS ===
+const TOTAL_KPIS = Object.keys(KPI_NORMAS).length || 7;
+
+// Contar KPIs en ROJO para un ejecutivo
+function contarRojos(ejecutivo) {
+    const semaforos = semaforosEjecutivo(ejecutivo);
+    return Object.values(semaforos).filter(s => s && s.estado === 'ROJO').length;
+}
+
+// Generar ranking por KPIs cumplidos (empate -> menos rojos)
+function rankingKPIs(ejecutivos) {
+    return ejecutivos
+        .map(evaluarKPIs)
+        .sort((a, b) => {
+            if ((b.kpiTotal || 0) !== (a.kpiTotal || 0)) return (b.kpiTotal || 0) - (a.kpiTotal || 0);
+            const rojosA = contarRojos(a);
+            const rojosB = contarRojos(b);
+            return rojosA - rojosB;
+        })
+        .map((ej, index) => Object.assign({}, ej, { ranking: index + 1 }));
+}
+
+// Medalla visual por posicion
+function medalla(posicion) {
+    if (posicion === 1) return '🥇';
+    if (posicion === 2) return '🥈';
+    if (posicion === 3) return '🥉';
+    return '';
+}
 
 // ⚖️ PONDERACIÓN COPC DE KPI
 const pesosCOPC = {
@@ -55,7 +535,7 @@ const metricsCatalog = [
 // Resuelve la clave del selector a la propiedad real en los datos
 function resolveKpiKey(key) {
     const map = {
-        todos: 'score',
+        todos: 'kpiTotal',
         satEP: 'satEp',
         resEP: 'resEp',
         satSNL: 'satSnl',
@@ -540,17 +1020,22 @@ function processData(data) {
             tipificaciones: Number(d.tipificaciones) || 0
         };
 
-        const scoreCalculado = calcularScoreCOPC(kpisValuesRecalc, alerts);
-        d.score = scoreCalculado;
-        const classification = clasificarCOPC(d.score);
-        d.copcNivel = classification.nivel;
-        d.copcColor = classification.color;
+        // KPI_TOTAL: suma de KPIs cumplidos (tmo cuenta como cumplir si es menor o igual a la meta)
+        d.kpiTotal = Object.keys(kpisValuesRecalc).reduce((acc, k) => {
+            try {
+                return acc + (cumpleMeta(k, kpisValuesRecalc[k]) ? 1 : 0);
+            } catch (e) { return acc; }
+        }, 0);
+        // Remove COPC score/classification to rely ONLY on KPI_TOTAL per new requirement
+        d.score = null;
+        d.copcNivel = null;
+        d.copcColor = null;
     });
 
-    // 2. Sort by COPC Score Descending
-    data.sort((a, b) => b.score - a.score);
+    // 2. Sort by KPI_TOTAL Descending (mayores KPIs cumplidos primero)
+    data.sort((a, b) => (b.kpiTotal || 0) - (a.kpiTotal || 0));
 
-    // 3. Assign Quartiles
+    // 3. Assign classic quartiles based solely on KPI_TOTAL (top 25% = Q1)
     const total = data.length;
     data.forEach((d, index) => {
         const percentile = (index + 1) / total;
@@ -649,6 +1134,84 @@ function initFilters(data) {
 }
 
 // RENDERING
+// ------------------ Team KPI Summary ------------------
+function semaforoEquipo(valor, meta, tipo = 'mayor') {
+    if (tipo === 'mayor') {
+        if (valor >= meta) return 'green';
+        if (valor >= meta - 5) return 'yellow';
+        return 'red';
+    }
+    if (tipo === 'menor') {
+        if (valor <= meta) return 'green';
+        if (valor <= meta + 1) return 'yellow';
+        return 'red';
+    }
+    return 'red';
+}
+
+function renderTeamKpiSummary() {
+    const containerId = 'teamKpiSummary';
+    let container = document.getElementById(containerId);
+    if (!container) {
+        // create and insert after podiumContainer
+        container = document.createElement('div');
+        container.id = containerId;
+        const podium = document.getElementById('podiumContainer');
+        if (podium && podium.parentNode) podium.parentNode.insertBefore(container, podium.nextSibling);
+        else document.body.insertBefore(container, document.body.firstChild);
+    }
+
+    const selectedMonths = getSelectedMonths();
+    const month = selectedMonths && selectedMonths.length ? selectedMonths[0] : currentMonth;
+
+    // build list of unique executives with an entry for the month
+    const execNames = Array.from(new Set(currentData.map(d => d.name).filter(Boolean))).sort();
+    const execEntries = execNames.map(name => currentData.find(d => d.name === name && matchMonth(d.mes, month))).filter(Boolean);
+
+    const kpis = [
+        { dataKey: 'satSnl', label: 'Satisfacción SNL', metaKey: 'satSNL', tipo: 'mayor' },
+        { dataKey: 'resSnl', label: 'Resolución SNL', metaKey: 'resSNL', tipo: 'mayor' },
+        { dataKey: 'satEp',  label: 'Satisfacción EP', metaKey: 'satEP',  tipo: 'mayor' },
+        { dataKey: 'resEp',  label: 'Resolución EP', metaKey: 'resEP',  tipo: 'mayor' },
+        { dataKey: 'tmo',    label: 'TMO',             metaKey: 'tmo',     tipo: 'menor' },
+        { dataKey: 'transfEPA', label: 'Transferencia a EPA', metaKey: 'transfEPA', tipo: 'mayor' },
+        { dataKey: 'tipificaciones', label: 'Tipificaciones', metaKey: 'tipificaciones', tipo: 'mayor' }
+    ];
+
+    const averages = {};
+    kpis.forEach(k => {
+        const vals = execEntries.map(e => {
+            const v = getKpiValue(e, k.dataKey);
+            return (k.dataKey === 'tmo') ? (Number(v) || 0) : (Number(v) || 0);
+        }).filter(v => typeof v === 'number' && !isNaN(v));
+        averages[k.dataKey] = vals.length ? (vals.reduce((a,b) => a + b, 0) / vals.length) : 0;
+    });
+
+    // render HTML
+    container.innerHTML = '';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'team-kpi-summary';
+    wrapper.innerHTML = `
+        <h3>📊 Resumen KPIs – Nivel Equipo</h3>
+        <div class="kpi-grid">${kpis.map(k => {
+            const val = averages[k.dataKey] || 0;
+            const display = k.dataKey === 'tmo' ? formatTMO(val) : formatPercent(val);
+            const metaVal = (metas[k.metaKey] !== undefined) ? metas[k.metaKey] : metas[k.metaKey.toLowerCase()];
+            const metaDisplay = k.dataKey === 'tmo' ? formatTMO(metaVal) : formatPercent(metaVal);
+            const sem = semaforoEquipo(k.dataKey === 'tmo' ? val : val, Number(metaVal), k.tipo);
+            return `
+                <div class="kpi-card ${sem}">
+                    <div class="kpi-title">${k.label}</div>
+                    <div class="kpi-value">${display}</div>
+                    <div class="kpi-meta">Meta ${metaDisplay}</div>
+                    <div class="kpi-dot ${sem}"></div>
+                </div>`;
+        }).join('')}</div>
+    `;
+    container.appendChild(wrapper);
+}
+
+// -------------------------------------------------------
 function renderDashboard() {
     const grid = document.getElementById('dashboardGrid');
     const filterEl = document.getElementById('execFilter');
@@ -697,6 +1260,9 @@ function renderDashboard() {
             }
         }
     }
+
+    // Render team KPI summary (always visible)
+    try { renderTeamKpiSummary(); } catch (e) { console.error('Error rendering team KPI summary', e); }
     renderExecutiveSummary(filtered, previousDataFiltered);
 
     filtered.forEach(d => {
@@ -738,25 +1304,28 @@ function renderDashboard() {
                             <span style="background: var(--achs-azul); color: white; font-size: 0.65rem; padding: 2px 8px; border-radius: 4px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">${d.mes}</span>
                         </div>
                         <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 2px;">
-                            <i class="fas fa-medal" style="color: ${d.copcColor === 'green' ? '#00A859' : (d.copcColor === 'yellow' ? '#FACC15' : '#DC2626')}"></i> 
-                            Score COPC: <strong>${d.score}</strong> (<span>${d.copcNivel}</span>)
+                            <i class="fas fa-chart-bar" style="color: var(--achs-azul);"></i>
+                            <span style="margin-left:6px">KPIs cumplidos: <strong>${d.kpiTotal ?? 0}</strong></span>
+                            <span style="margin-left:12px">Indicador: <strong>${d.indicatorScore ?? 0}</strong></span>
                         </div>
                     </div>
                     <div class="quartile-badge ${d.quartile.toLowerCase()}">${d.quartile}</div>
                 </div>
-                <div class="kpi-grid">
+                <div class="kpi-grid" style="grid-template-columns: 1fr 1fr; gap: 0.8rem;">
                     ${renderKpiItem('Satisfacción SNL', kpisExec.satSNL, metas.satSNL, true, safeName, 'satSNL', 'fas fa-smile')}
                     ${renderKpiItem('Resolución SNL', kpisExec.resSNL, metas.resSNL, true, safeName, 'resSNL', 'fas fa-check-circle')}
                     ${renderKpiItem('Satisfacción EP', kpisExec.satEP, metas.satEP, true, safeName, 'satEP', 'fas fa-star')}
                     ${renderKpiItem('Resolución EP', kpisExec.resEP, metas.resEP, true, safeName, 'resEP', 'fas fa-clipboard-check')}
-                    <div class="kpi-item clickable-kpi" onclick="showEvolutionary('${safeName}', 'tmo')">
+                    ${renderKpiItem('Transferencia a EPA', kpisExec.transfEPA, metas.transfEPA, true, safeName, 'transfEPA', 'fas fa-exchange-alt')}
+                    ${renderKpiItem('Tipificaciones', kpisExec.tipificaciones, metas.tipificaciones, true, safeName, 'tipificaciones', 'fas fa-tags')}
+                    <div class="kpi-item clickable-kpi" onclick="event.stopPropagation(); showEvolutionary('${safeName}', 'tmo')">
                         <span class="kpi-label"><i class="fas fa-clock" style="margin-right: 6px; color: var(--achs-azul-claro);"></i> TMO</span>
-                        <span class="kpi-value">${kpisExec.tmo.toFixed(1)}</span>
+                        <span class="kpi-value">${formatTMO(kpisExec.tmo)}</span>
                         <div class="semaphore ${getTmoColor(kpisExec.tmo)}"></div>
                     </div>
                     <div class="kpi-item" style="background: var(--bg-card); border: 1px dashed var(--border-color);">
-                         <span class="kpi-label"><i class="fas fa-chart-pie" style="margin-right: 6px; color: var(--achs-azul-claro);"></i> COPC</span>
-                         <span class="kpi-value" style="color: ${d.copcColor === 'green' ? '#00A859' : (d.copcColor === 'yellow' ? '#FACC15' : '#DC2626')}">${d.score}</span>
+                        <span class="kpi-label"><i class="fas fa-chart-pie" style="margin-right: 6px; color: var(--achs-azul-claro);"></i> Indicador</span>
+                        <span class="kpi-value">${d.indicatorScore ?? 0}</span>
                     </div>
                 </div>
                 <!-- Recomendaciones Box -->
@@ -767,13 +1336,20 @@ function renderDashboard() {
                     <ul>
                         ${recomendaciones.map(acc => `<li>${acc}</li>`).join('')}
                     </ul>
-                    <button class="btn-1-1" onclick="openOneOnOneModal('${safeName}')" 
-                        style="position: absolute; bottom: 10px; right: 10px; font-size: 0.75rem; padding: 4px 10px; background: var(--achs-azul); color: white; border: none; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 5px;"
-                        data-rol="jefatura supervisor">
-                        <i class="fas fa-comments"></i> Puntos 1:1
-                    </button>
+                    <div style="position: absolute; bottom: 10px; right: 10px; display:flex; gap:8px;">
+                        <button class="btn-1-1" onclick="event.stopPropagation(); openOneOnOneModal('${safeName}')" 
+                            style="font-size: 0.75rem; padding: 6px 10px; background: var(--achs-azul); color: white; border: none; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 8px;"
+                            data-rol="jefatura supervisor">
+                            <i class="fas fa-comments"></i> Puntos 1:1
+                        </button>
+                        <button class="btn-tips" onclick="event.stopPropagation(); showTipsModal('${safeName}')" style="font-size:0.75rem; padding:6px 10px; background: linear-gradient(135deg,#F8FAFC,#EFF6FF); border:1px solid var(--border-color); color:var(--achs-azul); border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:8px;">
+                            <i class="fas fa-lightbulb"></i> Ver tips de mejora
+                        </button>
+                    </div>
                 </div>
             `;
+            // Abrir modal ejecutivo al hacer click en la tarjeta (pero evitar si clickea un control interno)
+            card.addEventListener('click', function (ev) { ev.stopPropagation(); abrirModalEjecutivo(d); });
             grid.appendChild(card);
         } catch (cardError) {
             console.error("Error rendering card for", d.name, cardError);
@@ -784,10 +1360,11 @@ function renderDashboard() {
 function renderKpiItem(label, val, target, isHigherBetter, name, kpiKey, iconClass) {
     const colorClass = getSemaphoreColor(val, target, isHigherBetter);
     const iconHtml = iconClass ? `<i class="${iconClass}" style="margin-right: 6px; color: var(--achs-azul-claro);"></i>` : '';
+    const valueDisplay = (kpiKey === 'tmo') ? formatTMO(val) : formatPercent(val);
     return `
         <div class="kpi-item clickable-kpi" onclick="showEvolutionary('${name}', '${kpiKey}')">
             <span class="kpi-label">${iconHtml}${label}</span>
-            <span class="kpi-value">${val.toFixed(1)}%</span>
+            <span class="kpi-value">${valueDisplay}</span>
             <div class="semaphore ${colorClass}"></div>
         </div>
     `;
@@ -880,7 +1457,7 @@ function renderPodium(top3, kpiKey) {
 
         const resolvedKpi = resolveKpiKey(kpiKey);
         const val = Number(d[resolvedKpi]) || 0;
-        const displayVal = kpiKey === 'tmo' ? `${val.toFixed(1)}m` : `${val.toFixed(1)}%`;
+        const displayVal = kpiKey === 'tmo' ? formatTMO(val) : formatPercent(val);
 
         div.innerHTML = `
             <div class="podium-avatar">
@@ -906,7 +1483,7 @@ function renderCopcTable(data) {
                 <tr>
                     <th>Ejecutivo</th>
                     <th>Cuartil</th>
-                    <th>Score General</th>
+                    <th>KPIs Cumplidos</th>
                     <th>Estado</th>
                 </tr>
             </thead>
@@ -918,7 +1495,7 @@ function renderCopcTable(data) {
             <tr>
                 <td>${d.name}</td>
                 <td><span class="quartile-badge ${d.quartile.toLowerCase()}">${d.quartile}</span></td>
-                <td>${d.score.toFixed(2)}%</td>
+                <td style="font-weight:700; text-align:center;">${d.kpiTotal ?? 0} / ${Object.keys(metas).length}</td>
                 <td>${d.quartile === 'Q4' ? 'Crítico ⚠️' : 'Normal'}</td>
             </tr>
         `;
@@ -1026,8 +1603,9 @@ function generateTeamsReport() {
     const modal = document.getElementById('modalTeams');
     if (!modal) return;
     modal.classList.add('active');
-    cargarMetricasModal();
-    generarReporteTeamsActual();
+    // Delegar a la UI/procedimiento profesional existente más abajo
+    if (typeof renderProfessionalTeamsUI === 'function') renderProfessionalTeamsUI();
+    if (typeof generarReporteTeamsProfesional === 'function') generarReporteTeamsProfesional();
 }
 
 function cerrarModalTeams() {
@@ -1131,7 +1709,7 @@ function generarBloqueEquipo(data, selectedMetrics) {
         // TMO
         if (selectedMetrics.includes('tmo')) {
             const val = Number(e.tmo) || 0;
-            txt += `TMO               ${getStatusIcon(val, metas.tmo, 'lower')} ${val.toFixed(1)}m\n`;
+            txt += `TMO               ${getStatusIcon(val, metas.tmo, 'lower')} ${formatTMO(val)}\n`;
         }
 
         // Grupo EP
@@ -1139,7 +1717,7 @@ function generarBloqueEquipo(data, selectedMetrics) {
             const sVal = Number(e.satEp) || 0;
             const rVal = Number(e.resEp) || 0;
             const sIcon = getStatusIcon(sVal, metas.satEP, 'higher');
-            txt += `Sat EP / Res EP   ${sIcon} ${sVal.toFixed(1)}% / ${rVal.toFixed(1)}%\n`;
+            txt += `Sat EP / Res EP   ${sIcon} ${formatPercent(sVal)} / ${formatPercent(rVal)}\n`;
         }
 
         // Grupo SNL
@@ -1147,7 +1725,7 @@ function generarBloqueEquipo(data, selectedMetrics) {
             const sVal = Number(e.satSnl) || 0;
             const rVal = Number(e.resSnl) || 0;
             const sIcon = getStatusIcon(sVal, metas.satSNL, 'higher');
-            txt += `Sat SNL / Res SNL ${sIcon} ${sVal.toFixed(1)}% / ${rVal.toFixed(1)}%\n`;
+            txt += `Sat SNL / Res SNL ${sIcon} ${formatPercent(sVal)} / ${formatPercent(rVal)}\n`;
         }
 
         // Grupo EPA / Tipif
@@ -1155,7 +1733,7 @@ function generarBloqueEquipo(data, selectedMetrics) {
             const eVal = Number(e.transfEPA) || 0;
             const tVal = Number(e.tipificaciones) || 0;
             const eIcon = getStatusIcon(eVal, metas.transfEPA, 'higher');
-            txt += `EPA / Tipif.      ${eIcon} ${eVal.toFixed(1)}% / ${tVal.toFixed(1)}%\n`;
+            txt += `EPA / Tipif.      ${eIcon} ${formatPercent(eVal)} / ${formatPercent(tVal)}\n`;
         }
 
         txt += "━━━━━━━━━━━━━━━━━━━━━━\n\n";
@@ -1270,9 +1848,10 @@ function renderTeamsPreview(selectedMetrics, data) {
         const row = document.createElement('div');
         row.className = "report-row";
         row.style.background = "var(--bg-body)";
+        const avgDisplay = (unit.trim() === '%') ? formatPercent(currentAvg) : formatTMO(currentAvg);
         row.innerHTML = `
             <span>${meta.label}</span>
-            <span class="badge-modal" style="color: ${trendColor}">${currentAvg.toFixed(1)}${unit} ${trendIcon} ${getStatusIcon(currentAvg, meta.target, meta.type)}</span>
+            <span class="badge-modal" style="color: ${trendColor}">${avgDisplay} ${trendIcon} ${getStatusIcon(currentAvg, meta.target, meta.type)}</span>
         `;
         cont.appendChild(row);
     });
@@ -1298,14 +1877,14 @@ function renderTeamsPreview(selectedMetrics, data) {
         top.forEach(m => {
             const div = document.createElement('div');
             div.className = "report-row good";
-            div.innerHTML = `<span>🚀 Mejora: ${m.name}</span> <span class="badge-modal">+${m.delta.toFixed(1)} pts</span>`;
+            div.innerHTML = `<span>🚀 Mejora: ${m.name}</span> <span class="badge-modal">+${Math.round(m.delta)} pts</span>`;
             cont.appendChild(div);
         });
 
         bottom.forEach(m => {
             const div = document.createElement('div');
             div.className = "report-row bad";
-            div.innerHTML = `<span>📉 Declive: ${m.name}</span> <span class="badge-modal">${m.delta.toFixed(1)} pts</span>`;
+            div.innerHTML = `<span>📉 Declive: ${m.name}</span> <span class="badge-modal">${Math.round(m.delta)} pts</span>`;
             cont.appendChild(div);
         });
     }
@@ -1353,7 +1932,8 @@ function generarReporteTeamsActual() {
 
         const statusIcon = getStatusIcon(currentAvg, meta.target, meta.type);
         const unit = mId === 'tmo' ? ' min' : '%';
-        msg += `${meta.label} | ${currentAvg.toFixed(1)}${unit} | ${trendIcon} ${trendStr} | ${statusIcon}\n`;
+        const displayAvg = (unit.trim() === '%') ? formatPercent(currentAvg) : formatTMO(currentAvg);
+        msg += `${meta.label} | ${displayAvg} | ${trendIcon} ${trendStr} | ${statusIcon}\n`;
     });
     msg += `\n`;
 
@@ -1389,13 +1969,15 @@ function generarReporteTeamsActual() {
         msg += `🥇 Mejora superior\n`;
         posMovers.forEach(m => {
             const sign = m.bestKpi.diff > 0 ? '+' : '';
-            msg += `• ${m.name} – ${sign}${m.bestKpi.diff.toFixed(1)}${m.bestKpi.unit} en ${m.bestKpi.label}\n`;
+            const diffDisp = (m.bestKpi.unit && m.bestKpi.unit.includes('%')) ? formatPercent(m.bestKpi.diff) : (m.bestKpi.unit && m.bestKpi.unit.includes('min') ? formatTMO(m.bestKpi.diff) : m.bestKpi.diff.toFixed(1) + m.bestKpi.unit);
+            msg += `• ${m.name} – ${sign}${diffDisp} en ${m.bestKpi.label}\n`;
         });
 
         msg += `\n🚨 Tendencia negativa\n`;
         negMovers.forEach(m => {
             const sign = m.bestKpi.diff > 0 ? '+' : '';
-            msg += `• ${m.name} – ${sign}${m.bestKpi.diff.toFixed(1)}${m.bestKpi.unit} en ${m.bestKpi.label}\n`;
+            const diffDisp = (m.bestKpi.unit && m.bestKpi.unit.includes('%')) ? formatPercent(m.bestKpi.diff) : (m.bestKpi.unit && m.bestKpi.unit.includes('min') ? formatTMO(m.bestKpi.diff) : m.bestKpi.diff.toFixed(1) + m.bestKpi.unit);
+            msg += `• ${m.name} – ${sign}${diffDisp} en ${m.bestKpi.label}\n`;
         });
         msg += `\n`;
     }
@@ -1471,8 +2053,10 @@ function generarInsightTendencial(data, prevData, selected) {
             if (trend.text === 'Mejorando') {
                 momentum.push(`El ${meta.label} mejoró consistentemente.`);
             } else if (trend.text === 'En declive') {
-                const diff = (currentAvg - prevAvg).toFixed(1);
-                watch.push(`La ${meta.label} disminuyó ligeramente (${diff}%).`);
+                const rawDiff = currentAvg - prevAvg;
+                const diff = (mId === 'tmo') ? rawDiff.toFixed(1) : Math.round(rawDiff);
+                const unit = (mId === 'tmo') ? 'm' : '%';
+                watch.push(`La ${meta.label} disminuyó ligeramente (${diff}${unit}).`);
             }
         }
     });
@@ -1777,8 +2361,17 @@ function agruparPorMes(datos, ejecutivo, kpi, months = MONTHS) {
 }
 
 function formatKpiValue(kpi, v) {
-    if (kpi === 'tmo') return `${Number(v).toFixed(1)} min`;
-    return `${Number(v).toFixed(1)}%`;
+    // helper formatters
+    function formatPercent(value) {
+        return Math.round(value) + '%';
+    }
+
+    function formatTMO(value) {
+        return Math.round(value) + ' min';
+    }
+
+    if (kpi === 'tmo') return formatTMO(v);
+    return formatPercent(v);
 }
 
 function showPredictive() {
@@ -1876,8 +2469,8 @@ function buildPredictiveMessage(payload, mes, ejecutivo) {
 }
 
 function formatPredictNumber(kpi, v) {
-    if (kpi === 'tmo') return `${Number(v).toFixed(1)} min`;
-    return `${Number(v).toFixed(1)}%`;
+    if (kpi === 'tmo') return Math.round(Number(v)) + ' min';
+    return Math.round(Number(v)) + '%';
 
 }
 
@@ -2135,6 +2728,29 @@ function generarRecomendaciones(kpis) {
 }
 
 // --- PERSONALIZACIÓN POR ROL & ACCESO (RBAC ACHS) ---
+// 📦 BASE SIMPLE DE USUARIOS (credenciales públicas para demo)
+const USERS = [
+    { nombre: "Astudillo Marin Manuela Soledad", email: "msastudillom@ext.achs.cl", rol: "Ejecutivo", password: "Achs01" },
+    { nombre: "Castro Cáceres Marcia Nicole", email: "mncastroc@ext.achs.cl", rol: "Ejecutivo", password: "Achs02" },
+    { nombre: "Chacón Avilés Alejandra Daniela", email: "adchacona@ext.achs.cl", rol: "Ejecutivo", password: "Achs03" },
+    { nombre: "Garcia Velasco Ataly Tatiana", email: "atgarciav@ext.achs.cl", rol: "Ejecutivo", password: "Achs04" },
+    { nombre: "Góngora Zuleta Elsa Susana", email: "esgongoraz@ext.achs.cl", rol: "Ejecutivo", password: "Achs05" },
+    { nombre: "Hald Tello Katia Liza", email: "klhaldt@ext.achs.cl", rol: "Ejecutivo", password: "Achs06" },
+    { nombre: "Llancapichun Soto Johana Angelica", email: "jallancapich@ext.achs.cl", rol: "Ejecutivo", password: "Achs06" },
+    { nombre: "Méndez Pérez Nanci Zobeida", email: "nzmendezp@ext.achs.cl", rol: "Ejecutivo", password: "Achs07" },
+    { nombre: "Monsalve Corvacho Manuel Alejandro", email: "mamonsalvec@achs.cl", rol: "Ejecutivo", password: "Achs08" },
+    { nombre: "Olivares González Maximiliano Alfonso", email: "malolivaresg@ext.achs.cl", rol: "Ejecutivo", password: "Achs09" },
+    { nombre: "Orellana Mallea Ema Alejandra", email: "eorellanam@ext.achs.cl", rol: "Ejecutivo", password: "Achs10" },
+    { nombre: "Penailillo Cartagena Alejandro Patricio", email: "appenailillc@ext.achs.cl", rol: "Ejecutivo", password: "Achs11" },
+    { nombre: "Rodriguez Fernandez Daniela Paz", email: "dprodriguezf@ext.achs.cl", rol: "Ejecutivo", password: "Achs12" },
+    { nombre: "Rodríguez Zenteno José Manuel", email: "jmrodriguezz@ext.achs.cl", rol: "Ejecutivo", password: "Achs13" },
+    { nombre: "Salgado Tobar Melissa Aracelli", email: "masalgadot@ext.achs.cl", rol: "Ejecutivo", password: "Achs014" },
+    { nombre: "Velasquez Perez María Loreto", email: "mlvelasquezp@ext.achs.cl", rol: "Ejecutivo", password: "Achs015" },
+    { nombre: "Berra Fernandez Renzo Gabriel", email: "rgberraf@achs.cl", rol: "Jefatura", password: "AchsRenzo" },
+    { nombre: "Garcia Cabello Luz Patricia", email: "lpgarciac@ext.achs.cl", rol: "Supervisor", password: "AchsLuz" },
+    { nombre: "Diaz Amell Barbara Victoria", email: "bvdiaza@ext.achs.cl", rol: "Supervisor", password: "AchsBarbara" },
+    { nombre: "Santander Hernández Luis Alberto", email: "lsantander@ext.achs.cl", rol: "Jefatura", password: "AchsLuis" }
+];
 
 const USUARIOS_DB = {
     // Ejecutivos
@@ -2198,28 +2814,93 @@ const MENSAJES_ROL = {
     ejecutivo: "Tu desempeño actual y acciones de mejora sugeridas."
 };
 
-function login() {
-    const email = document.getElementById("emailLogin").value.toLowerCase();
-    const errorEl = document.getElementById("loginError");
-    const user = USUARIOS_DB[email];
+// Enviar evento de auditoría a Google Apps Script
+function registrarAccesoSheets(user) {
+    const ahora = new Date();
 
-    if (!user) {
-        if (errorEl) errorEl.style.display = "block";
+    const payload = {
+        fecha: ahora.toLocaleDateString("es-CL"),
+        hora: ahora.toLocaleTimeString("es-CL"),
+        nombre: user.nombre,
+        email: user.email,
+        rol: user.rol,
+        navegador: navigator.userAgent
+    };
+
+    fetch(GOOGLE_APPS_SCRIPT_URL, {
+        method: "POST",
+        mode: 'no-cors',
+        body: JSON.stringify(payload),
+        headers: {
+            "Content-Type": "application/json"
+        }
+    })
+    .then(res => {
+        if (!res) return null;
+        if (res.type === 'opaque') {
+            console.log("Auditoría enviada (respuesta opaca no-cors)");
+            return null;
+        }
+        return res.json().catch(() => null);
+    })
+    .then(data => { if (data) console.log("Auditoría OK:", data); })
+    .catch(err => console.error("Error auditoría:", err));
+}
+
+function login() {
+    const email = (document.getElementById("emailLogin").value || '').trim().toLowerCase();
+    const errorEl = document.getElementById("loginError");
+
+    // Buscar en la base simple `USERS`
+
+    const found = USERS.find(u => (u.email || '').toLowerCase() === email);
+
+    const password = (document.getElementById('passwordLogin') && document.getElementById('passwordLogin').value) ? document.getElementById('passwordLogin').value : '';
+
+    if (!found) {
+        if (errorEl) {
+            errorEl.innerText = 'Usuario no autorizado';
+            errorEl.style.display = 'block';
+        } else {
+            alert('Usuario no autorizado');
+        }
         return;
     }
 
-    if (errorEl) errorEl.style.display = "none";
-    localStorage.setItem("userSession", JSON.stringify(user));
+    // Validar clave
+    if (!password || (found.password || '') !== password) {
+        if (errorEl) {
+            errorEl.innerText = 'Credenciales inválidas';
+            errorEl.style.display = 'block';
+        } else {
+            alert('Credenciales inválidas');
+        }
+        return;
+    }
 
-    // Ocultar Overlay
-    document.getElementById("loginOverlay").style.display = "none";
+    if (errorEl) errorEl.style.display = 'none';
 
-    // Configurar UI
-    const userNameTxt = document.getElementById("userNameTxt");
-    if (userNameTxt) userNameTxt.innerText = user.name;
-    document.getElementById("userInfo").style.display = "block";
+    // Guardar la sesión simple (según petición)
+    localStorage.setItem('user', JSON.stringify(found));
 
-    aplicarRol(user.rol);
+    // También mantener la compatibilidad con el resto del sistema usando `userSession`
+    const session = {
+        rol: (found.rol || '').toLowerCase(),
+        ejecutivo: found.rol === 'Ejecutivo' ? found.nombre : null,
+        name: found.nombre.split(' ').slice(0,2).join(' ')
+    };
+    localStorage.setItem('userSession', JSON.stringify(session));
+
+    // Ocultar Overlay y configurar UI como antes
+    const overlay = document.getElementById('loginOverlay');
+    if (overlay) overlay.style.display = 'none';
+    const userNameTxt = document.getElementById('userNameTxt');
+    if (userNameTxt) userNameTxt.innerText = session.name;
+    const userInfo = document.getElementById('userInfo');
+    if (userInfo) userInfo.style.display = 'block';
+
+    // Aplicar rol y permisos
+    aplicarRol(session.rol);
 }
 
 function logout() {
@@ -2256,6 +2937,22 @@ function aplicarRol(rol) {
         const manualSelector = document.getElementById("manualRoleSelector");
         if (manualSelector) {
             manualSelector.style.display = p.cambiarRol ? "flex" : "none";
+        }
+    }
+
+    // Mostrar/ocultar botón de volver a Jefatura si la sesión original tiene permiso de cambio (p. ej. usuario jefatura)
+    const returnBtn = document.getElementById('btnReturnJefatura');
+    if (returnBtn) {
+        let canReturn = false;
+        try {
+            const session = JSON.parse(localStorage.getItem('userSession') || '{}');
+            if (session && session.rol && session.rol.toLowerCase() === 'jefatura') canReturn = true;
+        } catch (e) { canReturn = false; }
+
+        if (rol !== 'jefatura' && canReturn) {
+            returnBtn.style.display = 'inline-flex';
+        } else {
+            returnBtn.style.display = 'none';
         }
     }
 
@@ -2308,6 +3005,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (selector) {
         selector.addEventListener('change', (e) => {
             aplicarRol(e.target.value);
+        });
+    }
+
+    // Handler para volver a jefatura
+    const returnBtn = document.getElementById('btnReturnJefatura');
+    if (returnBtn) {
+        returnBtn.addEventListener('click', () => {
+            const selector = document.getElementById('rolSelector');
+            if (selector) selector.value = 'jefatura';
+            aplicarRol('jefatura');
         });
     }
 });
@@ -2563,7 +3270,7 @@ function calculateSummaryTrend(current, previous) {
     }
 
     const diff = current - previous;
-    const percent = Math.abs(((diff / previous) * 100)).toFixed(1);
+    const percent = Math.round(Math.abs(((diff / previous) * 100)));
 
     if (diff > 0) return { icon: "⬆️", class: "up", delta: `+${percent}%` };
     if (diff < 0) return { icon: "⬇️", class: "down", delta: `-${percent}%` };
@@ -3208,10 +3915,10 @@ async function generateOneOnOnePoints(name) {
         const prevMonth = MONTHS[currentIdx - 1];
         const prevData = currentData.find(d => d.name === name && matchMonth(d.mes, prevMonth));
         if (prevData) {
-            const currentScore = data.score;
-            const prevScore = prevData.score;
-            if (currentScore > prevScore + 3) trend = "Al alza";
-            else if (currentScore < prevScore - 3) trend = "A la baja";
+            const currentKpiTotal = data.kpiTotal || 0;
+            const prevKpiTotal = prevData.kpiTotal || 0;
+            if (currentKpiTotal > prevKpiTotal) trend = "Al alza";
+            else if (currentKpiTotal < prevKpiTotal) trend = "A la baja";
         }
     }
 
@@ -3222,7 +3929,7 @@ async function generateOneOnOnePoints(name) {
         .map(h => h.recomendacion)
         .join(", ") || "Ninguna registrada recientemente";
 
-    return simulateAIOneOnOne(name, kpisValues, riskKPIs, positiveKPIs, trend, previousActions, data.copcNivel);
+    return simulateAIOneOnOne(name, kpisValues, riskKPIs, positiveKPIs, trend, previousActions, data.quartile);
 }
 
 function simulateAIOneOnOne(name, values, riskKPIs, positiveKPIs, trend, previousActions, riskLevel) {
@@ -3340,3 +4047,582 @@ function closeRecommendationModal() {
     const modal = document.getElementById("recommendationModal");
     if (modal) modal.classList.remove("active");
 }
+
+// =========================
+// Nuevo: Generador de Reporte Teams Profesional
+// =========================
+
+// 🎯 BANCO DE TIPS DE COACHING POR KPI
+const COACHING_TIPS = {
+    tmo: [
+        "⏱️ Optimiza tu workspace: Ten todas las herramientas abiertas ANTES de la llamada para evitar búsquedas durante la conversación",
+        "🎯 Método 'respuesta sandwich': Saludo breve (5s) + Solución directa + Cierre confirmatorio (5s) = Eficiencia sin perder calidez",
+        "📋 Practica el 'tipificado simultáneo': Marca categorías mientras el paciente habla, no después de colgar",
+        "🔍 Memoriza las 5 consultas más frecuentes y sus rutas de resolución para responder automáticamente",
+        "⚡ Usa atajos de teclado en Genesys - cada segundo cuenta cuando multiplicas por 50 llamadas diarias"
+    ],
+    satEP: [
+        "😊 Los primeros 15 segundos definen el 80% de la satisfacción: Sonríe mientras hablas (se nota en el tono) y usa el nombre del paciente",
+        "🎤 Evita el 'lenguaje robótico': Cambia 'El sistema indica que...' por 'Veo aquí que tu situación...' - humaniza la conversación",
+        "✅ Técnica de cierre '3C': Confirmar comprensión, Consultar dudas adicionales, Cerrar con nombre personalizado",
+        "💬 Valida emociones antes de solucionar: 'Entiendo tu preocupación' + pausa de 2 segundos + solución = Mayor satisfacción percibida",
+        "🎯 El 'efecto recuerdo': Las últimas 3 frases son las que más recordarán - haz que cuenten con calidez genuina"
+    ],
+    resEP: [
+        "🎯 Pregunta mágica al inicio: '¿Tienes tu número de caso a mano?' - Reduce un 40% las rellamadas por falta de contexto",
+        "📊 Regla del 80/20: El 80% de las consultas tienen solución estándar - crea tu 'cheat sheet' mental de respuestas",
+        "🔄 Antes de transferir pregúntate: '¿Intenté las 3 alternativas de la matriz?' - Reduce derivaciones innecesarias en 30%",
+        "✋ Técnica 'pausa activa': Si no sabes la respuesta, di 'Voy a verificar el procedimiento exacto' y usa 20s para buscar - no improvises",
+        "📝 Post-llamada: Anota casos no resueltos y sus causas - Identificarás patrones y cerrarás brechas de conocimiento"
+    ],
+    satSNL: [
+        "🎭 Tu voz es tu herramienta #1: Varía el tono para mantener atención - monotonía = percepción de desinterés",
+        "⏸️ Domina el silencio estratégico: Después de dar información importante, pausa 2-3s para permitir procesamiento",
+        "🔊 Control de volumen: Habla 10% más fuerte en la solución principal - resalta lo importante naturalmente",
+        "💝 Empatía sin excesos: Una validación emocional al inicio y otra al final - saturar con 'te entiendo' pierde efecto",
+        "📞 Técnica espejo: Iguala la velocidad del habla del paciente (±10%) - Genera conexión subconsciente"
+    ],
+    resSNL: [
+        "🎯 Diagnóstico en 30 segundos: Clasifica mentalmente la consulta (Info/Acción/Escalamiento) antes de responder",
+        "📚 Construye tu biblioteca mental: 10 respuestas perfectas memorizadas > 100 respuestas improvisadas",
+        "⚡ Ofrece alternativas proactivamente: 'Si esto no aplica, también puedes...' - Cierras objeciones futuras",
+        "🔍 Verifica comprensión activamente: 'Para confirmar, ¿entendiste que debes...?' - Reduce rellamadas por confusión",
+        "📊 Analiza tus transferencias semanales: Si >40% van al mismo destino, necesitas capacitación en ese tema específico"
+    ],
+    transfEPA: [
+        "🎓 Conoce la matriz de derivación: El 60% de transferencias prematuras son por desconocimiento de tu alcance real",
+        "💬 Script de oro antes de transferir: 'Para darte la mejor orientación médica, te conectaré con enfermería especializada'",
+        "⚖️ Calibra tu criterio: Si transfieres <70% es sobre-retención, >90% es sub-utilización - El balance es 80-85%",
+        "🎯 Casos 'zona gris': Si dudas por 5+ segundos, transfiere - La duda prolongada baja satisfacción más que la transferencia",
+        "📋 Post-transferencia: Pregunta al paciente 'Antes de transferir, ¿hay algo más que pueda resolver YO?' - Última oportunidad de resolver"
+    ],
+    tipificaciones: [
+        "⚡ Tipifica EN VIVO, no después: Mientras el paciente da contexto, ya tienes 70% de la tipificación lista",
+        "🎯 Método de los 3 clicks: Categoria (1) > Subcategoria (2) > Resultado (3) = 10 segundos máximo",
+        "🧠 Crea atajos mentales: Las 5 tipificaciones más usadas deben ser automáticas (sin pensar la ruta de clicks)",
+        "✅ Verifica SIEMPRE el ✓ verde: El 90% de errores es por 'olvidar dar enter' y que no se guarde",
+        "📊 Casos complejos: Si toma >15 segundos elegir categoría, usa 'Consulta general' y anota observación - No pierdas tiempo"
+    ]
+};
+
+// 🎨 GENERADOR DE VISUALES PROFESIONALES
+function generateTeamsReport() {
+    const modal = document.getElementById('modalTeams');
+    if (!modal) return;
+    
+    modal.classList.add('active');
+    
+    // Renderizar UI mejorada
+    renderProfessionalTeamsUI();
+    
+    // Generar reporte inicial
+    generarReporteTeamsProfesional();
+}
+
+function renderProfessionalTeamsUI() {
+    const modal = document.getElementById('modalTeams');
+    if (!modal) return;
+    
+    // Actualizar estructura del modal
+    const modalContent = modal.querySelector('.modal-content');
+    modalContent.innerHTML = `
+        <div class="modal-header" style="background: linear-gradient(135deg, #005DAA 0%, #003B73 100%); color: white; padding: 20px; border-radius: 12px 12px 0 0; margin: -2rem -2rem 0 -2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <i class="fab fa-microsoft" style="font-size: 2rem;"></i>
+                    <div>
+                        <h2 style="margin: 0; font-size: 1.5rem;">📊 Informe Ejecutivo ACHS</h2>
+                        <p style="margin: 4px 0 0 0; font-size: 0.9rem; opacity: 0.9;">Reporte para Microsoft Teams</p>
+                    </div>
+                </div>
+                <button class="close-modal" onclick="cerrarModalTeams()" style="background: rgba(255,255,255,0.2); border: none; color: white; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">
+                    <i class="fas fa-times" style="font-size: 1.2rem;"></i>
+                </button>
+            </div>
+        </div>
+
+        <div style="padding: 24px;">
+            <!-- Selector de Métricas Mejorado -->
+            <section style="background: linear-gradient(135deg, #F8FAFC 0%, #EFF6FF 100%); padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 2px solid #DBEAFE;">
+                <h4 style="margin: 0 0 16px 0; color: #005DAA; display: flex; align-items: center; gap: 8px; font-size: 1.1rem;">
+                    <i class="fas fa-sliders-h"></i> Configurar Reporte
+                </h4>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px;">
+                    <label style="display: flex; align-items: center; gap: 10px; padding: 12px; background: white; border-radius: 8px; cursor: pointer; border: 2px solid #E2E8F0; transition: all 0.2s;" class="metric-selector-item">
+                        <input type="checkbox" value="tmo" checked onchange="generarReporteTeamsProfesional()" style="width: 18px; height: 18px; cursor: pointer; accent-color: #005DAA;">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; color: #1E293B; font-size: 0.9rem;">⏱️ TMO</div>
+                            <div style="font-size: 0.75rem; color: #64748B;">Tiempo Medio</div>
+                        </div>
+                    </label>
+                    
+                    <label style="display: flex; align-items: center; gap: 10px; padding: 12px; background: white; border-radius: 8px; cursor: pointer; border: 2px solid #E2E8F0; transition: all 0.2s;" class="metric-selector-item">
+                        <input type="checkbox" value="satEP" checked onchange="generarReporteTeamsProfesional()" style="width: 18px; height: 18px; cursor: pointer; accent-color: #005DAA;">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; color: #1E293B; font-size: 0.9rem;">⭐ Satisfacción EP</div>
+                            <div style="font-size: 0.75rem; color: #64748B;">Calidad Percibida</div>
+                        </div>
+                    </label>
+                    
+                    <label style="display: flex; align-items: center; gap: 10px; padding: 12px; background: white; border-radius: 8px; cursor: pointer; border: 2px solid #E2E8F0; transition: all 0.2s;" class="metric-selector-item">
+                        <input type="checkbox" value="resEP" checked onchange="generarReporteTeamsProfesional()" style="width: 18px; height: 18px; cursor: pointer; accent-color: #005DAA;">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; color: #1E293B; font-size: 0.9rem;">✅ Resolución EP</div>
+                            <div style="font-size: 0.75rem; color: #64748B;">Efectividad</div>
+                        </div>
+                    </label>
+                    
+                    <label style="display: flex; align-items: center; gap: 10px; padding: 12px; background: white; border-radius: 8px; cursor: pointer; border: 2px solid #E2E8F0; transition: all 0.2s;" class="metric-selector-item">
+                        <input type="checkbox" value="satSNL" checked onchange="generarReporteTeamsProfesional()" style="width: 18px; height: 18px; cursor: pointer; accent-color: #005DAA;">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; color: #1E293B; font-size: 0.9rem;">😊 Satisfacción SNL</div>
+                            <div style="font-size: 0.75rem; color: #64748B;">Experiencia</div>
+                        </div>
+                    </label>
+                    
+                    <label style="display: flex; align-items: center; gap: 10px; padding: 12px; background: white; border-radius: 8px; cursor: pointer; border: 2px solid #E2E8F0; transition: all 0.2s;" class="metric-selector-item">
+                        <input type="checkbox" value="resSNL" checked onchange="generarReporteTeamsProfesional()" style="width: 18px; height: 18px; cursor: pointer; accent-color: #005DAA;">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; color: #1E293B; font-size: 0.9rem;">🎯 Resolución SNL</div>
+                            <div style="font-size: 0.75rem; color: #64748B;">Primer Contacto</div>
+                        </div>
+                    </label>
+                    
+                    <label style="display: flex; align-items: center; gap: 10px; padding: 12px; background: white; border-radius: 8px; cursor: pointer; border: 2px solid #E2E8F0; transition: all 0.2s;" class="metric-selector-item">
+                        <input type="checkbox" value="transfEPA" checked onchange="generarReporteTeamsProfesional()" style="width: 18px; height: 18px; cursor: pointer; accent-color: #005DAA;">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; color: #1E293B; font-size: 0.9rem;">🔄 Transfer EPA</div>
+                            <div style="font-size: 0.75rem; color: #64748B;">Derivaciones</div>
+                        </div>
+                    </label>
+                    
+                    <label style="display: flex; align-items: center; gap: 10px; padding: 12px; background: white; border-radius: 8px; cursor: pointer; border: 2px solid #E2E8F0; transition: all 0.2s;" class="metric-selector-item">
+                        <input type="checkbox" value="tipificaciones" checked onchange="generarReporteTeamsProfesional()" style="width: 18px; height: 18px; cursor: pointer; accent-color: #005DAA;">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; color: #1E293B; font-size: 0.9rem;">🏷️ Tipificaciones</div>
+                            <div style="font-size: 0.75rem; color: #64748B;">Registro</div>
+                        </div>
+                    </label>
+                </div>
+                
+                <div style="display: flex; gap: 12px; align-items: center; justify-content: center;">
+                    <button onclick="selectAllMetrics(true)" style="padding: 8px 16px; background: white; border: 2px solid #005DAA; color: #005DAA; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s;">
+                        <i class="fas fa-check-double"></i> Seleccionar Todos
+                    </button>
+                    <button onclick="selectAllMetrics(false)" style="padding: 8px 16px; background: white; border: 2px solid #DC2626; color: #DC2626; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s;">
+                        <i class="fas fa-times"></i> Deseleccionar Todos
+                    </button>
+                </div>
+            </section>
+
+            <!-- Vista Previa del Reporte -->
+            <section style="background: #F8FAFC; padding: 20px; border-radius: 12px; border: 1px solid #E2E8F0;">
+                <h4 style="margin: 0 0 16px 0; color: #005DAA; display: flex; align-items: center; gap: 8px; font-size: 1.1rem;">
+                    <i class="fas fa-file-alt"></i> Vista Previa del Reporte
+                </h4>
+                <div id="teamsReportPreview" style="background: white; padding: 20px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.6; color: #1E293B; max-height: 400px; overflow-y: auto; border: 1px solid #E2E8F0; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);">
+                    <!-- Contenido generado dinámicamente -->
+                </div>
+            </section>
+
+            <!-- Acciones -->
+            <div style="margin-top: 24px; display: flex; gap: 12px; justify-content: flex-end;">
+                <button class="btn btn-secondary" onclick="generarReporteTeamsProfesional()" style="background: white; border: 2px solid #64748B; color: #64748B; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+                    <i class="fas fa-sync-alt"></i> Actualizar
+                </button>
+                <button class="btn btn-primary" onclick="copiarReporteTeamsProfesional()" style="background: linear-gradient(135deg, #00A859 0%, #007A3D 100%); color: white; padding: 12px 32px; border-radius: 8px; font-weight: 700; cursor: pointer; border: none; box-shadow: 0 4px 12px rgba(0,168,89,0.3); transition: all 0.2s;">
+                    <i class="fas fa-copy"></i> Copiar para Teams
+                </button>
+                <button class="btn btn-secondary" onclick="cerrarModalTeams()" style="background: white; border: 2px solid #DC2626; color: #DC2626; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    `;
+    
+    // Agregar estilos hover a los checkboxes
+    const style = document.createElement('style');
+    style.textContent = `
+        .metric-selector-item:hover {
+            border-color: #005DAA !important;
+            box-shadow: 0 2px 8px rgba(0, 93, 170, 0.15);
+            transform: translateY(-2px);
+        }
+        .metric-selector-item input:checked + div {
+            color: #005DAA;
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+function selectAllMetrics(select) {
+    document.querySelectorAll('.metric-selector-item input[type="checkbox"]').forEach(cb => {
+        cb.checked = select;
+    });
+    generarReporteTeamsProfesional();
+}
+
+function generarReporteTeamsProfesional() {
+    const selectedMetrics = Array.from(document.querySelectorAll('.metric-selector-item input:checked')).map(cb => cb.value);
+    
+    if (selectedMetrics.length === 0) {
+        document.getElementById('teamsReportPreview').innerHTML = '<p style="text-align: center; color: #64748B; padding: 40px;">⚠️ Selecciona al menos una métrica para generar el reporte</p>';
+        return;
+    }
+    
+    const currentMonthData = currentData.filter(d => matchMonth(d.mes, currentMonth));
+    
+    if (currentMonthData.length === 0) {
+        document.getElementById('teamsReportPreview').innerHTML = '<p style="text-align: center; color: #DC2626; padding: 40px;">❌ No hay datos disponibles para el período seleccionado</p>';
+        return;
+    }
+    
+    const report = buildProfessionalReport(currentMonthData, selectedMetrics);
+    document.getElementById('teamsReportPreview').innerHTML = `<pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word;">${report}</pre>`;
+    
+    // Guardar en variable global para copiar
+    window.CURRENT_TEAMS_REPORT = report;
+}
+
+function buildProfessionalReport(data, metrics) {
+    const fecha = new Date().toLocaleDateString('es-CL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    
+    let report = '';
+    
+    // 📋 ENCABEZADO PROFESIONAL
+    report += `╔═══════════════════════════════════════════════════════════╗\n`;
+    report += `║                                                           ║\n`;
+    report += `║        📊 INFORME DE DESEMPEÑO OPERACIONAL ACHS          ║\n`;
+    report += `║                                                           ║\n`;
+    report += `╚═══════════════════════════════════════════════════════════╝\n\n`;
+    
+    report += `📅 Período: ${currentMonth} 2026\n`;
+    report += `📍 Generado: ${fecha}\n`;
+    report += `👥 Ejecutivos Evaluados: ${data.length}\n`;
+    report += `📊 Métricas Analizadas: ${metrics.length}\n\n`;
+    
+    report += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+    
+    // 🏆 TOP 3 EJECUTIVOS
+    report += `🏆 TOP 3 - DESEMPEÑO DESTACADO\n\n`;
+    
+    const top3Global = getTop3Global(data, metrics);
+    top3Global.forEach((exec, idx) => {
+        const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉';
+        const cumplidos = contarKPIsCumplidos(exec, metrics);
+        
+        report += `${medal} ${idx + 1}. ${exec.name}\n`;
+        report += `   ├─ KPIs Cumplidos: ${cumplidos}/${metrics.length} ✓\n`;
+        report += `   ├─ Cuartil: ${exec.quartile}\n`;
+        report += `   └─ Métricas Destacadas:\n`;
+        
+        metrics.forEach(m => {
+            const val = getMetricValue(exec, m);
+            const meta = metas[m];
+            const cumple = checkMetricCompliance(m, val, meta);
+            if (cumple) {
+                const icon = '      ✅';
+                report += `${icon} ${getMetricName(m)}: ${formatMetricValue(m, val)}\n`;
+            }
+        });
+        report += `\n`;
+    });
+    
+    report += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+    
+    // 🚨 BOTTOM 4 EJECUTIVOS (Necesitan Soporte)
+    report += `🚨 ÁREA DE OPORTUNIDAD - 4 EJECUTIVOS PRIORITARIOS\n\n`;
+    
+    const bottom4Global = getBottom4Global(data, metrics);
+    bottom4Global.forEach((exec, idx) => {
+        const cumplidos = contarKPIsCumplidos(exec, metrics);
+        const kpisbajos = getFailedMetrics(exec, metrics);
+        
+        report += `${idx + 1}. ${exec.name}\n`;
+        report += `   ├─ KPIs Cumplidos: ${cumplidos}/${metrics.length}\n`;
+        report += `   ├─ Cuartil: ${exec.quartile}\n`;
+        report += `   └─ Métricas a Mejorar:\n`;
+        
+        kpisbajos.forEach(m => {
+            const val = getMetricValue(exec, m);
+            const meta = metas[m];
+            const gap = m === 'tmo' ? (val - meta).toFixed(1) : Math.round(meta - val);
+            const icon = '      🔴';
+            report += `${icon} ${getMetricName(m)}: ${formatMetricValue(m, val)} (Gap: ${gap}${m === 'tmo' ? ' min' : '%'})\n`;
+        });
+        report += `\n`;
+    });
+    
+    report += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+    
+    // 💡 COACHING TIPS (Aleatorios y específicos)
+    report += `💡 TIPS DE COACHING OPERATIVO\n\n`;
+    report += `Basado en el análisis de las métricas con mayor brecha, se recomienda:\n\n`;
+    
+    const metricasConProblemas = getProblematicMetrics(data, metrics);
+    metricasConProblemas.slice(0, 3).forEach((metricData, idx) => {
+        const randomTip = COACHING_TIPS[metricData.metric][Math.floor(Math.random() * COACHING_TIPS[metricData.metric].length)];
+        report += `${idx + 1}. ${getMetricName(metricData.metric).toUpperCase()}\n`;
+        report += `   📊 Ejecutivos afectados: ${metricData.count}/${data.length}\n`;
+        report += `   💬 "${randomTip}"\n\n`;
+    });
+    
+    report += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+    
+    // 📈 RESUMEN ESTADÍSTICO
+    report += `📈 RESUMEN ESTADÍSTICO DEL PERÍODO\n\n`;
+    
+    metrics.forEach(m => {
+        const avg = calculateAverage(data, m);
+        const meta = metas[m];
+        const cumpleEquipo = checkMetricCompliance(m, avg, meta);
+        const icon = cumpleEquipo ? '✅' : '⚠️';
+        
+        report += `${icon} ${getMetricName(m)}\n`;
+        report += `   ├─ Promedio Equipo: ${formatMetricValue(m, avg)}\n`;
+        report += `   ├─ Meta: ${formatMetricValue(m, meta)}\n`;
+        report += `   └─ Estado: ${cumpleEquipo ? 'CUMPLE ✓' : 'REQUIERE ATENCIÓN ⚠️'}\n\n`;
+    });
+    
+    report += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+    
+    // 🎯 RECOMENDACIONES ESTRATÉGICAS
+    report += `🎯 RECOMENDACIONES ESTRATÉGICAS\n\n`;
+    
+    const kpiPrioritario = metricasConProblemas[0]?.metric;
+    if (kpiPrioritario) {
+        report += `1. PRIORIDAD MÁXIMA: Implementar plan de mejora en ${getMetricName(kpiPrioritario).toUpperCase()}\n`;
+        report += `   → ${metricasConProblemas[0].count} ejecutivos requieren soporte inmediato\n\n`;
+    }
+    
+    report += `2. COACHING DIFERENCIADO: Asignar mentores del Top 3 a ejecutivos prioritarios\n`;
+    report += `   → Programa 1:1 semanal por 4 semanas\n\n`;
+    
+    report += `3. CALIBRACIÓN: Sesión de escucha de llamadas con todo el equipo\n`;
+    report += `   → Analizar mejores prácticas de ejecutivos destacados\n\n`;
+    
+    report += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+    
+    // 📝 FIRMA
+    report += `📝 Reporte generado automáticamente por Dashboard ACHS\n`;
+    report += `   Sistema de Análisis Inteligente v2.0\n\n`;
+    
+    report += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    
+    return report;
+}
+
+// 🔧 FUNCIONES AUXILIARES
+function getTop3Global(data, metrics) {
+    return data.map(exec => ({
+        ...exec,
+        score: contarKPIsCumplidos(exec, metrics)
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3);
+}
+
+function getBottom4Global(data, metrics) {
+    return data.map(exec => ({
+        ...exec,
+        score: contarKPIsCumplidos(exec, metrics)
+    }))
+    .sort((a, b) => a.score - b.score)
+    .slice(0, 4);
+}
+
+function contarKPIsCumplidos(exec, metrics) {
+    return metrics.filter(m => {
+        const val = getMetricValue(exec, m);
+        const meta = metas[m];
+        return checkMetricCompliance(m, val, meta);
+    }).length;
+}
+
+function getFailedMetrics(exec, metrics) {
+    return metrics.filter(m => {
+        const val = getMetricValue(exec, m);
+        const meta = metas[m];
+        return !checkMetricCompliance(m, val, meta);
+    });
+}
+
+function getMetricValue(exec, metric) {
+    const keyMap = {
+        tmo: 'tmo',
+        satEP: 'satEp',
+        resEP: 'resEp',
+        satSNL: 'satSnl',
+        resSNL: 'resSnl',
+        transfEPA: 'transfEPA',
+        tipificaciones: 'tipificaciones'
+    };
+    return Number(exec[keyMap[metric]]) || 0;
+}
+
+function checkMetricCompliance(metric, value, meta) {
+    if (metric === 'tmo') return value <= meta;
+    return value >= meta;
+}
+
+function getMetricName(metric) {
+    const names = {
+        tmo: 'TMO',
+        satEP: 'Satisfacción EP',
+        resEP: 'Resolución EP',
+        satSNL: 'Satisfacción SNL',
+        resSNL: 'Resolución SNL',
+        transfEPA: 'Transferencia EPA',
+        tipificaciones: 'Tipificaciones'
+    };
+    return names[metric] || metric;
+}
+
+function formatMetricValue(metric, value) {
+    if (metric === 'tmo') return Math.round(value) + ' min';
+    return Math.round(value) + '%';
+}
+
+// Mostrar / Ocultar modal de Tips y poblar contenido dinámicamente
+function toggleTipsModal() {
+    const modal = document.getElementById('tipsModal');
+    if (!modal) return;
+    const isOpen = modal.style.display && modal.style.display !== 'none';
+    if (isOpen) {
+        modal.style.display = 'none';
+        return;
+    }
+
+    const tipsBody = document.getElementById('tipsBody');
+    if (tipsBody) {
+        // If the HTML contains user-provided tips (marked with data-user-provided), don't overwrite them
+        if (tipsBody.dataset.userProvided === 'true') {
+            // leave existing content as-is
+        } else {
+            tipsBody.innerHTML = '';
+            for (const key in tipsKPI) {
+                const section = document.createElement('div');
+                section.style.marginBottom = '12px';
+                section.className = 'tip-block';
+
+                const title = document.createElement('div');
+                title.style.fontWeight = '700';
+                title.style.marginBottom = '6px';
+                title.textContent = getMetricName(key) || key;
+                section.appendChild(title);
+
+                const ul = document.createElement('ul');
+                ul.style.margin = '0';
+                ul.style.paddingLeft = '18px';
+                const pool = tipsKPI[key];
+                const merged = [].concat(pool.VERDE || [], pool.AMARILLO || [], pool.ROJO || []);
+                merged.slice(0, 8).forEach(t => {
+                    const li = document.createElement('li');
+                    li.textContent = t;
+                    ul.appendChild(li);
+                });
+                section.appendChild(ul);
+
+                tipsBody.appendChild(section);
+            }
+            tipsBody.dataset.populated = 'true';
+        }
+    }
+
+    modal.style.display = 'flex';
+}
+
+function calculateAverage(data, metric) {
+    const sum = data.reduce((acc, exec) => acc + getMetricValue(exec, metric), 0);
+    return sum / data.length;
+}
+
+function getProblematicMetrics(data, metrics) {
+    const problems = {};
+    
+    metrics.forEach(m => {
+        const failCount = data.filter(exec => {
+            const val = getMetricValue(exec, m);
+            const meta = metas[m];
+            return !checkMetricCompliance(m, val, meta);
+        }).length;
+        
+        if (failCount > 0) {
+            problems[m] = failCount;
+        }
+    });
+    
+    return Object.entries(problems)
+        .map(([metric, count]) => ({ metric, count }))
+        .sort((a, b) => b.count - a.count);
+}
+
+function copiarReporteTeamsProfesional() {
+    const report = window.CURRENT_TEAMS_REPORT || '';
+    
+    if (!report) {
+        alert('⚠️ Primero genera un reporte seleccionando métricas');
+        return;
+    }
+    
+    navigator.clipboard.writeText(report).then(() => {
+        const btn = event.target.closest('button');
+        const originalHTML = btn.innerHTML;
+        
+        btn.innerHTML = '<i class="fas fa-check"></i> ¡Copiado al Portapapeles!';
+        btn.style.background = 'linear-gradient(135deg, #059669 0%, #047857 100%)';
+        
+        setTimeout(() => {
+            btn.innerHTML = originalHTML;
+            btn.style.background = 'linear-gradient(135deg, #00A859 0%, #007A3D 100%)';
+        }, 2000);
+        
+        // Mostrar instrucciones
+        showCopyInstructions();
+    }).catch(err => {
+        console.error('Error al copiar:', err);
+        alert('❌ Error al copiar. Intenta seleccionar el texto manualmente.');
+    });
+}
+
+function showCopyInstructions() {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 30px;
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        z-index: 10000;
+        max-width: 400px;
+        text-align: center;
+    `;
+    
+    modal.innerHTML = `
+        <div style="font-size: 3rem; margin-bottom: 16px;">✅</div>
+        <h3 style="color: #005DAA; margin-bottom: 12px;">¡Reporte Copiado!</h3>
+        <p style="color: #64748B; font-size: 0.9rem; line-height: 1.5;">
+            El reporte está en tu portapapeles.<br>
+            Ahora puedes pegarlo directamente en Microsoft Teams.
+        </p>
+        <button onclick="this.parentElement.remove()" style="margin-top: 20px; padding: 10px 24px; background: #005DAA; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+            Entendido
+        </button>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    setTimeout(() => {
+        modal.remove();
+    }, 3000);
+}
+
+function cerrarModalTeams() {
+    const modal = document.getElementById('modalTeams');
+    if (modal) modal.classList.remove('active');
+}
+

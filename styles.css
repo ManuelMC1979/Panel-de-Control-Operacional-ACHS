@@ -399,6 +399,129 @@ body {
     background-color: var(--achs-verde-oscuro);
 }
 
+/* ===== MODAL TIPS DE MEJORA ===== */
+.modal-tips {
+    max-width: 650px;              /* MÁS ANCHO */
+    background: var(--bg-card);
+    color: var(--text-main);
+}
+
+/* Título más visible */
+.modal-tips .modal-header h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--achs-azul);
+}
+
+/* Cuerpo del tip */
+.modal-tips .modal-body {
+    font-size: 0.95rem;            /* TEXTO MÁS GRANDE */
+    line-height: 1.7;
+    color: var(--text-main);
+}
+
+/* Listas de tips */
+.modal-tips ul {
+    padding-left: 18px;
+    margin-top: 10px;
+}
+
+.modal-tips li {
+    margin-bottom: 8px;
+}
+
+/* Bloques por KPI */
+.tip-block {
+    background: var(--bg-body);
+    border-left: 5px solid var(--achs-azul);
+    padding: 14px;
+    border-radius: 8px;
+    margin-bottom: 14px;
+}
+
+/* Semáforo visual */
+.tip-block.green { border-color: #16a34a; }
+.tip-block.yellow { border-color: #facc15; }
+.tip-block.red { border-color: #dc2626; }
+
+/* Mejora contraste en modo oscuro */
+body.dark-mode .modal-tips {
+    background: #111827;
+}
+
+body.dark-mode .modal-tips .tip-block {
+    background: #1f2937;
+}
+
+body.dark-mode .modal-tips h2,
+body.dark-mode .modal-tips li,
+body.dark-mode .modal-tips p {
+    color: #f9fafb;
+}
+
+/* Asegurar que los nombres de KPI (p. ej. en <strong>) en el Modal Tips sean blancos en modo oscuro */
+.modal-tips .tip-block strong,
+.modal-tips .tip-block b,
+.modal-tips .tip-block .kpi-name {
+    color: var(--text-main);
+}
+
+/* Forzar blanco en las distintas formas de activar modo oscuro usadas en la app */
+[data-theme="dark"] .modal-tips .tip-block strong,
+html.dark .modal-tips .tip-block strong,
+body.dark-mode .modal-tips .tip-block strong {
+    color: #ffffff;
+}
+
+/* Ajustes de layout para modal tips: overlay alineado arriba-izquierda y margen */
+.modal-overlay {
+    justify-content: flex-start;
+}
+
+.modal-tips {
+    margin-left: 60px;
+}
+
+/* Tema oscuro - variables y transición según solicitud */
+html.dark {
+    --bg-body: #111;
+    --bg-card: #1b1b1b;
+    --text-main: #f0f0f0;
+    --text-secondary: #bbbbbb;
+    --border-color: #333;
+}
+
+html.dark body {
+    background: #111;
+    transition: all .35s ease;
+}
+
+/* === HEATMAP STYLES === */
+.heat-green  { background:#2ecc71; color:#fff; }
+.heat-yellow { background:#f1c40f; color:#000; }
+.heat-red    { background:#e74c3c; color:#fff; }
+.heat-na     { background:#bdc3c7; color:#000; }
+
+.heatmap {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+}
+.heatmap th, .heatmap td {
+    border: 1px solid var(--border-color);
+    padding: 8px 10px;
+    text-align: center;
+    font-size: 0.9rem;
+}
+.heatmap thead th {
+    background: var(--bg-card);
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+.heatmap td { cursor: pointer; }
+.heatmap .exec-name { text-align: left; font-weight:700; }
+
 .btn-secondary {
     background-color: transparent;
     border: 1px solid var(--border-color);
@@ -412,6 +535,17 @@ body {
 
 .header .theme-toggle {
     color: var(--achs-blanco);
+}
+
+/* Responsive: mostrar icono por defecto; ocultar texto en pantallas pequeñas */
+#btnReturnJefatura i { display: inline-block; font-size: 1.0rem; }
+#btnReturnJefatura .btn-text { display: inline-block; }
+
+@media (max-width: 720px) {
+    #btnReturnJefatura i { display: inline-block; font-size: 1.0rem; }
+    #btnReturnJefatura .btn-text { display: none; }
+    #btnReturnJefatura { padding: 8px 10px; }
+    .role-selector-container { gap: 6px; }
 }
 
 .btn-db {
@@ -830,6 +964,11 @@ select {
     box-shadow: 0 0 5px var(--achs-accent);
 }
 
+.sem-red {
+    background-color: var(--achs-red);
+    box-shadow: 0 0 5px var(--achs-red);
+}
+
 .recomendaciones-box {
     background: var(--bg-card);
     border-left: 6px solid #6BBE45;
@@ -1112,6 +1251,64 @@ select {
     cursor: pointer;
     color: var(--text-secondary);
 }
+
+/* Team KPI Summary */
+.team-kpi-summary {
+    margin: 18px 0 12px 0;
+    padding: 12px 18px;
+    background: transparent;
+}
+.team-kpi-summary h3 {
+    margin: 0 0 8px 0;
+    font-size: 1.05rem;
+    color: var(--achs-azul);
+}
+.team-kpi-summary .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(120px, 1fr));
+    gap: 12px;
+    align-items: stretch;
+}
+.kpi-card {
+    background: var(--bg-card);
+    border-radius: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-height: 80px;
+    position: relative;
+}
+.kpi-card .kpi-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 700;
+}
+.kpi-card .kpi-value {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--text-main);
+}
+.kpi-card .kpi-meta {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+.kpi-card .kpi-dot {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+}
+.kpi-card.green { border-left: 6px solid #10B981; }
+.kpi-card.yellow { border-left: 6px solid #F59E0B; }
+.kpi-card.red { border-left: 6px solid #EF4444; }
+.kpi-dot.green { background: #10B981; }
+.kpi-dot.yellow { background: #F59E0B; }
+.kpi-dot.red { background: #EF4444; }
 
 table {
     width: 100%;
@@ -1497,3 +1694,106 @@ th {
 .one-on-one-sections>* {
     animation: fadeInRow 0.4s ease forwards;
 }
+
+/* Team KPI Summary (added) */
+.team-kpi-summary {
+    margin-top: 30px;
+    padding: 20px;
+    background: #f9fafb;
+    border-radius: 12px;
+}
+
+.team-kpi-summary h3 {
+    margin-bottom: 16px;
+    font-size: 18px;
+    color: #1f2937;
+}
+
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+}
+
+.kpi-card {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 14px;
+    text-align: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+    border-top: 6px solid transparent;
+}
+
+.kpi-title {
+    display: block;
+    font-size: 13px;
+    color: #6b7280;
+    margin-bottom: 6px;
+}
+
+.kpi-value {
+    display: block;
+    font-size: 26px;
+    font-weight: bold;
+    color: #111827;
+}
+
+.kpi-meta {
+    display: block;
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 4px;
+}
+
+/* SEMÁFORO */
+.kpi-card.green {
+    border-color: #16a34a;
+}
+
+.kpi-card.yellow {
+    border-color: #facc15;
+}
+
+.kpi-card.red {
+    border-color: #dc2626;
+}
+
+/* Dark theme adjustments for Team KPI Summary */
+[data-theme="dark"] .team-kpi-summary {
+    background: rgba(255,255,255,0.03);
+}
+
+[data-theme="dark"] .team-kpi-summary h3 {
+    color: var(--text-main);
+}
+
+[data-theme="dark"] .team-kpi-summary .kpi-grid {
+    gap: 12px;
+}
+
+[data-theme="dark"] .kpi-card {
+    background: var(--bg-card);
+    color: var(--text-main);
+    box-shadow: 0 6px 14px rgba(0,0,0,0.45);
+    border: 1px solid rgba(255,255,255,0.04);
+}
+
+[data-theme="dark"] .kpi-title {
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] .kpi-value {
+    color: var(--text-main);
+}
+
+[data-theme="dark"] .kpi-meta {
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] .kpi-card.green { border-left-color: #059669; }
+[data-theme="dark"] .kpi-card.yellow { border-left-color: #D97706; }
+[data-theme="dark"] .kpi-card.red { border-left-color: #EF4444; }
+
+[data-theme="dark"] .kpi-dot.green { box-shadow: 0 2px 6px rgba(5,150,105,0.25); }
+[data-theme="dark"] .kpi-dot.yellow { box-shadow: 0 2px 6px rgba(217,119,6,0.22); }
+[data-theme="dark"] .kpi-dot.red { box-shadow: 0 2px 6px rgba(239,68,68,0.22); }
