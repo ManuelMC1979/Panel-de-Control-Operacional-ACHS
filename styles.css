@@ -125,8 +125,10 @@
     --text-secondary: var(--achs-gris);
 
     --border-color: #E2E8F0;
+    --border-soft: rgba(14, 23, 34, 0.06);
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
     --shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-soft: 0 6px 18px rgba(2,6,23,0.06);
     --shadow-inner: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
     --glass: rgba(255, 255, 255, 0.85);
 }
@@ -214,8 +216,9 @@
 }
 
 body {
-    background-color: var(--bg-body);
+    background: var(--bg-body);
     color: var(--text-main);
+    font-family: "Inter", "Segoe UI", system-ui, sans-serif;
     padding-bottom: 80px;
     /* Space for FAB */
     overflow-x: hidden;
@@ -337,22 +340,31 @@ body {
 }
 
 .header {
-    background: linear-gradient(135deg, var(--achs-azul) 0%, var(--achs-azul-oscuro) 100%);
-    color: var(--achs-blanco);
-    padding: 1rem 2rem;
+    background: var(--achs-azul);
+    color: #fff;
+    padding: 16px 24px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     display: flex;
     align-items: center;
     justify-content: space-between;
     position: sticky;
     top: 0;
     z-index: 100;
-    box-shadow: 0 4px 20px rgba(0, 93, 170, 0.25);
 }
 
 .brand {
     display: flex;
     align-items: center;
     gap: 1rem;
+}
+
+.header-clock {
+    background: rgba(255,255,255,0.06);
+    padding: 6px 10px;
+    border-radius: 8px;
+    display: inline-block;
+    font-weight: 600;
+    letter-spacing: 0.2px;
 }
 
 .header h1 {
@@ -397,6 +409,130 @@ body {
 
 .btn-primary:hover {
     background-color: var(--achs-verde-oscuro);
+}
+
+/* Podium styles: aumentar y destacar insignias (1º/2º/3º) */
+.podium-section {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 12px 8px;
+}
+.podium-place {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 160px;
+    position: relative;
+}
+.podium-avatar {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--bg-card), #f1f5f9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow);
+    margin-bottom: 8px;
+    font-size: 48px;
+}
+.podium-place .podium-avatar span { display: inline-block; line-height: 1; }
+
+.podium-bar {
+    width: 100%;
+    height: 60px;
+    background: linear-gradient(135deg, #e6eefc, #dbeafe);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 8px;
+}
+.podium-name {
+    font-weight: 900;
+    margin-top: 6px;
+    font-size: 1.05rem;
+    text-align: center;
+    max-width: 160px;
+}
+
+/* Specific styling per place */
+.podium-place.place-1 { width: 200px; }
+.podium-place.place-2 { width: 160px; }
+.podium-place.place-3 { width: 130px; }
+
+.podium-place.place-1 .podium-avatar {
+    width: 140px;
+    height: 140px;
+    font-size: 76px;
+    background: linear-gradient(135deg, var(--achs-azul-claro), var(--achs-azul));
+    color: white;
+    transform: translateY(-20px);
+    box-shadow: 0 16px 36px rgba(0,0,0,0.28);
+}
+.podium-place.place-1 .podium-bar {
+    height: 130px;
+    background: linear-gradient(135deg, #FFD700, #FFC107);
+}
+
+.podium-place.place-2 .podium-avatar {
+    width: 116px;
+    height: 116px;
+    font-size: 58px;
+    background: linear-gradient(135deg, #E5E7EB, #CBD5E1);
+    color: #0b2545;
+    transform: translateY(-10px);
+}
+.podium-place.place-2 .podium-bar {
+    height: 86px;
+    background: linear-gradient(135deg, #E9EEF8, #D6E6FB);
+}
+
+.podium-place.place-3 .podium-avatar {
+    width: 96px;
+    height: 96px;
+    font-size: 52px;
+    background: linear-gradient(135deg, #FDE68A, #FACC15);
+    color: #111;
+    transform: translateY(-6px);
+}
+.podium-place.place-3 .podium-bar {
+    height: 64px;
+    background: linear-gradient(135deg, #FCEFC7, #FDE9A8);
+}
+
+.podium-place .podium-rank {
+    position: absolute;
+    top: -12px;
+    right: -12px;
+    background: rgba(0,0,0,0.06);
+    padding: 10px 12px;
+    border-radius: 50%;
+    font-weight: 900;
+    font-size: 2.2rem;
+    line-height: 1;
+    min-width: 48px;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+    background-clip: padding-box;
+}
+
+/* Color por lugar para mejorar contraste */
+.podium-place.place-1 .podium-rank { background: #FFD700; color: #111; }
+.podium-place.place-2 .podium-rank { background: #E6E6E6; color: #0b2545; }
+.podium-place.place-3 .podium-rank { background: #F4A261; color: #111; }
+
+@media (max-width: 600px) {
+    .podium-place { width: 110px; }
+    .podium-avatar { width: 72px; height: 72px; font-size: 34px; }
+    .podium-place.place-1 .podium-avatar { width: 86px; height: 86px; font-size: 44px; }
+    .podium-bar { height: 44px; }
+    .podium-name { font-size: 0.9rem; }
 }
 
 /* ===== MODAL TIPS DE MEJORA ===== */
@@ -546,6 +682,41 @@ html.dark body {
     #btnReturnJefatura .btn-text { display: none; }
     #btnReturnJefatura { padding: 8px 10px; }
     .role-selector-container { gap: 6px; }
+}
+
+/* Modal Coaching Ideas - visual */
+.modal-wide {
+    max-width: 720px;
+    width: 92%;
+    background: var(--bg-card);
+    border-radius: 12px;
+    padding: 0;
+    box-shadow: var(--shadow);
+}
+
+.modal-overlay .modal-wide .modal-body {
+    padding: 16px 18px 22px 18px;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.coach-block {
+    background: var(--bg-card);
+    border-left: 5px solid var(--achs-azul);
+    padding: 14px 16px;
+    border-radius: 10px;
+    margin-bottom: 14px;
+}
+.coach-block h3 {
+    margin-bottom: 8px;
+    color: var(--achs-azul);
+}
+.coach-block ul {
+    padding-left: 18px;
+}
+.coach-block li {
+    margin-bottom: 6px;
+    color: var(--text-main);
 }
 
 .btn-db {

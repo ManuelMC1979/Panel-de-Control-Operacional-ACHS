@@ -41,6 +41,7 @@
             <div>
                 <h1>Panel de Control Operacional ACHS</h1>
                 <p id="rolMessage" style="font-size: 0.85rem; opacity: 0.9; margin-top: 2px;">Cargando vista...</p>
+                <div id="headerClock" class="header-clock" aria-hidden="false" style="margin-top:6px; font-size:0.85rem; color:rgba(255,255,255,0.9);"></div>
             </div>
         </div>
         <div class="controls">
@@ -72,6 +73,11 @@
             <button id="btnReturnJefatura" class="btn btn-secondary" title="Volver a Jefatura" style="display:none; margin-left:8px;">
                 <i class="fas fa-user-shield" aria-hidden="true"></i>
                 <span class="btn-text" style="margin-left:6px;">Volver Jefatura</span>
+            </button>
+            
+            <!-- Botón Supervisor: Ideas de Coaching -->
+            <button id="btnCoachingIdeas" class="btn btn-primary" title="Ideas de Coaching – Calidad" style="display:none; margin-left:8px;" data-rol="supervisor">
+                🧠 Ideas de Coaching – Calidad
             </button>
 
             <!-- Recommendation History Button -->
@@ -121,6 +127,67 @@
                 <label><input type="checkbox" value="ENERO" checked> Enero</label>
             </div>
         </div>
+
+            <!-- Modal Ideas de Coaching – Calidad (Supervisor) -->
+            <div id="modalCoachingIdeas" class="modal-overlay" style="z-index:2003;">
+                <div class="modal-content modal-wide">
+                    <div class="modal-header">
+                        <h2>🧠 Ideas de Coaching – Calidad de Servicio</h2>
+                        <button class="close-modal" onclick="cerrarCoachingIdeas()"><i class="fas fa-times"></i></button>
+                    </div>
+                    <div class="modal-body">
+
+                        <div class="coach-block">
+                            <h3>📞 Satisfacción SNL / EP</h3>
+                            <ul>
+                                <li>Escuchar grabación completa con el ejecutivo</li>
+                                <li>Detectar momentos donde el tono baja</li>
+                                <li>Reforzar saludo + cierre empático</li>
+                                <li>Simular llamada ideal (role play)</li>
+                            </ul>
+                        </div>
+
+                        <div class="coach-block">
+                            <h3>✅ Resolución SNL / EP</h3>
+                            <ul>
+                                <li>Revisar si el ejecutivo confirma resolución</li>
+                                <li>Entrenar preguntas de cierre efectivo</li>
+                                <li>Validar comprensión del paciente</li>
+                                <li>Checklist de “caso resuelto”</li>
+                            </ul>
+                        </div>
+
+                        <div class="coach-block">
+                            <h3>⏱️ TMO</h3>
+                            <ul>
+                                <li>Identificar silencios innecesarios</li>
+                                <li>Optimizar búsqueda de información</li>
+                                <li>Entrenar control del tiempo sin perder calidad</li>
+                                <li>Frases puente para agilizar</li>
+                            </ul>
+                        </div>
+
+                        <div class="coach-block">
+                            <h3>📋 Tipificaciones</h3>
+                            <ul>
+                                <li>Recordatorio de tipificar antes de 10 segundos</li>
+                                <li>Usar categorías correctas</li>
+                                <li>Checklist post-llamada</li>
+                            </ul>
+                        </div>
+
+                        <div class="coach-block">
+                            <h3>🔁 Transferencia a EPA</h3>
+                            <ul>
+                                <li>Entrenar explicación clara de encuesta</li>
+                                <li>Usar guion corto y natural</li>
+                                <li>Validar aceptación del paciente</li>
+                            </ul>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
         <div>
             <label for="execFilter"
                 style="font-weight: 600; margin-right: 0.5rem; color: var(--text-secondary);">Ejecutivo:</label>
@@ -364,6 +431,10 @@
                 <button class="close-modal" onclick="toggleHistorialModal()"><i class="fas fa-times"></i></button>
             </div>
             <div class="historial-box">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <div id="historialMonthLabel" style="font-weight:700; color:var(--text-main);">Mes: </div>
+                    <!-- Could add month selector later -->
+                </div>
                 <table class="historial-table">
                     <thead>
                         <tr>

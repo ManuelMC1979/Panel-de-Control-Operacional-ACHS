@@ -503,6 +503,24 @@ function medalla(posicion) {
     return '';
 }
 
+// Reloj en el header: muestra día y hora en locale español
+function startClock() {
+    const el = document.getElementById('headerClock');
+    if (!el) return;
+
+    function update() {
+        const now = new Date();
+        const fecha = now.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' });
+        const hora = now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        // Capitalizar primera letra del día
+        const fechaCap = fecha.charAt(0).toUpperCase() + fecha.slice(1);
+        el.textContent = `${fechaCap} · ${hora}`;
+    }
+
+    update();
+    setInterval(update, 1000);
+}
+
 // ⚖️ PONDERACIÓN COPC DE KPI
 const pesosCOPC = {
     tmo: 0.15,
@@ -625,6 +643,7 @@ let forcedExecutive = null; // To handle race condition in role application
 // SETUP
 document.addEventListener('DOMContentLoaded', () => {
     applyTheme(theme);
+    startClock();
     initEventListeners();
     populateMonthFilter();
     // Iniciar con la carga del mes actual y el historial en paralelo
@@ -1469,6 +1488,7 @@ function renderPodium(top3, kpiKey) {
         div.innerHTML = `
             <div class="podium-avatar">
                 <span style="font-size:1.5rem;">${placeMedal}</span>
+                <div class="podium-rank">${place}</div>
             </div>
             <div class="podium-bar">
                 <div style="text-align:center;">
@@ -2963,6 +2983,13 @@ function aplicarRol(rol) {
         }
     }
 
+    // Mostrar botón 'Ideas de Coaching' sólo para rol supervisor
+    const coachingBtn = document.getElementById('btnCoachingIdeas');
+    if (coachingBtn) {
+        if (rol === 'supervisor') coachingBtn.style.display = 'inline-flex';
+        else coachingBtn.style.display = 'none';
+    }
+
     // 3. Aplicar bloqueos específicos
     if (SECCIONES_BLOQUEADAS[rol]) {
         SECCIONES_BLOQUEADAS[rol].forEach(id => {
@@ -3024,7 +3051,27 @@ document.addEventListener('DOMContentLoaded', () => {
             aplicarRol('jefatura');
         });
     }
+
+    // Coaching Ideas (Supervisor) - abrir/cerrar
+    const btnCoaching = document.getElementById('btnCoachingIdeas');
+    if (btnCoaching) {
+        btnCoaching.addEventListener('click', () => {
+            abrirCoachingIdeas();
+        });
+    }
 });
+
+function abrirCoachingIdeas() {
+    const modal = document.getElementById('modalCoachingIdeas');
+    if (!modal) return;
+    modal.classList.add('active');
+}
+
+function cerrarCoachingIdeas() {
+    const modal = document.getElementById('modalCoachingIdeas');
+    if (!modal) return;
+    modal.classList.remove('active');
+}
 
 // --- HISTORIAL DE RECOMENDACIONES (Persistence & Management) ---
 
@@ -3130,8 +3177,25 @@ function marcarEjecutada(index) {
 function toggleHistorialModal() {
     const modal = document.getElementById('historialModal');
     if (modal) {
+        const willOpen = !modal.classList.contains('active');
         modal.classList.toggle('active');
-        if (modal.classList.contains('active')) renderHistorial();
+        if (willOpen) {
+            // Determinar mes más reciente presente en el historial
+            let recent = null;
+            for (let i = MONTHS.length - 1; i >= 0; i--) {
+                const m = MONTHS[i];
+                if (historialRecomendaciones.some(h => matchMonth(h.mes, m))) { recent = m; break; }
+            }
+            if (!recent && historialRecomendaciones.length > 0) {
+                recent = (historialRecomendaciones[historialRecomendaciones.length - 1].mes || currentMonth).toString().toUpperCase();
+            }
+            if (!recent) recent = currentMonth || getCurrentMonthName();
+
+            const label = document.getElementById('historialMonthLabel');
+            if (label) label.innerText = `Mes: ${recent}`;
+
+            renderHistorial(recent);
+        }
     }
 }
 
