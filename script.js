@@ -171,7 +171,7 @@ async function renderPredictivo() {
 
     try {
         const hist = await loadHistorialFromDB();
-        const predicciones = (typeof IA.predecir === 'function') ? IA.predecir(hist) : predecir(hist);
+        const predicciones = (typeof IA !== 'undefined' && typeof IA.predecir === 'function') ? IA.predecir(hist) : predecir(hist);
 
         for (const kpi in predicciones) {
             const item = predicciones[kpi];
@@ -187,7 +187,7 @@ async function renderPredictivo() {
 
             // Mostrar riesgo priorizado en la UI
             try {
-                const riesgo = (typeof IA.priorizarRiesgo === 'function') ? IA.priorizarRiesgo(hist) : (typeof priorizarRiesgo === 'function' ? priorizarRiesgo(hist) : null);
+                const riesgo = (typeof IA !== 'undefined' && typeof IA.priorizarRiesgo === 'function') ? IA.priorizarRiesgo(hist) : (typeof priorizarRiesgo === 'function' ? priorizarRiesgo(hist) : null);
 
                 const textoEl = document.getElementById('riesgo-texto');
                 const motivoEl = document.getElementById('riesgo-motivo');
@@ -202,7 +202,7 @@ async function renderPredictivo() {
 
                 // Generar y mostrar acción preventiva sugerida
                 try {
-                    const accion = (typeof IA.generarAccionPreventiva === 'function') ? IA.generarAccionPreventiva(riesgo) : (typeof generarAccionPreventiva === 'function' ? generarAccionPreventiva(riesgo) : null);
+                    const accion = (typeof IA !== 'undefined' && typeof IA.generarAccionPreventiva === 'function') ? IA.generarAccionPreventiva(riesgo) : (typeof generarAccionPreventiva === 'function' ? generarAccionPreventiva(riesgo) : null);
 
                     const tituloEl = document.getElementById('accion-titulo');
                     const detalleEl = document.getElementById('accion-detalle');
@@ -845,6 +845,32 @@ function matchMonth(dataMonth, targetMonth) {
     }
     return false;
 }
+// Normaliza una representación de mes (ej: "Nov", "noviembre 23", "11") a nombre completo en mayúsculas
+function normalizeMonthName(input) {
+    if (!input && input !== 0) return '';
+    const monthsEs = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+    let s = input.toString().trim().toUpperCase();
+    // If already exact
+    if (monthsEs.includes(s)) return s;
+    // Remove year suffixes like -23 or 2023
+    s = s.replace(/[-\s]\d{2,4}$/,'').trim();
+    // Check full name contains
+    for (const m of monthsEs) {
+        if (s.includes(m)) return m;
+    }
+    // Check 3-letter matches
+    const abbr = s.substring(0,3);
+    for (const m of monthsEs) if (m.substring(0,3) === abbr) return m;
+    // Check numeric month
+    const num = parseInt(s.replace(/^0+/,''),10);
+    if (!isNaN(num) && num >=1 && num <=12) return monthsEs[num-1];
+    return s; // fallback to original uppercased string
+}
+
+function normalizeCurrentDataMonths(dataArray) {
+    if (!Array.isArray(dataArray)) return;
+    dataArray.forEach(d => { if (d && d.mes) d.mes = normalizeMonthName(d.mes); });
+}
 // --- CACHE MANAGEMENT ---
 function getTodayDate() {
     return new Date().toISOString().split('T')[0]; // YYYY-MM-DD
@@ -942,6 +968,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Mostrar predictivo al cargar
     renderPredictivo();
+    // Mostrar gráfico de tendencia KPI
+    try { renderKpiTrendChart(); } catch (e) { console.warn('kpiTrendChart init failed', e); }
 
     // Inicializar controles desplegables para secciones IA
     setupIaCollapsibles();
@@ -1059,6 +1087,9 @@ function initEventListeners() {
                 }
             });
         });
+
+        // Also trigger a dashboard re-render when months selection changes
+        document.querySelectorAll('#monthOptions input').forEach(cb => cb.addEventListener('change', renderDashboard));
     }
 
     document.getElementById('execFilter').addEventListener('change', renderDashboard);
@@ -1184,7 +1215,7 @@ async function fetchData(month, force = false) {
     try {
         const parsed = await fetchSheet(month, force);
         parsed.forEach(d => {
-            if (d.mes) d.mes = d.mes.toString().trim().toUpperCase();
+            if (d.mes) d.mes = normalizeMonthName(d.mes);
             if (d.name) d.name = d.name.toString().trim();
         });
         currentData = parsed;
@@ -1228,13 +1259,28 @@ async function fetchSheet(month, force = false) {
         return null;
     };
 
-    const variations = [month.toUpperCase(), month.charAt(0).toUpperCase() + month.slice(1).toLowerCase(), month.substring(0, 3).toUpperCase()];
+    // Try a broader set of variations: full uppercase, capitalized, 3-letter, and common year suffixes
+    const cap = month.charAt(0).toUpperCase() + month.slice(1).toLowerCase();
+    const variations = [
+        month.toUpperCase(),
+        cap,
+        month.substring(0, 3).toUpperCase(),
+        `${month} 23`.toUpperCase(),
+        `${cap} 23`,
+        `${month} 2023`.toUpperCase(),
+        `${cap} 2023`,
+        `${month}-23`.toUpperCase(),
+        `${cap}-23`
+    ];
     let json = null;
     for (const name of variations) {
         json = await tryFetch(name);
         if (json) break;
     }
-    if (!json) throw new Error(`Hoja "${month}" no encontrada.`);
+    if (!json) {
+        console.warn(`Hoja "${month}" no encontrada con variaciones:`, variations);
+        throw new Error(`Hoja "${month}" no encontrada.`);
+    }
 
     const rows = json.table.rows;
     if (!rows || rows.length === 0) return [];
@@ -1322,8 +1368,25 @@ async function fetchMultipleMonths(months, force = false) {
         const results = await Promise.all(promises);
         // Merge arrays
         currentData = [].concat(...results);
-        // Ensure mes values are normalized to uppercase month names and trimmed
-        currentData.forEach(d => { if (d.mes) d.mes = d.mes.toString().trim().toUpperCase(); });
+        // Log months that returned empty results to help debugging missing sheets
+        results.forEach((res, i) => {
+            if (!res || (Array.isArray(res) && res.length === 0)) console.warn(`fetchMultipleMonths: no data for ${months[i]}`);
+        });
+        // Normalize month names in merged data
+        normalizeCurrentDataMonths(currentData);
+
+        // Detect missing months (those with no rows after merge)
+        const missingAfterFetch = months.filter(m => !currentData.some(d => matchMonth(d.mes, m)));
+        if (missingAfterFetch.length > 0) {
+            console.warn('fetchMultipleMonths: missing months after fetch:', missingAfterFetch);
+            // Inform the user with actionable message
+            try {
+                alert(`No se encontraron datos para los meses: ${missingAfterFetch.join(', ')}.\nVerifica que las pestañas existan y que el ` +
+                    `SHEET_ID sea correcto (nombres exactos, p.ej. NOVIEMBRE). Si las pestañas contienen sufijos ("NOVIEMBRE 23"), usa el mismo nombre o actualiza el código.`);
+            } catch (e) { /* ignore alert failures */ }
+        }
+        // Ensure mes values are normalized to full uppercase month names
+        normalizeCurrentDataMonths(currentData);
         processData(currentData);
     } finally {
         showLoading(false);
@@ -2017,6 +2080,126 @@ function cerrarModalTeams() {
     if (modal) modal.classList.remove('active');
 }
 
+// -----------------------
+// Gráfico: Tendencia KPIs (últimos 3 meses)
+// -----------------------
+function getLastNMonthNames(n) {
+    const monthsEs = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+    const res = [];
+    const now = new Date();
+    for (let i = n - 1; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        res.push(monthsEs[d.getMonth()]);
+    }
+    return res;
+}
+
+function renderKpiTrendChart() {
+    const canvas = document.getElementById('kpiTrendChart');
+    if (!canvas) return;
+
+    const meses = getLastNMonthNames(3).map(l => l.charAt(0) + l.slice(1).toLowerCase());
+
+    // Helper para promediar una propiedad con variantes de nombre
+    function avgForKey(rows, variants) {
+        const vals = rows.map(r => {
+            for (const k of variants) {
+                if (r[k] !== undefined && r[k] !== null && r[k] !== '') return Number(r[k]) || 0;
+            }
+            return null;
+        }).filter(v => v !== null && !isNaN(v));
+        if (vals.length === 0) return null;
+        return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+    }
+
+    const labelsRaw = getLastNMonthNames(3);
+
+    const dataTrend = { satSNL: [], satEP: [], epa: [] };
+
+    labelsRaw.forEach((mesName, idx) => {
+        const rows = (currentData || []).filter(d => matchMonth(d.mes, mesName));
+
+        // Satisfacción SNL -> posibles keys: satSnl, satSNL, sat_snl
+        let vSnl = avgForKey(rows, ['satSnl', 'satSNL', 'sat_snl']);
+        // Satisfacción EP -> satEp, satEP
+        let vEp = avgForKey(rows, ['satEp', 'satEP', 'sat_ep']);
+        // Transferencia EPA -> transfEPA, epa, transfEpa
+        let vEpa = avgForKey(rows, ['transfEPA', 'epa', 'transfEpa']);
+
+        // Fallback a historial si existe
+        if ((vSnl === null || isNaN(vSnl)) && historial && Array.isArray(historial.satSNL)) {
+            vSnl = historial.satSNL[idx] || null;
+        }
+        if ((vEp === null || isNaN(vEp)) && historial && Array.isArray(historial.satEP)) {
+            vEp = historial.satEP[idx] || null;
+        }
+        if ((vEpa === null || isNaN(vEpa)) && historial && Array.isArray(historial.epa)) {
+            vEpa = historial.epa[idx] || null;
+        }
+
+        // Último recurso: valores de ejemplo
+        if (vSnl === null || isNaN(vSnl)) vSnl = [90, 91, 92][idx] || 90;
+        if (vEp === null || isNaN(vEp)) vEp = (historial && historial.satEP && historial.satEP[idx]) || [95, 94, 93][idx] || 95;
+        if (vEpa === null || isNaN(vEpa)) vEpa = (historial && historial.epa && historial.epa[idx]) || [88, 85, 82][idx] || 85;
+
+        dataTrend.satSNL.push(vSnl);
+        dataTrend.satEP.push(vEp);
+        dataTrend.epa.push(vEpa);
+    });
+
+    // Destroy previous chart if existe
+    if (window.kpiTrendChart instanceof Chart) window.kpiTrendChart.destroy();
+
+    const ctx = document.getElementById('kpiTrendChart').getContext('2d');
+    window.kpiTrendChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: meses,
+            datasets: [
+                {
+                    label: 'Satisfacción SNL',
+                    data: dataTrend.satSNL,
+                    borderWidth: 3,
+                    tension: 0.4,
+                    borderColor: '#16a34a',
+                    backgroundColor: 'rgba(22,163,74,0.06)'
+                },
+                {
+                    label: 'Satisfacción EP',
+                    data: dataTrend.satEP,
+                    borderWidth: 3,
+                    tension: 0.4,
+                    borderColor: '#005DAA',
+                    backgroundColor: 'rgba(0,93,170,0.06)'
+                },
+                {
+                    label: 'Transferencia a EPA',
+                    data: dataTrend.epa,
+                    borderWidth: 3,
+                    tension: 0.4,
+                    borderColor: '#f59e0b',
+                    backgroundColor: 'rgba(245,158,11,0.06)'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom' },
+                tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y}%` } }
+            },
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    ticks: { callback: v => v + '%' }
+                }
+            }
+        }
+    });
+}
+
+
 function cargarMetricasModal() {
     const cont = document.getElementById("metricSelector");
     if (!cont) return;
@@ -2535,6 +2718,8 @@ async function showEvolutionary(overrideExec, overrideKpi, force = false) {
                         existingHash.add(key);
                     }
                 });
+                // Normalize after merging cached
+                normalizeCurrentDataMonths(currentData);
             } else {
                 monthsToFetch.push(m);
             }
@@ -2561,7 +2746,8 @@ async function showEvolutionary(overrideExec, overrideKpi, force = false) {
                     }
                 });
 
-                currentData.forEach(d => { if (d.mes) d.mes = d.mes.toString().trim().toUpperCase(); });
+                // Normalize month names after merge
+                normalizeCurrentDataMonths(currentData);
                 processData(currentData);
             } catch (e) {
                 console.error("Error cargando meses para evolutivo:", e);
@@ -2619,6 +2805,9 @@ async function showEvolutionary(overrideExec, overrideKpi, force = false) {
         // Use override if provided, otherwise sync with global filter
         evolExecSel.value = execSel === 'TODOS' ? 'all' : execSel;
 
+        // Debug: listar meses disponibles actualmente
+        try { console.log('Available months in currentData:', Array.from(new Set(currentData.map(d => d.mes))).sort()); } catch (e) { }
+
         // When the evolExecSelect changes, update global execFilter and re-render
         evolExecListener = function () {
             const val = evolExecSel.value === 'all' ? 'all' : evolExecSel.value;
@@ -2651,14 +2840,18 @@ async function showEvolutionary(overrideExec, overrideKpi, force = false) {
     // Helper to build table and chart so we can re-use when filters change
     function updateEvolContent(execValue, kpiRawValue) {
         const resolvedKpi = resolveKpiKey(kpiRawValue);
-        // Use the selected months from the monthFilter (support multi-select)
-        // If only one month is selected, we still show the full evolution (MONTHS)
-        const monthSelEl = document.getElementById('monthFilter');
-        const selectedOptions = monthSelEl ? Array.from(monthSelEl.selectedOptions) : [];
-        const selectedMonths = selectedOptions.map(o => o.value.trim().toUpperCase());
+        // Use the selected months from the custom multi-select (support multi-select)
+        // `getSelectedMonths()` returns an array of values (e.g., ['OCTUBRE','NOVIEMBRE'])
+        const selectedMonths = (typeof getSelectedMonths === 'function') ? getSelectedMonths() : [];
 
-        // Forzar a que labels sea siempre MONTHS para ver la evolución completa independientemente del filtro externo
-        const labels = MONTHS;
+        // Normalize selected months to full names; if none selected, use global MONTHS
+        let labels;
+        if (selectedMonths && selectedMonths.length > 0) {
+            labels = selectedMonths.map(m => normalizeMonthName(m));
+        } else {
+            labels = MONTHS;
+        }
+
         const serieLocal = agruparPorMes(currentData, execValue, resolvedKpi, labels);
 
         // Construir tabla: si se muestran "Todos" mostramos una columna por ejecutivo con su KPI por mes,

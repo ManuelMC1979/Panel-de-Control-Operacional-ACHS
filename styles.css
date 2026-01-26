@@ -173,6 +173,26 @@
     box-shadow: var(--shadow);
 }
 
+/* Card component used across the dashboard */
+.card {
+    background: var(--bg-card);
+    padding: 20px;
+    border-radius: 16px;
+    box-shadow: 0 6px 16px rgba(0,0,0,.15);
+}
+
+/* Forzar visibilidad y tamaño del KPI Trend Card */
+.kpi-trend-card {
+    display: block !important;
+    min-height: 220px;
+    width: 100%;
+}
+
+#kpiTrendChart {
+    width: 100% !important;
+    height: 220px !important;
+}
+
 .skeleton-header {
     display: flex;
     align-items: center;
