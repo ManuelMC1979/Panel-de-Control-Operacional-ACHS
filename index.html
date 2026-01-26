@@ -231,6 +231,36 @@
         <div id="summaryMessage" class="summary-message">
             Procesando indicadores del periodo seleccionado para generar insights...
         </div>
+            <div style="margin-top:12px;">
+            <button id="btnRunIAExample" data-rol="jefatura supervisor" class="btn btn-primary" style="min-width:220px;">Probar IA de Dashboard</button>
+        </div>
+                <!-- IA Box: Asistente Operacional -->
+                <section class="ia-box" data-rol="jefatura supervisor" style="margin-top:12px; padding:12px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-card);">
+                    <h3 style="margin:0 0 8px 0">🧠 Asistente Operacional</h3>
+
+                    <p id="ia-recomendacion" style="margin:0 0 8px 0; font-weight:600; color:var(--text-main);">--</p>
+
+                    <ul id="ia-coaching" style="margin:0; padding-left:18px; color:var(--text-main);"></ul>
+                </section>
+                                <!-- Predictivo: Riesgo próximo mes -->
+                                                                <section class="ia-predictivo" data-rol="jefatura supervisor" style="margin-top:12px; padding:12px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-card);">
+                                                                        <h3 style="margin:0 0 8px 0">🔮 Riesgo próximo mes</h3>
+                                                                        <ul id="lista-predictivo" style="margin:0; padding-left:18px; color:var(--text-main);"></ul>
+
+                                                                        <!-- Sección de riesgo prioritario -->
+                                                                        <section class="ia-prioridad" style="margin-top:10px;">
+                                                                            <h3 style="margin:0 0 6px 0">🚨 Riesgo prioritario próximo mes</h3>
+                                                                            <p id="riesgo-texto">--</p>
+                                                                            <small id="riesgo-motivo"></small>
+                                                                        </section>
+
+                                                                        <!-- Acción preventiva sugerida -->
+                                                                        <section class="accion-preventiva" style="margin-top:10px;">
+                                                                            <h3 style="margin:0 0 6px 0">🛠 Acción preventiva sugerida</h3>
+                                                                            <p id="accion-titulo">--</p>
+                                                                            <ul id="accion-detalle" style="margin:0; padding-left:18px; color:var(--text-main);"></ul>
+                                                                        </section>
+                                                                </section>
         <!-- Mini KPIs removed: moved to data-driven widgets -->
     </section>
 
@@ -402,6 +432,17 @@
         </div>
     </div>
 
+    <!-- Modal IA Resultados -->
+    <div class="modal-overlay" id="iaResultModal" data-rol="jefatura supervisor" style="display:none; z-index:2050;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Resultados IA — Ejemplo</h2>
+                <button class="close-modal" id="closeIaResult"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="iaResultContent" style="padding:12px; max-height:60vh; overflow:auto; font-size:0.95rem;"></div>
+        </div>
+    </div>
+
     <!-- Modal de Recomendación Predictiva -->
     <div class="modal-overlay" id="recommendationModal" style="z-index: 2000;">
         <div class="modal-content" style="max-width: 450px;">
@@ -556,6 +597,7 @@
             </div>
         </div>
     </div>
+    <script src="ia.js"></script>
     <script src="script.js"></script>
 </body>
 

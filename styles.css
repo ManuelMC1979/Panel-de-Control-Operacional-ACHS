@@ -806,6 +806,31 @@ select {
     display: block;
 }
 
+/* IA Box Styles */
+.ia-box {
+    margin-top: 20px;
+    padding: 16px;
+    background: var(--bg-card);
+    border-left: 6px solid var(--achs-azul);
+    border-radius: 14px;
+    box-shadow: var(--shadow-soft);
+}
+
+.ia-box h3 {
+    margin-bottom: 8px;
+    color: var(--achs-azul);
+}
+
+#ia-recomendacion {
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+#ia-coaching li {
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
 .multiselect-options label {
     display: flex;
     align-items: center;
@@ -1393,19 +1418,40 @@ select {
 
 .modal-content {
     background: var(--bg-card);
-    padding: 2rem;
+    padding: 0; /* inner padding moved to .modal-body to allow sticky footer */
     border-radius: 16px;
     width: 90%;
     max-width: 800px;
     max-height: 80vh;
-    overflow-y: auto;
     box-shadow: var(--shadow);
     transform: translateY(20px);
     transition: transform 0.3s;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 .modal-overlay.active .modal-content {
     transform: translateY(0);
+}
+
+/* Ensure modal body scrolls while footer remains visible */
+.modal-overlay .modal-content .modal-body {
+    padding: 1.5rem 2rem;
+    overflow-y: auto;
+    flex: 1 1 auto;
+}
+
+.modal-overlay .modal-content .modal-footer {
+    position: sticky;
+    bottom: 0;
+    background: var(--bg-card);
+    padding: 12px 1.5rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    z-index: 12;
 }
 
 .modal-header {
@@ -1968,3 +2014,74 @@ th {
 [data-theme="dark"] .kpi-dot.green { box-shadow: 0 2px 6px rgba(5,150,105,0.25); }
 [data-theme="dark"] .kpi-dot.yellow { box-shadow: 0 2px 6px rgba(217,119,6,0.22); }
 [data-theme="dark"] .kpi-dot.red { box-shadow: 0 2px 6px rgba(239,68,68,0.22); }
+
+.ia-predictivo {
+    margin-top: 20px;
+    padding: 16px;
+    background: var(--bg-card);
+    border-left: 6px solid var(--achs-naranja);
+    border-radius: 14px;
+}
+
+.ia-prioridad {
+    margin-top: 20px;
+    padding: 16px;
+    background: var(--bg-card);
+    border-left: 6px solid #d32f2f;
+    border-radius: 14px;
+}
+
+.accion-preventiva {
+    margin-top: 20px;
+    padding: 18px;
+    background: var(--bg-card);
+    border-left: 6px solid #f9a825;
+    border-radius: 14px;
+}
+
+/* Collapsible IA sections */
+.ia-predictivo h3,
+.ia-prioridad h3,
+.accion-preventiva h3 {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.ia-predictivo.collapsed > *:not(h3),
+.ia-prioridad.collapsed > *:not(h3),
+.accion-preventiva.collapsed > *:not(h3) {
+    display: none;
+}
+
+/* Chevrones visuales en encabezados */
+.ia-predictivo h3::after,
+.ia-prioridad h3::after,
+.accion-preventiva h3::after {
+    content: '\25BC';
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    transition: transform 0.2s ease;
+}
+
+.ia-predictivo.collapsed h3::after,
+.ia-prioridad.collapsed h3::after,
+.accion-preventiva.collapsed h3::after {
+    transform: rotate(-90deg);
+}
+
+[data-theme="dark"] .ia-predictivo h3::after,
+[data-theme="dark"] .ia-prioridad h3::after,
+[data-theme="dark"] .accion-preventiva h3::after {
+    color: var(--text-secondary);
+}
+
+.ia-predictivo {
+    margin-top: 20px;
+    padding: 16px;
+    background: var(--bg-card);
+    border-left: 6px solid var(--achs-naranja);
+    border-radius: 14px;
+}

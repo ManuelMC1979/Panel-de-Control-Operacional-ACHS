@@ -42,6 +42,196 @@ function formatTMO(value) {
     return Math.round(Number(value)) + ' min';
 }
 
+// === ESTRUCTURA BASE DE LA IA ===
+// IA operacional cargada desde ia.js (externo). `ia.js` debe estar incluido antes de `script.js`.
+
+// Comparar evolución entre dos registros (actual vs anterior)
+function compararEvolucion(actual, anterior) {
+    const resultado = { mejoras: [], empeora: [], cambios: {} };
+    if (!actual || !anterior) return resultado;
+
+    const kpimap = {
+        satEP: ['satEP','satEp'],
+        resEP: ['resEP','resEp'],
+        satSNL: ['satSNL','satSnl','satSNL','satSnl'],
+        resSNL: ['resSNL','resSnl'],
+        tmo: ['tmo','TMO'],
+        transfEPA: ['transfEPA','epa','transfEpa'],
+        tipificaciones: ['tipificaciones','tip']
+    };
+
+    function obtener(obj, variants) {
+        for (const k of variants) {
+            if (obj && obj[k] !== undefined && obj[k] !== null) return Number(obj[k]) || 0;
+        }
+        return 0;
+    }
+
+    for (const k in kpimap) {
+        const variants = kpimap[k];
+        const aVal = obtener(actual, variants);
+        const bVal = obtener(anterior, variants);
+        const delta = aVal - bVal;
+        resultado.cambios[k] = delta;
+
+        if (k === 'tmo') {
+            if (aVal < bVal) resultado.mejoras.push(k);
+            else if (aVal > bVal) resultado.empeora.push(k);
+        } else {
+            if (aVal > bVal) resultado.mejoras.push(k);
+            else if (aVal < bVal) resultado.empeora.push(k);
+        }
+    }
+
+    return resultado;
+}
+
+// Calcula la pendiente promedio (tendencia) de una serie de valores (antiguo -> reciente)
+function tendencia(valores) {
+    const n = valores.length;
+    if (n < 2) return 0;
+    return (valores[n - 1] - valores[0]) / (n - 1);
+}
+
+// Proyecta el siguiente valor usando la pendiente promedio (redondeado)
+function proyectarSiguiente(valores) {
+    if (!Array.isArray(valores) || valores.length === 0) return 0;
+    const pendiente = tendencia(valores);
+    const ultimo = Number(valores[valores.length - 1]) || 0;
+    return Math.round(ultimo + pendiente);
+}
+
+// Evalúa riesgo futuro para una KPI dado un valor proyectado
+function riesgoFuturo(kpi, proyeccion) {
+    const umbrales = {
+        resEP: 90,
+        satEP: 95,
+        tmo: 5,
+        epa: 85
+    };
+
+    if (kpi === "tmo") {
+        return proyeccion > umbrales[kpi] ? "riesgo" : "ok";
+    }
+
+    return proyeccion < umbrales[kpi] ? "riesgo" : "ok";
+}
+
+// Prioriza el riesgo más relevante en base a proyección, tendencia e impacto
+function priorizarRiesgo(historial) {
+    let riesgoPrioritario = null;
+    let mayorScore = -Infinity;
+
+    for (const kpi in historial) {
+        const valores = historial[kpi];
+        const proyeccion = proyectarSiguiente(valores);
+        const estado = riesgoFuturo(kpi, proyeccion);
+
+        if (estado === "riesgo") {
+            const tendenciaValor = tendencia(valores);
+            const impacto = impactoKPI[kpi] || 1;
+
+            const score = Math.abs(tendenciaValor) * impacto;
+
+            if (score > mayorScore) {
+                mayorScore = score;
+                riesgoPrioritario = {
+                    kpi,
+                    proyeccion,
+                    tendencia: tendenciaValor,
+                    impacto
+                };
+            }
+        }
+    }
+
+    return riesgoPrioritario;
+}
+
+// Genera predicciones y estado futuro para cada KPI en un historial
+function predecir(historial) {
+    const predicciones = {};
+
+    for (const kpi in historial) {
+        const proy = proyectarSiguiente(historial[kpi]);
+        predicciones[kpi] = {
+            valor: proy,
+            estado: riesgoFuturo(kpi, proy)
+        };
+    }
+
+    return predicciones;
+}
+
+// Renderiza la lista predictiva en la UI usando IA.predecir(historial)
+async function renderPredictivo() {
+    const lista = document.getElementById('lista-predictivo');
+    if (!lista) return;
+    lista.innerHTML = "";
+
+    try {
+        const hist = await loadHistorialFromDB();
+        const predicciones = (typeof IA.predecir === 'function') ? IA.predecir(hist) : predecir(hist);
+
+        for (const kpi in predicciones) {
+            const item = predicciones[kpi];
+            const li = document.createElement('li');
+
+            li.textContent =
+                item.estado === 'riesgo'
+                    ? `⚠️ ${kpi.toUpperCase()} podría salir de objetivo (${item.valor})`
+                    : `✅ ${kpi.toUpperCase()} se mantendría estable (${item.valor})`;
+
+            lista.appendChild(li);
+        }
+
+            // Mostrar riesgo priorizado en la UI
+            try {
+                const riesgo = (typeof IA.priorizarRiesgo === 'function') ? IA.priorizarRiesgo(hist) : (typeof priorizarRiesgo === 'function' ? priorizarRiesgo(hist) : null);
+
+                const textoEl = document.getElementById('riesgo-texto');
+                const motivoEl = document.getElementById('riesgo-motivo');
+
+                if (riesgo) {
+                    if (textoEl) textoEl.textContent = `${riesgo.kpi.toUpperCase()} podría incumplir el objetivo el próximo mes (${riesgo.proyeccion})`;
+                    if (motivoEl) motivoEl.textContent = `Motivo: tendencia negativa sostenida y alto impacto en experiencia del paciente.`;
+                } else {
+                    if (textoEl) textoEl.textContent = "No se detectan riesgos críticos para el próximo mes.";
+                    if (motivoEl) motivoEl.textContent = "";
+                }
+
+                // Generar y mostrar acción preventiva sugerida
+                try {
+                    const accion = (typeof IA.generarAccionPreventiva === 'function') ? IA.generarAccionPreventiva(riesgo) : (typeof generarAccionPreventiva === 'function' ? generarAccionPreventiva(riesgo) : null);
+
+                    const tituloEl = document.getElementById('accion-titulo');
+                    const detalleEl = document.getElementById('accion-detalle');
+
+                    if (accion) {
+                        if (tituloEl) tituloEl.textContent = accion.titulo || '--';
+                        if (detalleEl) detalleEl.innerHTML = `\
+                            <li><strong>Acción:</strong> ${accion.accion}</li>\
+                            <li><strong>Responsable:</strong> ${accion.responsable}</li>\
+                            <li><strong>Duración:</strong> ${accion.duracion}</li>\
+                            <li><strong>Foco:</strong> ${accion.foco}</li>\
+                            <li><strong>Prioridad:</strong> ${accion.prioridad}</li>\
+                        `;
+                    } else {
+                        if (tituloEl) tituloEl.textContent = '--';
+                        if (detalleEl) detalleEl.innerHTML = '';
+                    }
+                } catch (err2) {
+                    console.warn('No fue posible actualizar acción preventiva', err2);
+                }
+            } catch (err) {
+                console.warn('No fue posible actualizar riesgo priorizado', err);
+            }
+    } catch (e) {
+        lista.innerHTML = '<li>Error generando predicciones</li>';
+        console.error('Predictivo error', e);
+    }
+}
+
 // 🧠 NORMAS KPI (configurable)
 const KPI_NORMAS = {
     satisfaccionSNL: { tipo: 'mayorIgual', valor: 95 },
@@ -63,6 +253,60 @@ const KPI_ALIASES = {
     tipificaciones: 'tipificaciones',
     tmo: 'tmo'
 };
+
+const impactoKPI = {
+    satEP: 3,   // alto impacto experiencia
+    resEP: 3,   // alto impacto resolución
+    satSNL: 2,
+    resSNL: 2,
+    tmo: 2,
+    epa: 1,
+    tip: 1
+};
+
+const accionesPreventivas = {
+    satEP: {
+        titulo: "Refuerzo de calidad EP",
+        accion: "Aplicar coaching focalizado en cierre empático y validación final",
+        duracion: "7 días",
+        responsable: "Supervisor",
+        foco: "Experiencia del paciente EP"
+    },
+    resEP: {
+        titulo: "Mejora resolución EP",
+        accion: "Revisar causas de no resolución y reforzar uso de flujos EP",
+        duracion: "5 días",
+        responsable: "Supervisor",
+        foco: "Resolución efectiva"
+    },
+    satSNL: {
+        titulo: "Optimización atención SNL",
+        accion: "Escucha guiada de llamadas y refuerzo de lenguaje claro",
+        duracion: "7 días",
+        responsable: "Supervisor",
+        foco: "Comunicación"
+    },
+    tmo: {
+        titulo: "Control de TMO",
+        accion: "Reducir reprocesos y reforzar tipificación en tiempo real",
+        duracion: "5 días",
+        responsable: "Ejecutivo",
+        foco: "Eficiencia operativa"
+    }
+};
+
+function generarAccionPreventiva(riesgo) {
+    if (!riesgo) return null;
+
+    const accionBase = accionesPreventivas[riesgo.kpi];
+    if (!accionBase) return null;
+
+    return Object.assign({}, accionBase, {
+        kpi: riesgo.kpi,
+        motivo: "Riesgo predictivo detectado para el próximo mes",
+        prioridad: "Alta"
+    });
+}
 
 function getKpiValue(ejecutivo, kpiKey) {
     // Try direct property first
@@ -631,6 +875,43 @@ const SheetCache = {
 
 // STATE
 let currentData = [];
+// Historial simulado (antiguo -> reciente). Se puede reemplazar por datos de Google Sheets.
+const historial = {
+    resEP: [92, 90, 88],      // Octubre, Noviembre, Diciembre
+    satEP: [96, 95, 94],
+    tmo:   [5.1, 5.4, 5.7],
+    epa:   [88, 85, 82]
+};
+
+// CARGA de historial desde la 'BD'
+// Prioridad:
+// 1) Si existe `window.fetchHistorialFromDB` (función definida por integración externa), usarla.
+// 2) Intentar cargar `./data/historial.json` vía fetch.
+// 3) De lo contrario, usar el `historial` simulado definido arriba.
+async function loadHistorialFromDB() {
+    try {
+        if (typeof window.fetchHistorialFromDB === 'function') {
+            const remote = await window.fetchHistorialFromDB();
+            if (remote && typeof remote === 'object') return remote;
+        }
+
+        // Intentar fetch local (por ejemplo, servidor que sirva data/historial.json)
+        try {
+            const resp = await fetch('./data/historial.json', {cache: 'no-store'});
+            if (resp.ok) {
+                const json = await resp.json();
+                if (json && typeof json === 'object') return json;
+            }
+        } catch (e) {
+            // ignore, fallback al simulado
+        }
+
+    } catch (err) {
+        console.warn('loadHistorialFromDB error', err);
+    }
+
+    return historial;
+}
 const getCurrentMonthName = () => {
     const monthsEs = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'];
     return monthsEs[new Date().getMonth()];
@@ -658,6 +939,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const initialKpi = document.getElementById('selectKPI') ? document.getElementById('selectKPI').value : 'tmo';
     updateKpiDisplay(initialKpi);
+
+    // Mostrar predictivo al cargar
+    renderPredictivo();
+
+    // Inicializar controles desplegables para secciones IA
+    setupIaCollapsibles();
 
     // Sync roles after data might have started loading
     const session = JSON.parse(localStorage.getItem('userSession'));
@@ -696,6 +983,39 @@ async function simulateInitialLoad() {
     } finally {
         if (overlay) overlay.classList.remove('active');
     }
+}
+
+// Configura los encabezados IA como desplegables (colapsables)
+function setupIaCollapsibles() {
+    const selectors = ['.ia-predictivo', '.ia-prioridad', '.accion-preventiva'];
+    selectors.forEach(sel => {
+        const section = document.querySelector(sel);
+        if (!section) return;
+
+        const header = section.querySelector('h3');
+        if (!header) return;
+
+        header.setAttribute('role', 'button');
+        header.setAttribute('tabindex', '0');
+
+        // Mostrar cerrado por defecto
+        section.classList.add('collapsed');
+        header.setAttribute('aria-expanded', 'false');
+
+        const toggle = () => {
+            const isCollapsedNow = section.classList.toggle('collapsed');
+            // aria-expanded debe ser true cuando está desplegado
+            header.setAttribute('aria-expanded', (!isCollapsedNow).toString());
+        };
+
+        header.addEventListener('click', toggle);
+        header.addEventListener('keydown', (ev) => {
+            if (ev.key === 'Enter' || ev.key === ' ') {
+                ev.preventDefault();
+                toggle();
+            }
+        });
+    });
 }
 
 function initEventListeners() {
@@ -745,6 +1065,16 @@ function initEventListeners() {
     // KPI selector listener
     const kpiSel = document.getElementById('selectKPI');
     if (kpiSel) kpiSel.addEventListener('change', (e) => updateKpiDisplay(e.target.value));
+
+    // IA example runner button
+    const btnIa = document.getElementById('btnRunIAExample');
+    if (btnIa) btnIa.addEventListener('click', () => runIAExample());
+
+    const btnCloseIa = document.getElementById('closeIaResult');
+    if (btnCloseIa) btnCloseIa.addEventListener('click', () => {
+        const modal = document.getElementById('iaResultModal');
+        if (modal) modal.style.display = 'none';
+    });
 }
 
 function getSelectedMonths() {
@@ -793,6 +1123,53 @@ function populateMonthFilter() {
     });
 
     updateMonthHeaderText();
+}
+
+// Ejecuta el flujo IA con ejemplo y muestra resultados en modal
+async function runIAExample() {
+    const ejecutivo = {
+        nombre: 'Manuel Monsalve',
+        satEP: 93,
+        resEP: 88,
+        satSNL: 96,
+        resSNL: 92,
+        tmo: 5.8,
+        epa: 78,
+        tip: 97
+    };
+
+    const estado = await IA.analizar(ejecutivo);
+    const riesgos = IA.detectarRiesgos(estado);
+    const recomendacion = IA.recomendar(riesgos);
+    const coaching = IA.generarCoaching(riesgos);
+
+    const contentEl = document.getElementById('iaResultContent');
+    if (contentEl) {
+        contentEl.innerHTML = `
+            <div><strong>Ejecutivo:</strong> ${ejecutivo.nombre}</div>
+            <pre style="white-space:pre-wrap; margin-top:8px;">Estado: ${JSON.stringify(estado, null, 2)}</pre>
+            <div><strong>Riesgos:</strong> ${JSON.stringify(riesgos)}</div>
+            <div style="margin-top:8px;"><strong>Recomendación:</strong> ${recomendacion}</div>
+            <div style="margin-top:8px;"><strong>Coaching:</strong><ul>${coaching.map(t => `<li>${t}</li>`).join('')}</ul></div>
+        `;
+    }
+
+    const modal = document.getElementById('iaResultModal');
+    if (modal) modal.style.display = 'block';
+
+    // También actualizar la caja IA en la página si existe
+    const recEl = document.getElementById('ia-recomendacion');
+    const coachEl = document.getElementById('ia-coaching');
+    if (recEl) recEl.textContent = recomendacion;
+    if (coachEl) {
+        // Limpiar lista y añadir elementos uno a uno con prefijo •
+        coachEl.innerHTML = "";
+        coaching.forEach(tip => {
+            const li = document.createElement('li');
+            li.textContent = '• ' + tip;
+            coachEl.appendChild(li);
+        });
+    }
 }
 
 function applyTheme(t) {
@@ -4083,7 +4460,7 @@ function renderOneOnOneContent(data) {
                 <div style="margin: 0; font-size: 0.95rem; color: var(--text-main); line-height: 1.5; white-space: pre-line;">${data.actions}</div>
             </section>
 
-            <section style="padding: 15px; background: var(--bg-body); border-radius: 8px; border: 1px dashed var(--border-color);">
+            <section style="padding: 15px; background: var(--bg-card); border-radius: 8px; border: 1px dashed var(--border-color); box-shadow: var(--shadow-soft);">
                 <h4 style="color: var(--achs-azul); margin: 0 0 10px 0; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px;"><i class="fas fa-calendar-check" style="margin-right: 8px;"></i> 5. Seguimiento</h4>
                 <p style="margin: 0; font-size: 0.9rem; color: var(--text-secondary);"><strong>Métrica:</strong> ${data.metric}</p>
                 <p style="margin: 4px 0 0 0; font-size: 0.9rem; color: var(--text-secondary);"><strong>Fecha Revisión:</strong> ${data.date}</p>
