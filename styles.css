@@ -2105,3 +2105,10 @@ th {
     border-left: 6px solid var(--achs-naranja);
     border-radius: 14px;
 }
+
+.fab-kpi {
+    right: 8.5rem; /* place it to the left of the existing fab */
+    background-color: var(--achs-azul);
+    color: white;
+    border: 2px solid rgba(255,255,255,0.12);
+}

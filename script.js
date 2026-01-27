@@ -968,7 +968,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Mostrar predictivo al cargar
     renderPredictivo();
-    // Mostrar gráfico de tendencia KPI
+    // Mostrar gráfico de tendencia KPI (intento inicial)
     try { renderKpiTrendChart(); } catch (e) { console.warn('kpiTrendChart init failed', e); }
 
     // Inicializar controles desplegables para secciones IA
@@ -978,6 +978,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const session = JSON.parse(localStorage.getItem('userSession'));
     if (session) {
         aplicarRol(session.rol);
+    } else {
+        // Si no hay sesión (modo desarrollo/local), mostrar elementos protegidos para pruebas
+        try {
+            document.querySelectorAll('[data-rol]').forEach(el => { el.style.display = ''; });
+        } catch (e) { /* noop */ }
     }
 });
 
@@ -2062,6 +2067,21 @@ function showLoading(bool) {
 
 function toggleCopcModal() {
     document.getElementById('copcModal').classList.toggle('active');
+}
+
+// Toggle KPI Trend modal (global) — opens modal and renders chart
+function toggleKpiTrendModal() {
+    const modal = document.getElementById('kpiTrendModal');
+    if (!modal) return;
+    if (modal.style.display === 'flex' || modal.classList.contains('active')) {
+        modal.style.display = 'none';
+        modal.classList.remove('active');
+    } else {
+        modal.style.display = 'flex';
+        modal.classList.add('active');
+        // Render chart when opening
+        try { renderKpiTrendChart(); } catch (e) { console.warn('Error rendering KPI trend on open', e); }
+    }
 }
 
 // Placeholders for Requested Features
