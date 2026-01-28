@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Control Operacional ACHS</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="static/styles.css">
+
+    <!-- Icons (Optional, using simple unicode or svg if needed, but CDN is better for "First Impression") -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+
+    <!-- Login Overlay -->
+    <div id="loginOverlay" class="login-overlay">
+        <div class="login-card">
+            <i class="fas fa-shield-alt" style="font-size: 3rem; color: var(--achs-azul); margin-bottom: 1.5rem;"></i>
+            <h2>Acceso al Sistema ACHS</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">Ingrese su correo institucional</p>
+            <input type="email" id="emailLogin" placeholder="usuario@achs.cl" class="login-input">
+            <input type="password" id="passwordLogin" placeholder="Clave" class="login-input" style="margin-top:8px;">
+            <button onclick="login()" class="login-btn">Entrar al Dashboard</button>
+            <p id="loginError" style="color: var(--achs-red); margin-top: 1rem; font-size: 0.9rem; display: none;">
+                Usuario no autorizado</p>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="brand">
+            <i class="fas fa-shield-alt" style="color: var(--achs-blanco); font-size: 1.8rem;"></i>
+            <div>
+                <h1>Panel de Control Operacional ACHS</h1>
+                <p id="rolMessage" style="font-size: 0.85rem; opacity: 0.9; margin-top: 2px;">Cargando vista...</p>
+                <div id="headerClock" class="header-clock" aria-hidden="false" style="margin-top:6px; font-size:0.85rem; color:rgba(255,255,255,0.9);"></div>
+            </div>
+        </div>
+    <div class="controls">
+
+            <!-- Role Selector (Hidden by default) -->
+            <div class="role-selector-container" id="manualRoleSelector" style="display: none;">
+                <i class="fas fa-user-tag" style="margin-right: 8px; font-size: 0.9rem; opacity: 0.8;"></i>
+                <select id="rolSelector" class="header-select">
+                    <option value="jefatura">Vista: Jefatura</option>
+                    <option value="supervisor">Vista: Supervisor</option>
+                    <option value="ejecutivo">Vista: Ejecutivo</option>
+                </select>
+            </div>
+
+            <!-- Intelligent Alerts Notification -->
+            <div class="notification-wrapper" id="alertsTrigger" title="Alertas Inteligentes"
+                data-rol="jefatura supervisor ejecutivo">
+                <i class="fas fa-bell"></i>
+                <span class="notification-badge" id="alertsCounter">0</span>
+            </div>
+
+            <button id="btnReturnJefatura" class="btn btn-secondary" title="Volver a Jefatura" style="display:none; margin-left:8px;">
+                <i class="fas fa-user-shield" aria-hidden="true"></i>
+                <span class="btn-text" style="margin-left:6px;">Volver Jefatura</span>
+            </button>
+            
+            <!-- Botón Supervisor: Ideas de Coaching -->
+            <button id="btnCoachingIdeas" class="btn btn-primary" title="Ideas de Coaching – Calidad" style="display:none; margin-left:8px;" data-rol="supervisor">
+                🧠 Ideas de Coaching – Calidad
+            </button>
+
+            <!-- Recommendation History Button -->
+            <div class="notification-wrapper" onclick="toggleHistorialModal()" title="Historial de Recomendaciones"
+                style="margin-right: 15px;" data-rol="jefatura supervisor ejecutivo">
+                <i class="fas fa-history"></i>
+            </div>
+
+            <button class="btn btn-secondary" data-rol="jefatura supervisor" onclick="generateTeamsReport()">
+                <i class="fab fa-microsoft"></i> Reporte Teams
+            </button>
+            <button class="btn btn-secondary" onclick="showEvolutionary()">
+                <i class="fas fa-chart-line"></i> Evolutivo
+            </button>
+            <button class="btn btn-secondary" onclick="showPredictive()">
+                <i class="fas fa-crystal-ball"></i> Predictivo
+            </button>
+            <button class="theme-toggle" id="themeToggle" title="Cambiar Tema">
+                <i class="fas fa-moon"></i>
+            </button>
+            
+            <!-- Hamburger Menu Button (Mobile) -->
+            <button class="hamburger-menu" id="hamburgerMenu" aria-label="Menú de navegación">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+
+            <!-- User Info & Logout (al final, a la derecha) -->
+            <div id="userInfo" style="margin-left: 1.5rem; text-align: right; display: none;">
+                <div id="userNameTxt" style="font-weight: 700; font-size: 0.9rem;">Usuario</div>
+                <div onclick="logout()"
+                    style="font-size: 0.75rem; cursor: pointer; color: var(--achs-verde-claro); text-decoration: underline;">
+                    Cerrar Sesión</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Mobile Navigation Overlay -->
+    <div class="mobile-nav-overlay" id="mobileNavOverlay"></div>
+    
+    <!-- Mobile Navigation Menu -->
+    <nav class="mobile-nav" id="mobileNav">
+        <div class="mobile-nav-header">
+            <i class="fas fa-shield-alt"></i>
+            <h3>Menú ACHS</h3>
+        </div>
+        
+        <div class="mobile-nav-user" id="mobileNavUser">
+            <div class="mobile-nav-user-name" id="mobileUserName">Usuario</div>
+            <div class="mobile-nav-logout" onclick="logout()">Cerrar Sesión</div>
+        </div>
+        
+        <button class="mobile-nav-item" onclick="closeMobileNav(); document.getElementById('alertsTrigger').click();">
+            <i class="fas fa-bell"></i> Alertas Inteligentes
+        </button>
+        
+        <button class="mobile-nav-item" onclick="closeMobileNav(); toggleHistorialModal();">
+            <i class="fas fa-history"></i> Historial Recomendaciones
+        </button>
+        
+        <div class="mobile-nav-divider"></div>
+        
+        <button class="mobile-nav-item" data-rol="jefatura supervisor" onclick="closeMobileNav(); generateTeamsReport();">
+            <i class="fab fa-microsoft"></i> Reporte Teams
+        </button>
+        
+        <button class="mobile-nav-item" onclick="closeMobileNav(); showEvolutionary();">
+            <i class="fas fa-chart-line"></i> Evolutivo
+        </button>
+        
+        <button class="mobile-nav-item" onclick="closeMobileNav(); showPredictive();">
+            <i class="fas fa-crystal-ball"></i> Predictivo
+        </button>
+        
+        <div class="mobile-nav-divider"></div>
+        
+    <button class="mobile-nav-item" onclick="closeMobileNav(); toggleKpiTrendModal();">
+            <i class="fas fa-chart-line"></i> Tendencia KPI's
+        </button>
+        
+    <button class="mobile-nav-item" onclick="closeMobileNav(); toggleCopcModal();">
+            <i class="fas fa-table"></i> Cuartiles COPC
+        </button>
+        
+        <button class="mobile-nav-item" id="mobileCoachingBtn" style="display: none;" onclick="closeMobileNav(); openCoachingIdeasModal();">
+            <span style="font-size: 1.1rem;">🧠</span> Ideas de Coaching
+        </button>
+    </nav>
+
+    <!-- Filters -->
+    <section class="filters-container" data-rol="jefatura supervisor ejecutivo">
+        <div class="custom-multiselect" id="monthMultiSelect">
+            <label style="font-weight: 600; margin-right: 0.5rem; color: var(--text-secondary);">Mes(es):</label>
+            <div class="multiselect-header" id="monthHeader">
+                <span id="selectedMonthsText">Seleccionar meses</span>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+            <div class="multiselect-options" id="monthOptions">
+                <label><input type="checkbox" value="OCTUBRE"> Octubre</label>
+                <label><input type="checkbox" value="NOVIEMBRE"> Noviembre</label>
+                <label><input type="checkbox" value="DICIEMBRE"> Diciembre</label>
+                <label><input type="checkbox" value="ENERO" checked> Enero</label>
+                <button onclick="selectLast3Months()" style="margin-top: 8px; padding: 6px 12px; background: linear-gradient(135deg, #005DAA, #003B73); color: white; border: none; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer; width: 100%; transition: all 0.2s;">
+                    <i class="fas fa-calendar-alt"></i> Seleccionar últimos 3 meses
+                </button>
+            </div>
+        </div>
+
+            <!-- Modal Ideas de Coaching – Calidad (Supervisor) -->
+            <div id="modalCoachingIdeas" class="modal-overlay" style="z-index:2003;">
+                <div class="modal-content" style="max-width: 1100px; width: 95%;">
+                    <div class="modal-header modal-header-branded" style="padding: 20px 24px;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span style="font-size: 2rem;">🧠</span>
+                            <div>
+                                <h2 style="margin: 0; font-size: 1.4rem;">Ideas de Coaching – Calidad de Servicio</h2>
+                                <p style="margin: 4px 0 0 0; font-size: 0.85rem; opacity: 0.9;">Estrategias para mejorar indicadores</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-body" style="padding: 24px 32px;">
+
+                        <div class="coaching-grid">
+                            <div class="coach-block coach-blue">
+                            <h3>📞 Satisfacción SNL / EP</h3>
+                            <ul>
+                                <li>Escuchar grabación completa con el ejecutivo</li>
+                                <li>Detectar momentos donde el tono baja</li>
+                                <li>Reforzar saludo + cierre empático</li>
+                                <li>Simular llamada ideal (role play)</li>
+                            </ul>
+                        </div>
+
+                        <div class="coach-block coach-green">
+                            <h3>✅ Resolución SNL / EP</h3>
+                            <ul>
+                                <li>Revisar si el ejecutivo confirma resolución</li>
+                                <li>Entrenar preguntas de cierre efectivo</li>
+                                <li>Validar comprensión del paciente</li>
+                                <li>Checklist de “caso resuelto”</li>
+                            </ul>
+                        </div>
+
+                        <div class="coach-block coach-orange">
+                            <h3>⏱️ TMO</h3>
+                            <ul>
+                                <li>Identificar silencios innecesarios</li>
+                                <li>Optimizar búsqueda de información</li>
+                                <li>Entrenar control del tiempo sin perder calidad</li>
+                                <li>Frases puente para agilizar</li>
+                            </ul>
+                        </div>
+
+                        <div class="coach-block coach-purple">
+                            <h3>📋 Tipificaciones</h3>
+                            <ul>
+                                <li>Recordatorio de tipificar antes de 10 segundos</li>
+                                <li>Usar categorías correctas</li>
+                                <li>Checklist post-llamada</li>
+                            </ul>
+                        </div>
+
+                        <div class="coach-block coach-teal">
+                            <h3>🔁 Transferencia a EPA</h3>
+                            <ul>
+                                <li>Entrenar explicación clara de encuesta</li>
+                                <li>Usar guion corto y natural</li>
+                                <li>Validar aceptación del paciente</li>
+                            </ul>
+                        </div>
+                        </div>
+
+                    </div>
+                    <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end;">
+                        <button class="btn btn-primary" onclick="cerrarCoachingIdeas()">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+        <div>
+            <label for="execFilter"
+                style="font-weight: 600; margin-right: 0.5rem; color: var(--text-secondary);">Ejecutivo:</label>
+            <select id="execFilter">
+                <option value="all">Mostrar Todos</option>
+                <!-- Filled dynamically -->
+            </select>
+        </div>
+        
+        <!-- Botones de acceso rápido (antes flotantes) -->
+        <div class="filter-buttons-right">
+            <button class="btn btn-secondary" onclick="toggleKpiTrendModal()" title="Tendencia KPIs">
+                <i class="fas fa-chart-line"></i> <span class="btn-text">Tendencia KPI's</span>
+            </button>
+            <button class="btn btn-secondary" onclick="toggleCopcModal()" title="Cuartiles COPC">
+                <i class="fas fa-table"></i> <span class="btn-text">Cuartiles COPC</span>
+            </button>
+        </div>
+    </section>
+
+    <!-- Resumen Ejecutivo + Podium en Layout Horizontal -->
+    <section id="executiveSummaryWrapper" class="summary-wrapper" data-rol="jefatura supervisor">
+        <!-- Columna Izquierda: Análisis Operativo -->
+        <div id="executiveSummary" class="summary-card summary-left">
+            <h2><i class="fas fa-brain"></i> Análisis Operativo Ejecutivo</h2>
+            <div class="summary-grid-compact">
+                <div class="summary-item">
+                    <span class="label">Estado General</span>
+                    <div>
+                        <span id="overallStatus" class="value">Calculando...</span>
+                        <span id="overallTrend" class="trend"></span>
+                    </div>
+                </div>
+                <div class="summary-item">
+                    <span class="label">Ejecutivos en Riesgo (Críticos)</span>
+                    <div>
+                        <span id="riskCount" class="value">--</span>
+                        <span id="riskTrend" class="trend"></span>
+                    </div>
+                </div>
+                <div class="summary-item">
+                    <span class="label">Desviación Principal</span>
+                    <div>
+                        <span id="mainDeviation" class="value">--</span>
+                        <span id="deviationTrend" class="trend"></span>
+                    </div>
+                </div>
+                <div class="summary-item">
+                    <span class="label">Foco Recomendado</span>
+                    <span id="recommendedAction" class="value">--</span>
+                </div>
+            </div>
+            <div id="summaryMessage" class="summary-message">
+                Procesando indicadores del periodo seleccionado para generar insights...
+            </div>
+            <div style="margin-top:12px;">
+                <button id="btnRunIAExample" data-rol="jefatura supervisor" class="btn btn-primary" style="min-width:180px; font-size:0.85rem;">Probar IA de Dashboard</button>
+            </div>
+            <!-- IA Box: Asistente Operacional -->
+            <section class="ia-box" data-rol="jefatura supervisor" style="margin-top:12px; padding:10px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-card);">
+                <h3 style="margin:0 0 6px 0; font-size:0.95rem;">🧠 Asistente Operacional</h3>
+                <p id="ia-recomendacion" style="margin:0 0 6px 0; font-weight:600; color:var(--text-main); font-size:0.9rem;">--</p>
+                <ul id="ia-coaching" style="margin:0; padding-left:16px; color:var(--text-main); font-size:0.85rem;"></ul>
+            </section>
+            <!-- Predictivo: Riesgo próximo mes -->
+            <section class="ia-predictivo" data-rol="jefatura supervisor" style="margin-top:10px; padding:10px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-card);">
+                <h3 style="margin:0 0 6px 0; font-size:0.95rem;"><i class="fas fa-chart-line" style="color: var(--achs-azul);"></i> Riesgo próximo mes</h3>
+                <ul id="lista-predictivo" style="margin:0; padding-left:16px; color:var(--text-main); font-size:0.85rem;"></ul>
+                <section class="ia-prioridad" style="margin-top:8px;">
+                    <h3 style="margin:0 0 4px 0; font-size:0.9rem;">🚨 Riesgo prioritario próximo mes</h3>
+                    <p id="riesgo-texto" style="font-size:0.85rem; margin:0;">--</p>
+                    <small id="riesgo-motivo" style="font-size:0.8rem;"></small>
+                </section>
+                <section class="accion-preventiva" style="margin-top:8px;">
+                    <h3 style="margin:0 0 4px 0; font-size:0.9rem;">🛠 Acción preventiva sugerida</h3>
+                    <p id="accion-titulo" style="font-size:0.85rem; margin:0;">--</p>
+                    <ul id="accion-detalle" style="margin:0; padding-left:16px; color:var(--text-main); font-size:0.85rem;"></ul>
+                </section>
+            </section>
+        </div>
+        <!-- Columna Derecha: Podium/Medallas -->
+        <div class="summary-right">
+            <section class="podium-section-inline" id="podiumContainerInline">
+                <!-- Skeleton for Podium -->
+                <div style="display: flex; gap: 16px; align-items: flex-end; justify-content: center; height: 220px;">
+                    <div class="skeleton" style="width: 70px; height: 90px; border-radius: 8px 8px 0 0;"></div>
+                    <div class="skeleton" style="width: 70px; height: 130px; border-radius: 8px 8px 0 0;"></div>
+                    <div class="skeleton" style="width: 70px; height: 70px; border-radius: 8px 8px 0 0;"></div>
+                </div>
+            </section>
+        </div>
+    </section>
+
+    <!-- Main Content Wrapper -->
+    <div class="main-wrapper">
+        <!-- Sidebar for Alerts -->
+        <aside class="alerts-sidebar" data-rol="jefatura supervisor ejecutivo">
+            <h2
+                style="font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fas fa-robot" style="color: var(--achs-azul);"></i> Alertas Inteligentes
+            </h2>
+            <section class="alerts-banner" id="alertsBanner">
+                <!-- Injected via JS -->
+            </section>
+        </aside>
+
+        <!-- Main Dashboard Area -->
+        <div class="content-area">
+            <!-- Dashboard Grid -->
+            <main class="dashboard-grid" id="dashboardGrid" data-rol="jefatura supervisor ejecutivo">
+                <!-- Skeleton Loading State -->
+                <div class="skeleton-card">
+                    <div class="skeleton-header">
+                        <div class="skeleton skeleton-avatar"></div>
+                        <div class="skeleton skeleton-title"></div>
+                    </div>
+                    <div class="skeleton-content">
+                        <div class="skeleton skeleton-line"></div>
+                        <div class="skeleton skeleton-line"></div>
+                        <div class="skeleton skeleton-line short"></div>
+                    </div>
+                </div>
+                <div class="skeleton-card">
+                    <div class="skeleton-header">
+                        <div class="skeleton skeleton-avatar"></div>
+                        <div class="skeleton skeleton-title"></div>
+                    </div>
+                    <div class="skeleton-content">
+                        <div class="skeleton skeleton-line"></div>
+                        <div class="skeleton skeleton-line"></div>
+                        <div class="skeleton skeleton-line short"></div>
+                    </div>
+                </div>
+                <div class="skeleton-card">
+                    <div class="skeleton-header">
+                        <div class="skeleton skeleton-avatar"></div>
+                        <div class="skeleton skeleton-title"></div>
+                    </div>
+                    <div class="skeleton-content">
+                        <div class="skeleton skeleton-line"></div>
+                        <div class="skeleton skeleton-line"></div>
+                        <div class="skeleton skeleton-line short"></div>
+                    </div>
+                </div>
+                <div class="skeleton-card">
+                    <div class="skeleton-header">
+                        <div class="skeleton skeleton-avatar"></div>
+                        <div class="skeleton skeleton-title"></div>
+                    </div>
+                    <div class="skeleton-content">
+                        <div class="skeleton skeleton-line"></div>
+                        <div class="skeleton skeleton-line"></div>
+                        <div class="skeleton skeleton-line short"></div>
+                    </div>
+                </div>
+                <!-- KPI Trend Card -->
+                <section class="card kpi-trend-card" data-rol="jefatura supervisor ejecutivo" style="min-width:260px;">
+                    <h3>📈 Tendencia KPIs – Últimos 3 meses</h3>
+                    <p style="margin-top:6px; color:var(--text-secondary);">Usa el botón "Tendencia KPI's" en la barra de filtros.</p>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <!-- Modal KPI Trend -->
+    <div class="modal-overlay" id="kpiTrendModal" style="z-index:2050;">
+        <div class="modal-content" style="max-width:950px; width:95%;">
+            <div class="modal-header modal-header-branded" style="padding: 20px 24px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 2rem;">📈</span>
+                    <div>
+                        <h2 style="margin: 0; font-size: 1.4rem;">Tendencia KPIs – Últimos 3 meses</h2>
+                        <p style="margin: 4px 0 0 0; font-size: 0.85rem; opacity: 0.9;">Evolución de indicadores operacionales</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-body" style="padding: 20px 24px;">
+                <canvas id="kpiTrendChart" style="width:100%; height:340px; max-height:55vh;"></canvas>
+            </div>
+            <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end;">
+                <button class="btn btn-primary" onclick="toggleKpiTrendModal()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal COPC -->
+    <div class="modal-overlay" id="copcModal">
+        <div class="modal-content" style="max-width: 950px;">
+            <div class="modal-header modal-header-branded" style="padding: 20px 24px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <i class="fas fa-table" style="font-size: 1.8rem;"></i>
+                    <div>
+                        <h2 style="margin: 0; font-size: 1.4rem;">Tabla de Cuartiles COPC</h2>
+                        <p style="margin: 4px 0 0 0; font-size: 0.85rem; opacity: 0.9;">Clasificación de desempeño por ejecutivo</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-body" id="copcTableContainer" style="padding: 20px 24px; max-height: 65vh; overflow-y: auto;">
+                <!-- Table injected via JS -->
+            </div>
+            <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end;">
+                <button class="btn btn-primary" onclick="toggleCopcModal()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Refresh Overlay -->
+    <div class="refresh-overlay" id="refreshOverlay">
+        <div class="loader"></div>
+        <p style="margin-top: 1rem;">Actualizando sistema...</p>
+        <p style="font-size: 0.9rem; opacity: 0.8;">Conectando con Google Sheets</p>
+    </div>
+
+    <!-- Modal Evolutivo -->
+    <div class="modal-overlay" id="evolModal">
+        <div class="modal-content" style="max-width: 1100px;">
+            <div class="modal-header modal-header-branded" style="padding: 20px 24px;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <i class="fas fa-chart-line" style="font-size: 1.8rem;"></i>
+                    <div>
+                        <h2 style="margin: 0; font-size: 1.4rem;">Evolutivo por KPI</h2>
+                        <p style="margin: 4px 0 0 0; font-size: 0.85rem; opacity: 0.9;">Tendencia histórica de indicadores</p>
+                    </div>
+                    <button class="btn-refresh-small" onclick="showEvolutionary(null, null, true)"
+                        title="Forzar actualización de todo el histórico" style="margin-left: auto;">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="modal-body" id="evolContainer" style="padding: 20px 24px; max-height: 70vh; overflow: auto;">
+                <div style="display:flex; flex-direction:column; gap:16px; min-width: 950px;">
+                    <div style="display:flex; gap:16px; align-items:center; flex-wrap: wrap;">
+                        <label style="font-weight:600; color:var(--text-secondary); font-size: 0.9rem;">Ejecutivo:</label>
+                        <select id="evolExecSelect" style="min-width:200px; font-size: 0.9rem;"></select>
+                        <label style="font-weight:600; color:var(--text-secondary); font-size: 0.9rem;">KPI:</label>
+                        <select id="evolKpiSelect" style="font-size: 0.9rem;">
+                            <option value="tmo">TMO</option>
+                            <option value="satEP">Satisfacción EP</option>
+                            <option value="resEP">Resolución EP</option>
+                            <option value="satSNL">Satisfacción SNL</option>
+                            <option value="resSNL">Resolución SNL</option>
+                            <option value="transfEPA">Transferencia a EPA</option>
+                            <option value="tipificaciones">Tipificaciones</option>
+                        </select>
+                    </div>
+                    <canvas id="evolChart" style="width:100%; max-height:300px;"></canvas>
+                    <div id="evolTable" style="margin-top:8px; overflow-x: auto;"></div>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding:16px 24px; border-top:1px solid var(--border-color); display:flex; justify-content:flex-end;">
+                <button class="btn btn-primary" id="closeEvol">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Predictivo -->
+    <div class="modal-overlay" id="predictModal">
+        <div class="modal-content" style="max-width: 1300px; width: 96%;">
+            <div class="modal-header modal-header-branded" style="padding: 20px 24px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <i class="fas fa-chart-line" style="font-size: 2rem;"></i>
+                    <div>
+                        <h2 style="margin: 0; font-size: 1.4rem;">Predicción KPI - Próximo Mes</h2>
+                        <p style="margin: 4px 0 0 0; font-size: 0.85rem; opacity: 0.9;">Análisis predictivo de indicadores</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-body" id="predictGrid" style="padding: 12px 24px 20px; max-height: 75vh; overflow-y: auto;">
+                <div id="predictFilters" style="display:flex; gap:1.5rem; align-items:center; margin-bottom:12px; flex-wrap: wrap;">
+                    <div style="display:flex; gap:0.5rem; align-items:center;">
+                        <label style="font-weight:600; color:var(--text-secondary); font-size:0.9rem;">Ejecutivo:</label>
+                        <select id="predictExecSelect" style="min-width: 180px;"></select>
+                    </div>
+                    <div style="display:flex; gap:0.5rem; align-items:center;">
+                        <label style="font-weight:600; color:var(--text-secondary); font-size:0.9rem;">KPI:</label>
+                        <select id="predictKpiSelect" style="min-width: 150px;">
+                            <option value="all">Todos</option>
+                            <option value="tmo">TMO</option>
+                            <option value="satEP">Satisfacción EP</option>
+                            <option value="resEP">Resolución EP</option>
+                            <option value="satSNL">Satisfacción SNL</option>
+                            <option value="resSNL">Resolución SNL</option>
+                            <option value="transfEPA">Transferencia a EPA</option>
+                            <option value="tipificaciones">Tipificaciones</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="predictContent">
+                    <div id="predictContainer">
+                        <!-- Cards generated by JS -->
+                    </div>
+                    <div id="predictRiskMap">
+                        <!-- Risk map generated by JS -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 12px 24px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end;">
+                <button class="btn btn-primary" id="closePredict">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal IA Resultados -->
+    <div class="modal-overlay" id="iaResultModal" data-rol="jefatura supervisor" style="display:none; z-index:2050;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Resultados IA — Ejemplo</h2>
+                <button class="close-modal" id="closeIaResult"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="iaResultContent" style="padding:12px; max-height:60vh; overflow:auto; font-size:0.95rem;"></div>
+        </div>
+    </div>
+
+    <!-- Modal de Recomendación Predictiva -->
+    <div class="modal-overlay" id="recommendationModal" style="z-index: 2000;">
+        <div class="modal-content" style="max-width: 580px;">
+            <div class="modal-header modal-header-branded" style="padding: 20px 24px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 2rem;">🤖</span>
+                    <div>
+                        <h2 id="modalTitle" style="margin: 0; font-size: 1.4rem;">Recomendación</h2>
+                        <p style="margin: 4px 0 0 0; font-size: 0.85rem; opacity: 0.9;">Sugerencia basada en datos</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-body" id="modalBody" style="padding: 20px 24px; line-height: 1.6; max-height: 65vh; overflow-y: auto;">
+                <!-- Content injected via JS -->
+            </div>
+            <div class="modal-footer"
+                style="padding: 16px 24px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+                <button class="btn btn-secondary" id="btnGenAICoaching"
+                    style="background: var(--achs-azul); color: white; white-space: nowrap;">
+                    <i class="fas fa-robot"></i> Generar Coaching IA
+                </button>
+                <button class="btn btn-primary" onclick="closeRecommendationModal()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Historial de Recomendaciones -->
+    <div class="modal-overlay" id="historialModal">
+        <div class="modal-content" style="max-width: 1100px; width: 95%;">
+            <div class="modal-header modal-header-branded" style="padding: 20px 24px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 2rem;">📋</span>
+                    <div>
+                        <h2 style="margin: 0; font-size: 1.4rem;">Historial de Recomendaciones Operacionales</h2>
+                        <p style="margin: 4px 0 0 0; font-size: 0.85rem; opacity: 0.9;">Seguimiento de mejoras sugeridas</p>
+                    </div>
+                </div>
+                <button class="close-modal" onclick="toggleHistorialModal()" style="color: white;"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body" style="padding: 20px 24px; max-height: 65vh; overflow-y: auto;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <div id="historialMonthLabel" style="font-weight:600; color:var(--text-main); font-size: 0.9rem;">Mes: </div>
+                </div>
+                <div class="table-container" style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
+                    <table class="historial-table" style="font-size: 0.85rem; width: 100%;">
+                        <thead>
+                            <tr>
+                                <th style="padding: 12px 16px;">Fecha</th>
+                                <th style="padding: 12px 16px;">Ejecutivo</th>
+                                <th style="padding: 12px 16px;">Mes</th>
+                                <th style="padding: 12px 16px;">Recomendación</th>
+                                <th style="padding: 12px 16px;">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaHistorial">
+                            <!-- Filled via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end;">
+                <button class="btn btn-primary" onclick="toggleHistorialModal()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Informe de Equipos (Teams) -->
+    <div class="modal-overlay" id="modalTeams" style="z-index: 2100;">
+        <div class="modal-content" style="max-width: 1000px;">
+            <div class="modal-header modal-header-branded" style="padding: 20px 24px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <i class="fab fa-microsoft" style="font-size: 2rem;"></i>
+                    <div>
+                        <h2 style="margin: 0; font-size: 1.4rem;">Informe Ejecutivo ACHS</h2>
+                        <p style="margin: 4px 0 0 0; font-size: 0.85rem; opacity: 0.9;">Reporte para Microsoft Teams</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-body" style="padding: 20px 24px; max-height: 65vh; overflow-y: auto;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                <!-- Columna Izquierda: Selección y Preview -->
+                <div style="display: flex; flex-direction: column; gap: 20px;">
+                    <section class="report-section">
+                        <h4 style="margin-bottom: 12px; color: var(--achs-azul);"><i class="fas fa-tasks"></i> 1.
+                            Seleccionar Métricas</h4>
+                        <div id="metricSelector" class="metric-selector-grid">
+                            <!-- Inyectado vía JS -->
+                        </div>
+                    </section>
+
+                    <section class="report-section">
+                        <h4 style="margin-bottom: 12px; color: var(--achs-azul);"><i class="fas fa-chart-line"></i> 2.
+                            Vista Previa (Top/Bottom)</h4>
+                        <div id="previewResultados" class="preview-results-box">
+                            <!-- Inyectado vía JS -->
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Columna Derecha: Mensaje Final -->
+                <div style="display: flex; flex-direction: column; gap: 20px;">
+                    <section class="report-section" style="height: 100%; display: flex; flex-direction: column;">
+                        <h4 style="margin-bottom: 12px; color: var(--achs-azul);"><i class="fas fa-comment-dots"></i> 3.
+                            Mensaje para Teams</h4>
+                        <textarea id="teamsMessage"
+                            style="flex: 1; min-height: 300px; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-body); color: var(--text-main); font-family: 'Courier New', monospace; font-size: 0.9rem;"
+                            readonly></textarea>
+                    </section>
+                </div>
+                </div>
+            </div>
+
+            <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--border-color); display: flex; gap: 12px; justify-content: flex-end;">
+                <button class="btn btn-secondary" onclick="generarReporteTeamsActual()"><i class="fas fa-sync-alt"></i>
+                    Actualizar</button>
+                <button class="btn btn-primary" onclick="copiarReporteTeams()"><i class="fas fa-copy"></i> Copiar
+                    Reporte</button>
+                <button class="btn btn-primary" onclick="cerrarModalTeams()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Puntos de Conversación 1:1 -->
+    <div class="modal-overlay" id="oneOnOneModal" style="z-index: 2001;">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header modal-header-branded" style="padding: 20px 24px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <i class="fas fa-comments" style="font-size: 1.8rem;"></i>
+                    <div>
+                        <h2 style="margin: 0; font-size: 1.4rem;">Puntos de Conversación 1:1 (IA)</h2>
+                        <p style="margin: 4px 0 0 0; font-size: 0.85rem; opacity: 0.9;">Guía de coaching personalizado</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-body" id="oneOnOneBody"
+                style="padding: 20px 24px; line-height: 1.6; max-height: 65vh; overflow-y: auto;">
+                <div id="oneOnOneLoading" style="text-align: center; padding: 40px; display: none;">
+                    <i class="fas fa-robot fa-spin"
+                        style="font-size: 2.5rem; color: var(--achs-azul); margin-bottom: 20px;"></i>
+                    <p>IA Analizando KPIs y generando puntos estratégicos...</p>
+                </div>
+                <div id="oneOnOneContent">
+                    <!-- Contenido generado por IA -->
+                </div>
+            </div>
+            <div class="modal-footer"
+                style="padding: 15px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 10px;">
+                <button class="btn btn-secondary" onclick="exportOneOnOne()"><i class="fas fa-file-export"></i>
+                    Exportar</button>
+                <button class="btn btn-primary" onclick="closeOneOnOneModal()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <!-- Chart.js for Evolutivo -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Modal Tips: Banco de Tips -->
+    <div class="modal-overlay" id="tipsModal" style="z-index:2002;">
+        <div class="modal-content modal-tips" style="max-width:700px;">
+            <div class="modal-header modal-header-branded" style="padding: 20px 24px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <i class="fas fa-lightbulb" style="font-size: 1.8rem;"></i>
+                    <div>
+                        <h2 style="margin: 0; font-size: 1.4rem;">Banco de Tips</h2>
+                        <p style="margin: 4px 0 0 0; font-size: 0.85rem; opacity: 0.9;">Consejos para mejorar indicadores</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-body" id="tipsBody" style="padding: 20px 24px; max-height: 65vh; overflow-y: auto;">
+                                <!-- Tips serán inyectados por `script.js` -->
+                                <div class="tip-block yellow" data-user-provided="true">
+                                    <strong>📉 SATISFACCIÓN EP</strong>
+                                    <ul>
+                                        <li>Llama al paciente por su nombre</li>
+                                        <li>Evita silencios sin explicación</li>
+                                        <li>Confirma entendimiento antes de cerrar</li>
+                                    </ul>
+                                </div>
+            </div>
+            <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end;">
+                <button class="btn btn-primary" onclick="toggleTipsModal()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+    <script src="static/ia.js"></script>
+    <script src="static/script.js"></script>
+</body>
+
+</html>
