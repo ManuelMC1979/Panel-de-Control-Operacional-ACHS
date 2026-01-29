@@ -1935,6 +1935,35 @@ function semaforoEquipo(valor, meta, tipo = 'mayor') {
     return 'red';
 }
 
+// Resetea las cards de Resumen KPIs - Nivel Equipo a estado vacío
+function resetTeamSummaryCards(container, month) {
+    const kpis = [
+        { label: 'Satisfacción SNL' },
+        { label: 'Resolución SNL' },
+        { label: 'Satisfacción EP' },
+        { label: 'Resolución EP' },
+        { label: 'TMO' },
+        { label: 'Transferencia a EPA' },
+        { label: 'Tipificaciones' }
+    ];
+    
+    container.innerHTML = '';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'team-kpi-summary';
+    wrapper.innerHTML = `
+        <h3>📊 Resumen KPIs – Nivel Equipo <span style="font-size:0.8rem; color:var(--text-secondary);">(${month})</span></h3>
+        <div class="kpi-grid">${kpis.map(k => `
+            <div class="kpi-card">
+                <div class="kpi-title">${k.label}</div>
+                <div class="kpi-value" style="color: var(--text-secondary);">—</div>
+                <div class="kpi-meta">Sin datos</div>
+            </div>
+        `).join('')}</div>
+    `;
+    container.appendChild(wrapper);
+    console.log("[team-summary] Cards reseteadas a estado vacío para:", month);
+}
+
 function renderTeamKpiSummary() {
     const containerId = 'teamKpiSummary';
     let container = document.getElementById(containerId);
@@ -1956,6 +1985,13 @@ function renderTeamKpiSummary() {
     // build list of unique executives with an entry for the month
     const execNames = Array.from(new Set(currentData.map(d => d.name).filter(Boolean))).sort();
     const execEntries = execNames.map(name => currentData.find(d => d.name === name && matchMonth(d.mes, month))).filter(Boolean);
+
+    // Si no hay datos para el mes seleccionado, mostrar estado vacío y salir
+    if (execEntries.length === 0) {
+        console.log("[team-summary] Sin datos para el mes:", month);
+        resetTeamSummaryCards(container, month);
+        return;
+    }
 
     const kpis = [
         { dataKey: 'satSnl', label: 'Satisfacción SNL', metaKey: 'satSNL', tipo: 'mayor' },
