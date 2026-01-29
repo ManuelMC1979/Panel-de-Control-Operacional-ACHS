@@ -1080,11 +1080,18 @@ async function loadHistorialFromDB() {
         return historial;
     }
 }
-const getCurrentMonthName = () => {
+
+// Obtiene el mes actual en español MAYÚSCULAS según la fecha del navegador
+function getCurrentMonthES() {
     const monthsEs = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'];
     return monthsEs[new Date().getMonth()];
-};
-let currentMonth = MONTHS.includes(getCurrentMonthName()) ? getCurrentMonthName() : 'ENERO';
+}
+
+// Mes inicial: usar mes actual si está soportado, sino el primer mes del array MONTHS
+const mesActualReal = getCurrentMonthES();
+let currentMonth = MONTHS.includes(mesActualReal) ? mesActualReal : MONTHS[0];
+console.log("[month-sync] mes actual del navegador:", mesActualReal, "| mes inicial elegido:", currentMonth);
+
 let theme = localStorage.getItem('theme') || 'light';
 let evolChart = null;
 let forcedExecutive = null; // To handle race condition in role application
@@ -4151,7 +4158,7 @@ function toggleHistorialModal() {
             if (!recent && historialRecomendaciones.length > 0) {
                 recent = (historialRecomendaciones[historialRecomendaciones.length - 1].mes || currentMonth).toString().toUpperCase();
             }
-            if (!recent) recent = currentMonth || getCurrentMonthName();
+            if (!recent) recent = currentMonth || getCurrentMonthES();
 
             const label = document.getElementById('historialMonthLabel');
             if (label) label.innerText = `Mes: ${recent}`;
