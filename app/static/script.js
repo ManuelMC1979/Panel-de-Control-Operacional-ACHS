@@ -3149,20 +3149,37 @@ function copiarReporteTeams() {
     const text = document.getElementById("teamsMessage").value;
     if (!text || text.includes("No hay datos")) return;
 
-    copyToClipboardFallback(text).then(() => {
-        const btn = document.querySelector('button[onclick="copiarReporteTeams()"]');
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-check"></i> ¡Copiado!';
-        btn.style.background = 'var(--achs-verde)';
-
-        setTimeout(() => {
-            btn.innerHTML = originalText;
-            btn.style.background = '';
-        }, 2000);
-    }).catch(err => {
-        console.error('Error al copiar:', err);
-        alert('❌ Error al copiar. Intenta seleccionar el texto manualmente.');
-    });
+    // Intentar copiar con execCommand directamente
+    try {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.cssText = 'position:fixed;top:0;left:0;width:2em;height:2em;padding:0;border:none;outline:none;box-shadow:none;background:transparent;';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textarea);
+        
+        if (successful) {
+            const btn = document.querySelector('button[onclick="copiarReporteTeams()"]');
+            if (btn) {
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-check"></i> ¡Copiado!';
+                btn.style.background = 'var(--achs-verde)';
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.style.background = '';
+                }, 2000);
+            }
+            return;
+        }
+    } catch (err) {
+        console.warn('execCommand failed:', err);
+    }
+    
+    // Fallback: mostrar modal para copiar manualmente
+    mostrarTextoParaCopiar(text);
 }
 
 async function showEvolutionary(overrideExec, overrideKpi, force = false) {
@@ -5837,26 +5854,40 @@ function copiarReporteTeamsProfesional(evt) {
         showCopyInstructions();
     }
     
-    // Función de error
+    // Función de error - mostrar modal para copiar manualmente (sin alert)
     function onError(err) {
-        console.error('Error al copiar:', err);
-        // Intentar un último recurso: mostrar el texto para copiar manualmente
+        console.warn('Clipboard API no disponible, mostrando modal para copiar manualmente:', err);
         mostrarTextoParaCopiar(report);
     }
     
-    // Intentar copiar con múltiples métodos
+    // Intentar copiar con execCommand directamente (más compatible)
     try {
-        // Método 1: Clipboard API moderna (requiere HTTPS o localhost)
-        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        const textarea = document.createElement('textarea');
+        textarea.value = report;
+        textarea.style.cssText = 'position:fixed;top:0;left:0;width:2em;height:2em;padding:0;border:none;outline:none;box-shadow:none;background:transparent;';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        
+        try {
+            const successful = document.execCommand('copy');
+            document.body.removeChild(textarea);
+            
+            if (successful) {
+                onSuccess();
+                return;
+            }
+        } catch (err) {
+            document.body.removeChild(textarea);
+        }
+        
+        // Si execCommand falla, intentar con Clipboard API
+        if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(report)
                 .then(onSuccess)
-                .catch(() => {
-                    // Método 2: Fallback con execCommand
-                    intentarExecCommand(report, onSuccess, onError);
-                });
+                .catch(onError);
         } else {
-            // Método 2: Fallback con execCommand
-            intentarExecCommand(report, onSuccess, onError);
+            onError(new Error('No clipboard API available'));
         }
     } catch (err) {
         onError(err);
