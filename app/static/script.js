@@ -2213,9 +2213,17 @@ function getShortName(fullName) {
     
     // Formato ACHS típico: ApellidoP ApellidoM Nombre1 Nombre2...
     // Ejemplo: "Monsalve Corvacho Manuel Alejandro" -> "Manuel Monsalve"
-    if (words.length >= 3) {
-        // words[0] = ApellidoP, words[1] = ApellidoM, words[2] = Nombre1
+    // Heurística más robusta:
+    // - Si hay 4 o más tokens, asumimos: ApellidoP ApellidoM Nombre1 Nombre2... -> Nombre1 ApellidoP
+    // - Si hay exactamente 3 tokens, puede ser: ApellidoP Nombre1 Nombre2 (sin segundo apellido)
+    //   o Nombre1 Nombre2 ApellidoP. En este caso priorizamos el token del medio como primer nombre
+    //   porque en muchos registros ACHS el formato suele ser ApellidoP Nombre1 Nombre2.
+    if (words.length >= 4) {
         return `${words[2]} ${words[0]}`;
+    }
+
+    if (words.length === 3) {
+        return `${words[1]} ${words[0]}`;
     }
     
     // Caso de 2 palabras: asumimos Nombre Apellido
