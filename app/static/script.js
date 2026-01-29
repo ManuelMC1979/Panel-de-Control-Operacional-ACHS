@@ -1140,7 +1140,8 @@ async function simulateInitialLoad() {
     // Orden de meses para fallback (del más reciente al más antiguo)
     const FALLBACK_MONTHS = ['DICIEMBRE', 'NOVIEMBRE', 'OCTUBRE', 'SEPTIEMBRE', 'AGOSTO', 'JULIO', 'JUNIO', 'MAYO', 'ABRIL', 'MARZO', 'FEBRERO', 'ENERO'];
 
-    console.log("[init] mes inicial:", currentMonth);
+    const mesInicial = currentMonth;
+    console.log("[month-sync] mes inicial:", mesInicial);
 
     try {
         // Intentar cargar el mes actual primero
@@ -1149,28 +1150,41 @@ async function simulateInitialLoad() {
         if (initialData && initialData.length > 0) {
             // El mes actual tiene data, usarlo
             console.log("[init] mes elegido final:", currentMonth, "regs:", initialData.length);
+            
+            // PASO 1: Asegurar variable global actualizada (ya está, pero confirmar)
+            // currentMonth ya es el correcto
+            
+            // PASO 2: Actualizar selector visual
+            updateMonthSelectorUI(currentMonth);
+            
+            // PASO 3: Procesar y renderizar
             currentData = initialData;
             currentData.forEach(d => {
                 if (d.mes) d.mes = normalizeMonthName(d.mes);
                 if (d.name) d.name = d.name.toString().trim();
             });
+            
+            console.log("[month-sync] mes activo final =", currentMonth);
+            console.log("[month-sync] selector actualizado para:", currentMonth);
+            
             processData(currentData);
         } else {
             // Mes actual sin data, buscar fallback
-            console.log("[init] mes sin data, probando fallback:", currentMonth);
+            console.log("[init] mes sin data, probando fallback desde:", currentMonth);
             
             let foundMonth = null;
             let foundData = null;
 
             for (const mes of FALLBACK_MONTHS) {
-                if (mes === currentMonth) continue; // Ya lo intentamos
+                if (mes === mesInicial) continue; // Ya lo intentamos
                 
-                console.log("[init] mes sin data, probando fallback:", mes);
+                console.log("[init] probando fallback:", mes);
                 try {
                     const testData = await fetchSheet(mes, true);
                     if (testData && testData.length > 0) {
                         foundMonth = mes;
                         foundData = testData;
+                        console.log("[init] encontrado data en:", mes, "regs:", testData.length);
                         break;
                     }
                 } catch (e) {
@@ -1182,22 +1196,27 @@ async function simulateInitialLoad() {
             if (foundMonth && foundData) {
                 console.log("[init] mes elegido final:", foundMonth, "regs:", foundData.length);
                 
-                // Actualizar currentMonth global
+                // PASO 1: Actualizar variable global del mes activo
                 currentMonth = foundMonth;
                 
-                // Actualizar UI del selector de meses
+                // PASO 2: Actualizar selector visual (checkbox)
                 updateMonthSelectorUI(foundMonth);
                 
-                // Procesar data encontrada
+                // PASO 3: Procesar data encontrada y renderizar
                 currentData = foundData;
                 currentData.forEach(d => {
                     if (d.mes) d.mes = normalizeMonthName(d.mes);
                     if (d.name) d.name = d.name.toString().trim();
                 });
+                
+                console.log("[month-sync] mes activo final =", currentMonth);
+                console.log("[month-sync] selector actualizado para:", foundMonth);
+                
                 processData(currentData);
             } else {
                 // Ningún mes tiene data
                 console.log("[init] ningún mes tiene data disponible");
+                console.log("[month-sync] mes activo final =", currentMonth, "(sin datos)");
                 currentData = [];
                 processData(currentData);
             }
@@ -1215,12 +1234,20 @@ async function simulateInitialLoad() {
 // Actualiza el checkbox del selector de mes en la UI
 function updateMonthSelectorUI(month) {
     const container = document.getElementById('monthOptions');
-    if (!container) return;
+    if (!container) {
+        console.warn("[month-sync] no se encontró #monthOptions");
+        return;
+    }
     
     // Desmarcar todos y marcar solo el mes encontrado
+    let marcado = false;
     container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-        cb.checked = (cb.value === month);
+        const shouldCheck = (cb.value === month);
+        cb.checked = shouldCheck;
+        if (shouldCheck) marcado = true;
     });
+    
+    console.log("[month-sync] checkbox marcado:", marcado ? month : "NINGUNO");
     
     // Actualizar texto del header si existe la función
     if (typeof updateMonthHeaderText === 'function') {
@@ -1325,9 +1352,10 @@ function initEventListeners() {
 
 function getSelectedMonths() {
     const monthOptions = document.getElementById('monthOptions');
-    if (!monthOptions) return [currentMonth];
+    if (!monthOptions) return [currentMonth]; // Fallback a variable global
     const checked = Array.from(monthOptions.querySelectorAll('input:checked')).map(cb => cb.value);
-    return checked;
+    // Si no hay ninguno marcado, usar la variable global currentMonth
+    return checked.length > 0 ? checked : [currentMonth];
 }
 
 function updateMonthHeaderText() {
@@ -2645,7 +2673,7 @@ function renderTeamsPreview(selectedMetrics, data) {
     cont.appendChild(header);
 
     const currentViewMonths = getSelectedMonths();
-    const currentMonthName = currentViewMonths[0] || 'ENERO';
+    const currentMonthName = currentViewMonths[0] || currentMonth; // Usar variable global, NO 'ENERO' hardcodeado
     const prevMonthName = MONTHS[MONTHS.indexOf(currentMonthName) - 1];
     const prevData = prevMonthName ? currentData.filter(d => matchMonth(d.mes, prevMonthName)) : [];
 
@@ -2717,7 +2745,7 @@ function generarReporteTeamsActual() {
 
     // Identificar mes actual y anterior
     const currentViewMonths = getSelectedMonths();
-    const currentMonthName = currentViewMonths[0] || 'ENERO';
+    const currentMonthName = currentViewMonths[0] || currentMonth; // Usar variable global, NO 'ENERO' hardcodeado
     const prevMonthName = MONTHS[MONTHS.indexOf(currentMonthName) - 1];
 
     const data = currentData.filter(d => matchMonth(d.mes, currentMonthName));
