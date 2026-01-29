@@ -3102,11 +3102,54 @@ function generarRecomendacionConsolidada(data, selected) {
 }
 
 
+// Función auxiliar para copiar al portapapeles con fallback
+function copyToClipboardFallback(text) {
+    return new Promise((resolve, reject) => {
+        // Intentar con navigator.clipboard primero
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text)
+                .then(resolve)
+                .catch(() => {
+                    // Fallback si falla clipboard API
+                    fallbackCopy(text, resolve, reject);
+                });
+        } else {
+            // Fallback directo si no hay clipboard API
+            fallbackCopy(text, resolve, reject);
+        }
+    });
+}
+
+function fallbackCopy(text, resolve, reject) {
+    try {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        textarea.style.top = '0';
+        textarea.setAttribute('readonly', '');
+        document.body.appendChild(textarea);
+        textarea.select();
+        textarea.setSelectionRange(0, textarea.value.length);
+        
+        const success = document.execCommand('copy');
+        document.body.removeChild(textarea);
+        
+        if (success) {
+            resolve();
+        } else {
+            reject(new Error('execCommand copy failed'));
+        }
+    } catch (err) {
+        reject(err);
+    }
+}
+
 function copiarReporteTeams() {
     const text = document.getElementById("teamsMessage").value;
     if (!text || text.includes("No hay datos")) return;
 
-    navigator.clipboard.writeText(text).then(() => {
+    copyToClipboardFallback(text).then(() => {
         const btn = document.querySelector('button[onclick="copiarReporteTeams()"]');
         const originalText = btn.innerHTML;
         btn.innerHTML = '<i class="fas fa-check"></i> ¡Copiado!';
@@ -3116,6 +3159,9 @@ function copiarReporteTeams() {
             btn.innerHTML = originalText;
             btn.style.background = '';
         }, 2000);
+    }).catch(err => {
+        console.error('Error al copiar:', err);
+        alert('❌ Error al copiar. Intenta seleccionar el texto manualmente.');
     });
 }
 
@@ -5773,7 +5819,7 @@ function copiarReporteTeamsProfesional() {
         return;
     }
     
-    navigator.clipboard.writeText(report).then(() => {
+    copyToClipboardFallback(report).then(() => {
         const btn = event.target.closest('button');
         const originalHTML = btn.innerHTML;
         
