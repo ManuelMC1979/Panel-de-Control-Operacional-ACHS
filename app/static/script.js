@@ -1041,19 +1041,18 @@ const SheetCache = {
 
 // STATE
 let currentData = [];
-// Historial simulado (antiguo -> reciente). Se puede reemplazar por datos de Google Sheets.
+// Historial vacío - los datos deben venir de la API
 const historial = {
-    resEP: [92, 90, 88],      // Octubre, Noviembre, Diciembre
-    satEP: [96, 95, 94],
-    tmo:   [5.1, 5.4, 5.7],
-    epa:   [88, 85, 82]
+    resEP: [],
+    satEP: [],
+    tmo: [],
+    epa: [],
+    satSNL: []
 };
 
-// CARGA de historial desde la 'BD'
-// Prioridad:
-// 1) Si existe `window.fetchHistorialFromDB` (función definida por integración externa), usarla.
-// 2) Intentar cargar `./data/historial.json` vía fetch.
-// 3) De lo contrario, usar el `historial` simulado definido arriba.
+// CARGA de historial desde la API
+// Si la API responde OK (incluso con data vacía), usar esa respuesta
+// Solo usar fallback vacío si hay error de red
 async function loadHistorialFromDB() {
     try {
         if (typeof window.fetchHistorialFromDB === 'function') {
@@ -1061,22 +1060,25 @@ async function loadHistorialFromDB() {
             if (remote && typeof remote === 'object') return remote;
         }
 
-        // Intentar fetch local (por ejemplo, servidor que sirva data/historial.json)
-        try {
-            const resp = await fetch(`${API_BASE}/kpis/historial`, {cache: 'no-store'});
-            if (resp.ok) {
-                const json = await resp.json();
-                if (json && typeof json === 'object') return json;
+        // Consultar API de historial
+        const resp = await fetch(`${API_BASE}/kpis/historial`, {cache: 'no-store'});
+        if (resp.ok) {
+            const json = await resp.json();
+            // API respondió OK - usar la respuesta aunque esté vacía
+            if (json && typeof json === 'object') {
+                console.log('[loadHistorialFromDB] Datos recibidos de API');
+                return json;
             }
-        } catch (e) {
-            console.warn('Historial API falló, usando fallback local:', e.message || e);
         }
+        // API respondió pero no OK - estado vacío
+        console.warn('[loadHistorialFromDB] API no disponible, usando historial vacío');
+        return historial;
 
     } catch (err) {
-        console.warn('loadHistorialFromDB error', err);
+        // Error de red - usar historial vacío
+        console.error('[loadHistorialFromDB] Error de red:', err.message || err);
+        return historial;
     }
-
-    return historial;
 }
 const getCurrentMonthName = () => {
     const monthsEs = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'];
@@ -1126,7 +1128,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Simula la carga inicial: muestra datos mock inmediatamente y luego intenta cargar la planilla real
+// Carga inicial desde API - sin mock ni fallback
 async function simulateInitialLoad() {
     // SIEMPRE cargar desde API - no usar caché ni mock
     const overlay = document.getElementById('refreshOverlay');
@@ -1138,7 +1140,7 @@ async function simulateInitialLoad() {
     try {
         await fetchData(currentMonth);
     } catch (e) {
-        console.error('Error al cargar datos desde API:', e);
+        console.error('[simulateInitialLoad] Error al cargar datos desde API:', e);
         // Mostrar estado vacío - NO usar mock data
         currentData = [];
         processData(currentData);
@@ -2278,22 +2280,8 @@ function renderKpiTrendChart() {
         // Transferencia EPA -> transfEPA, epa, transfEpa
         let vEpa = avgForKey(rows, ['transfEPA', 'epa', 'transfEpa']);
 
-        // Fallback a historial si existe
-        if ((vSnl === null || isNaN(vSnl)) && historial && Array.isArray(historial.satSNL)) {
-            vSnl = historial.satSNL[idx] || null;
-        }
-        if ((vEp === null || isNaN(vEp)) && historial && Array.isArray(historial.satEP)) {
-            vEp = historial.satEP[idx] || null;
-        }
-        if ((vEpa === null || isNaN(vEpa)) && historial && Array.isArray(historial.epa)) {
-            vEpa = historial.epa[idx] || null;
-        }
-
-        // Último recurso: valores de ejemplo
-        if (vSnl === null || isNaN(vSnl)) vSnl = [90, 91, 92][idx] || 90;
-        if (vEp === null || isNaN(vEp)) vEp = (historial && historial.satEP && historial.satEP[idx]) || [95, 94, 93][idx] || 95;
-        if (vEpa === null || isNaN(vEpa)) vEpa = (historial && historial.epa && historial.epa[idx]) || [88, 85, 82][idx] || 85;
-
+        // NO usar fallback - si no hay datos, mostrar null
+        // El gráfico mostrará gaps donde no hay datos reales
         dataTrend.satSNL.push(vSnl);
         dataTrend.satEP.push(vEp);
         dataTrend.epa.push(vEpa);
