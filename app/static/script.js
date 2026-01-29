@@ -1329,10 +1329,12 @@ function initEventListeners() {
                 if (sel.length === 0) return;
 
                 currentMonth = sel[0];
+                console.log("[month-manual] Usuario seleccionó manualmente:", sel);
                 if (sel.length === 1) {
-                    await fetchData(currentMonth);
+                    // isManualSelection = true: NO hacer fallback si está vacío
+                    await fetchData(currentMonth, false, true);
                 } else {
-                    await fetchMultipleMonths(sel);
+                    await fetchMultipleMonths(sel, false, true);
                 }
             });
         });
@@ -1426,7 +1428,7 @@ function populateMonthFilter() {
     btnLast3.onclick = selectLast3Months;
     container.appendChild(btnLast3);
 
-    // Add listeners to new checkboxes
+    // Add listeners to new checkboxes (selección manual = NO fallback)
     container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
         cb.addEventListener('change', async () => {
             updateMonthHeaderText();
@@ -1434,10 +1436,12 @@ function populateMonthFilter() {
             if (sel.length === 0) return;
 
             currentMonth = sel[0];
+            console.log("[month-manual] Selección manual desde populateMonthFilter:", sel);
             if (sel.length === 1) {
-                await fetchData(currentMonth);
+                // isManualSelection = true: NO hacer fallback si está vacío
+                await fetchData(currentMonth, false, true);
             } else {
-                await fetchMultipleMonths(sel);
+                await fetchMultipleMonths(sel, false, true);
             }
         });
     });
@@ -1498,11 +1502,120 @@ function applyTheme(t) {
     btn.innerHTML = t === 'light' ? '<i class="fas fa-moon"></i>' : '<i class="fas fa-sun"></i>';
 }
 
+// =====================================================
+// RESET UI PARA ESTADO SIN DATOS
+// =====================================================
+function resetDashboardUIForNoData(selectedMonth) {
+    console.log("[no-data-reset] Reseteando UI para mes sin datos:", selectedMonth);
+    
+    // 1. Limpiar datos en memoria
+    currentData = [];
+    
+    // 2. Resetear Resumen KPIs - Nivel Equipo
+    const teamKpiContainer = document.getElementById('teamKpiSummary');
+    if (teamKpiContainer) {
+        const kpis = [
+            { label: 'Satisfacción SNL', display: '—' },
+            { label: 'Resolución SNL', display: '—' },
+            { label: 'Satisfacción EP', display: '—' },
+            { label: 'Resolución EP', display: '—' },
+            { label: 'TMO', display: '—' },
+            { label: 'Transferencia a EPA', display: '—' },
+            { label: 'Tipificaciones', display: '—' }
+        ];
+        teamKpiContainer.innerHTML = `
+            <div class="team-kpi-summary">
+                <h3>📊 Resumen KPIs – Nivel Equipo</h3>
+                <div class="kpi-grid">${kpis.map(k => `
+                    <div class="kpi-card">
+                        <div class="kpi-title">${k.label}</div>
+                        <div class="kpi-value" style="color: var(--text-secondary);">${k.display}</div>
+                        <div class="kpi-meta">Sin datos</div>
+                    </div>
+                `).join('')}</div>
+            </div>
+        `;
+    }
+    
+    // 3. Resetear Podium/Ranking
+    const podiumContainer = document.getElementById('podiumContainerInline');
+    if (podiumContainer) {
+        podiumContainer.innerHTML = `
+            <div class="podium-title">Ranking KPI Mes en curso</div>
+            <p style="text-align:center; color:var(--text-secondary); padding: 2rem;">
+                <i class="fas fa-inbox" style="font-size: 2rem; opacity: 0.3; display: block; margin-bottom: 0.5rem;"></i>
+                Sin datos para ${selectedMonth}
+            </p>
+        `;
+    }
+    
+    // 4. Resetear grid de ejecutivos
+    const dashboardGrid = document.getElementById('dashboardGrid');
+    if (dashboardGrid) {
+        dashboardGrid.innerHTML = `
+            <div style="grid-column: 1/-1; text-align: center; padding: 3rem; background: var(--bg-card); border-radius: 16px; border: 1px dashed var(--border-color);">
+                <i class="fas fa-calendar-times" style="font-size: 3rem; color: var(--text-secondary); opacity: 0.3; margin-bottom: 1rem;"></i>
+                <h3 style="color: var(--text-secondary);">No hay datos para ${selectedMonth}</h3>
+                <p style="color: var(--text-secondary); font-size: 0.9rem;">La API no tiene información para este período.</p>
+            </div>
+        `;
+    }
+    
+    // 5. Resetear resumen ejecutivo si existe
+    const execSummary = document.getElementById('executiveSummary');
+    if (execSummary) {
+        execSummary.innerHTML = '';
+    }
+    
+    // 6. Resetear tabla COPC
+    const copcTable = document.getElementById('copcTableContainer');
+    if (copcTable) {
+        copcTable.innerHTML = `
+            <p style="text-align:center; color:var(--text-secondary); padding: 1rem;">
+                Sin datos para mostrar en ${selectedMonth}
+            </p>
+        `;
+    }
+    
+    // 7. Resetear sección evolutivo/predictivo si depende del mes
+    const evolutivoSection = document.querySelector('.evolucion-chart');
+    if (evolutivoSection) {
+        const chartContainer = evolutivoSection.querySelector('canvas');
+        if (chartContainer && window.evolChart) {
+            window.evolChart.data.labels = [];
+            window.evolChart.data.datasets = [];
+            window.evolChart.update();
+        }
+    }
+    
+    // 8. Limpiar secciones IA
+    const iaPrediccion = document.getElementById('ia-prediccion');
+    if (iaPrediccion) iaPrediccion.textContent = 'Sin datos disponibles';
+    
+    const iaRecomendacion = document.getElementById('ia-recomendacion');
+    if (iaRecomendacion) iaRecomendacion.textContent = 'Sin datos disponibles';
+    
+    const iaCoaching = document.getElementById('ia-coaching');
+    if (iaCoaching) iaCoaching.innerHTML = '';
+    
+    console.log("[no-data-reset] Reset completado para:", selectedMonth);
+}
+
 // FETCHING DATA
-async function fetchData(month, force = false) {
+// isManualSelection: true si el usuario seleccionó manualmente el mes (NO hacer fallback)
+async function fetchData(month, force = false, isManualSelection = false) {
     showLoading(true);
     try {
         const parsed = await fetchSheet(month, force);
+        
+        // Si viene vacío y es selección manual, NO hacer fallback - mostrar estado vacío
+        if (parsed.length === 0 && isManualSelection) {
+            console.log("[month-manual] Selección manual de", month, "sin datos - NO fallback");
+            resetDashboardUIForNoData(month);
+            showLoading(false);
+            return;
+        }
+        
         parsed.forEach(d => {
             if (d.mes) d.mes = normalizeMonthName(d.mes);
             if (d.name) d.name = d.name.toString().trim();
@@ -1512,10 +1625,8 @@ async function fetchData(month, force = false) {
         processData(currentData);
     } catch (err) {
         console.error('Fetch failed:', err);
-        // Limpiar datos y mostrar estado vacío
-        currentData = [];
-        processData(currentData);
-        alert(`La API no tiene datos para el período seleccionado (${month}).`);
+        // Limpiar datos y mostrar estado vacío usando la función central
+        resetDashboardUIForNoData(month);
     } finally {
         showLoading(false);
     }
@@ -1573,7 +1684,8 @@ async function fetchSheet(month, force = false) {
 }
 
 // Fetch multiple sheets and merge results
-async function fetchMultipleMonths(months, force = false) {
+// isManualSelection: si es true, no hacer fallback ni alertas intrusivas
+async function fetchMultipleMonths(months, force = false, isManualSelection = false) {
     showLoading(true);
     try {
         const promises = months.map(m => fetchSheet(m, force).catch(err => {
@@ -1583,6 +1695,15 @@ async function fetchMultipleMonths(months, force = false) {
         const results = await Promise.all(promises);
         // Merge arrays
         currentData = [].concat(...results);
+        
+        // Si es selección manual y no hay datos, mostrar estado vacío
+        if (isManualSelection && currentData.length === 0) {
+            console.log("[month-manual] Múltiples meses sin datos:", months);
+            resetDashboardUIForNoData(months.join(', '));
+            showLoading(false);
+            return;
+        }
+        
         // Log months that returned empty results to help debugging missing sheets
         results.forEach((res, i) => {
             if (!res || (Array.isArray(res) && res.length === 0)) console.warn(`fetchMultipleMonths: no data for ${months[i]}`);
@@ -1594,10 +1715,12 @@ async function fetchMultipleMonths(months, force = false) {
         const missingAfterFetch = months.filter(m => !currentData.some(d => matchMonth(d.mes, m)));
         if (missingAfterFetch.length > 0) {
             console.warn('fetchMultipleMonths: sin datos en API para:', missingAfterFetch);
-            // Inform the user with actionable message
-            try {
-                alert(`Sin datos para: ${missingAfterFetch.join(', ')}.\nLa API no tiene información para estos meses.`);
-            } catch (e) { /* ignore alert failures */ }
+            // Solo mostrar alert si NO es selección manual (para no ser intrusivo)
+            if (!isManualSelection) {
+                try {
+                    alert(`Sin datos para: ${missingAfterFetch.join(', ')}.\nLa API no tiene información para estos meses.`);
+                } catch (e) { /* ignore alert failures */ }
+            }
         }
         // Ensure mes values are normalized to full uppercase month names
         normalizeCurrentDataMonths(currentData);
