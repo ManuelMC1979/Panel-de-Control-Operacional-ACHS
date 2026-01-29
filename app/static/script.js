@@ -5470,7 +5470,7 @@ function renderProfessionalTeamsUI() {
             <button class="btn btn-secondary" onclick="generarReporteTeamsProfesional()" style="background: white; border: 2px solid #64748B; color: #64748B; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
                 <i class="fas fa-sync-alt"></i> Actualizar
             </button>
-            <button class="btn btn-primary" onclick="copiarReporteTeamsProfesional()" style="background: linear-gradient(135deg, #00A859 0%, #007A3D 100%); color: white; padding: 12px 32px; border-radius: 8px; font-weight: 700; cursor: pointer; border: none; box-shadow: 0 4px 12px rgba(0,168,89,0.3); transition: all 0.2s;">
+            <button class="btn btn-primary" onclick="copiarReporteTeamsProfesional(event)" style="background: linear-gradient(135deg, #00A859 0%, #007A3D 100%); color: white; padding: 12px 32px; border-radius: 8px; font-weight: 700; cursor: pointer; border: none; box-shadow: 0 4px 12px rgba(0,168,89,0.3); transition: all 0.2s;">
                 <i class="fas fa-copy"></i> Copiar para Teams
             </button>
             <button class="btn btn-primary" onclick="cerrarModalTeams()">Cerrar</button>
@@ -5811,7 +5811,7 @@ function getProblematicMetrics(data, metrics) {
         .sort((a, b) => b.count - a.count);
 }
 
-function copiarReporteTeamsProfesional() {
+function copiarReporteTeamsProfesional(evt) {
     const report = window.CURRENT_TEAMS_REPORT || '';
     
     if (!report) {
@@ -5819,8 +5819,8 @@ function copiarReporteTeamsProfesional() {
         return;
     }
     
-    // Obtener el botón antes de cualquier operación async
-    const btn = document.querySelector('button[onclick="copiarReporteTeamsProfesional()"]') || event?.target?.closest('button');
+    // Obtener el botón - usar evt si está disponible, sino buscar por selector
+    const btn = (evt && evt.target) ? evt.target.closest('button') : document.querySelector('button[onclick*="copiarReporteTeamsProfesional"]');
     const originalHTML = btn ? btn.innerHTML : '';
     
     // Función de éxito
