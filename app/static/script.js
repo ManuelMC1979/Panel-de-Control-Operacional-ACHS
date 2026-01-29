@@ -1520,25 +1520,28 @@ function useMockData() {
 
 // LOGIC & CALCULATIONS
 function processData(data) {
+    console.log("[processData] sample BEFORE:", JSON.stringify(data[0]));
     // 1. Calculate Score COPC for each executive
+    // IMPORTANTE: NO mutar los KPIs originales (null debe preservarse)
     data.forEach(d => {
-        // Normalization to percent
-        d.satSnl = normalizePercent(d.satSnl);
-        d.resSnl = normalizePercent(d.resSnl);
-        d.satEp = normalizePercent(d.satEp);
-        d.resEp = normalizePercent(d.resEp);
-        d.transfEPA = normalizePercent(d.transfEPA);
-        d.tipificaciones = normalizePercent(d.tipificaciones);
+        // Variables locales para cálculos (con fallback a 0), SIN mutar el objeto original
+        const satSnlCalc = normalizePercent(d.satSnl);
+        const resSnlCalc = normalizePercent(d.resSnl);
+        const satEpCalc = normalizePercent(d.satEp);
+        const resEpCalc = normalizePercent(d.resEp);
+        const transfEPACalc = normalizePercent(d.transfEPA);
+        const tipificacionesCalc = normalizePercent(d.tipificaciones);
+        const tmoCalc = d.tmo ?? 0;
 
-        // Map data to the format calcularScoreCOPC expects
+        // Map data to the format calcularScoreCOPC expects (usando valores de cálculo)
         const kpisValues = {
-            tmo: d.tmo,
-            satEP: d.satEp,
-            resEP: d.resEp,
-            satSNL: d.satSnl,
-            resSNL: d.resSnl,
-            transfEPA: d.transfEPA,
-            tipificaciones: d.tipificaciones
+            tmo: tmoCalc,
+            satEP: satEpCalc,
+            resEP: resEpCalc,
+            satSNL: satSnlCalc,
+            resSNL: resSnlCalc,
+            transfEPA: transfEPACalc,
+            tipificaciones: tipificacionesCalc
         };
 
         // Get individual alerts for this executive to calculate penalties
@@ -1553,15 +1556,15 @@ function processData(data) {
             }
         });
 
-        // Forzar recalcularScore con mapeo exacto
+        // Forzar recalcularScore con mapeo exacto (valores de cálculo, no muta KPIs)
         const kpisValuesRecalc = {
-            tmo: Number(d.tmo) || 0,
-            satEP: Number(d.satEp) || 0,
-            resEP: Number(d.resEp) || 0,
-            satSNL: Number(d.satSnl) || 0,
-            resSNL: Number(d.resSnl) || 0,
-            transfEPA: Number(d.transfEPA) || 0,
-            tipificaciones: Number(d.tipificaciones) || 0
+            tmo: tmoCalc,
+            satEP: satEpCalc,
+            resEP: resEpCalc,
+            satSNL: satSnlCalc,
+            resSNL: resSnlCalc,
+            transfEPA: transfEPACalc,
+            tipificaciones: tipificacionesCalc
         };
 
         // KPI_TOTAL: suma de KPIs cumplidos (tmo cuenta como cumplir si es menor o igual a la meta)
@@ -1575,6 +1578,8 @@ function processData(data) {
         d.copcNivel = null;
         d.copcColor = null;
     });
+
+    console.log("[processData] sample AFTER:", JSON.stringify(data[0]));
 
     // 2. Sort by KPI_TOTAL Descending (mayores KPIs cumplidos primero)
     data.sort((a, b) => (b.kpiTotal || 0) - (a.kpiTotal || 0));
