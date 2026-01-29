@@ -1098,8 +1098,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Registrar Service Worker para habilitar navigation preload/handling (si está disponible)
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js?v=20260129-2', { scope: '/' })
-            .then(reg => console.log('SW registrado versión 20260129-2, scope:', reg.scope))
+        navigator.serviceWorker.register('/static/sw.js?v=20260129-3', { scope: '/static/' })
+            .then(reg => console.log('SW registrado versión 20260129-3, scope:', reg.scope))
             .catch(err => console.warn('Error registro ServiceWorker:', err));
     }
 
