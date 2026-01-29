@@ -5828,185 +5828,190 @@ function getProblematicMetrics(data, metrics) {
         .sort((a, b) => b.count - a.count);
 }
 
+// ============================================
+// FUNCIÓN COPIAR REPORTE TEAMS - NUEVA VERSIÓN
+// ============================================
 function copiarReporteTeamsProfesional(evt) {
-    const report = window.CURRENT_TEAMS_REPORT || '';
+    // Obtener el texto del reporte desde la vista previa
+    const previewElement = document.getElementById('teamsReportPreview');
+    const preElement = previewElement ? previewElement.querySelector('pre') : null;
     
-    if (!report) {
+    // Usar el texto del elemento pre o de la variable global
+    let textoACopiar = '';
+    if (preElement && preElement.textContent) {
+        textoACopiar = preElement.textContent;
+    } else if (window.CURRENT_TEAMS_REPORT) {
+        textoACopiar = window.CURRENT_TEAMS_REPORT;
+    }
+    
+    if (!textoACopiar || textoACopiar.trim() === '') {
         alert('⚠️ Primero genera un reporte seleccionando métricas');
         return;
     }
     
-    // Obtener el botón - usar evt si está disponible, sino buscar por selector
-    const btn = (evt && evt.target) ? evt.target.closest('button') : document.querySelector('button[onclick*="copiarReporteTeamsProfesional"]');
-    const originalHTML = btn ? btn.innerHTML : '';
+    // Obtener referencia al botón para feedback visual
+    let boton = null;
+    if (evt && evt.currentTarget) {
+        boton = evt.currentTarget;
+    } else if (evt && evt.target) {
+        boton = evt.target.closest('button');
+    }
     
-    // Función de éxito
-    function onSuccess() {
-        if (btn) {
-            btn.innerHTML = '<i class="fas fa-check"></i> ¡Copiado al Portapapeles!';
-            btn.style.background = 'linear-gradient(135deg, #059669 0%, #047857 100%)';
-            
+    const textoOriginalBoton = boton ? boton.innerHTML : '';
+    
+    // Crear textarea temporal para copiar
+    const textareaTemp = document.createElement('textarea');
+    textareaTemp.value = textoACopiar;
+    
+    // Posicionar fuera de vista pero accesible
+    textareaTemp.style.position = 'fixed';
+    textareaTemp.style.top = '0';
+    textareaTemp.style.left = '0';
+    textareaTemp.style.width = '2em';
+    textareaTemp.style.height = '2em';
+    textareaTemp.style.padding = '0';
+    textareaTemp.style.border = 'none';
+    textareaTemp.style.outline = 'none';
+    textareaTemp.style.boxShadow = 'none';
+    textareaTemp.style.background = 'transparent';
+    textareaTemp.style.opacity = '0';
+    
+    document.body.appendChild(textareaTemp);
+    
+    // Seleccionar el texto
+    textareaTemp.focus();
+    textareaTemp.select();
+    textareaTemp.setSelectionRange(0, textareaTemp.value.length);
+    
+    let copiado = false;
+    
+    // Intentar copiar con execCommand
+    try {
+        copiado = document.execCommand('copy');
+    } catch (e) {
+        console.warn('execCommand falló:', e);
+    }
+    
+    // Limpiar textarea temporal
+    document.body.removeChild(textareaTemp);
+    
+    if (copiado) {
+        // Éxito - mostrar feedback
+        if (boton) {
+            boton.innerHTML = '<i class="fas fa-check"></i> ¡Copiado!';
+            boton.style.background = '#059669';
             setTimeout(() => {
-                btn.innerHTML = originalHTML;
-                btn.style.background = 'linear-gradient(135deg, #00A859 0%, #007A3D 100%)';
-            }, 2000);
-        }
-        showCopyInstructions();
-    }
-    
-    // Función de error - mostrar modal para copiar manualmente (sin alert)
-    function onError(err) {
-        console.warn('Clipboard API no disponible, mostrando modal para copiar manualmente:', err);
-        mostrarTextoParaCopiar(report);
-    }
-    
-    // Intentar copiar con execCommand directamente (más compatible)
-    try {
-        const textarea = document.createElement('textarea');
-        textarea.value = report;
-        textarea.style.cssText = 'position:fixed;top:0;left:0;width:2em;height:2em;padding:0;border:none;outline:none;box-shadow:none;background:transparent;';
-        document.body.appendChild(textarea);
-        textarea.focus();
-        textarea.select();
-        
-        try {
-            const successful = document.execCommand('copy');
-            document.body.removeChild(textarea);
-            
-            if (successful) {
-                onSuccess();
-                return;
-            }
-        } catch (err) {
-            document.body.removeChild(textarea);
+                boton.innerHTML = textoOriginalBoton;
+                boton.style.background = 'linear-gradient(135deg, #00A859 0%, #007A3D 100%)';
+            }, 2500);
         }
         
-        // Si execCommand falla, intentar con Clipboard API
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(report)
-                .then(onSuccess)
-                .catch(onError);
-        } else {
-            onError(new Error('No clipboard API available'));
-        }
-    } catch (err) {
-        onError(err);
+        // Mostrar notificación de éxito
+        mostrarNotificacionCopiado();
+    } else {
+        // Falló - mostrar modal para copiar manualmente
+        mostrarModalCopiaManual(textoACopiar);
     }
 }
 
-function intentarExecCommand(text, onSuccess, onError) {
-    try {
-        const textarea = document.createElement('textarea');
-        textarea.value = text;
-        textarea.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;';
-        textarea.setAttribute('readonly', '');
-        document.body.appendChild(textarea);
-        
-        // Para iOS
-        textarea.contentEditable = true;
-        textarea.readOnly = false;
-        
-        // Seleccionar todo el texto
-        textarea.focus();
-        textarea.select();
-        
-        // Para dispositivos móviles
-        if (textarea.setSelectionRange) {
-            textarea.setSelectionRange(0, text.length);
-        }
-        
-        const success = document.execCommand('copy');
-        document.body.removeChild(textarea);
-        
-        if (success) {
-            onSuccess();
-        } else {
-            onError(new Error('execCommand returned false'));
-        }
-    } catch (err) {
-        onError(err);
-    }
+function mostrarNotificacionCopiado() {
+    const notif = document.createElement('div');
+    notif.style.cssText = `
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        color: white;
+        padding: 16px 24px;
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        z-index: 99999;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-weight: 600;
+        animation: slideIn 0.3s ease;
+    `;
+    notif.innerHTML = `<i class="fas fa-check-circle" style="font-size: 1.4rem;"></i> ¡Reporte copiado! Pégalo en Teams con Ctrl+V`;
+    
+    // Agregar animación
+    const style = document.createElement('style');
+    style.textContent = `@keyframes slideIn { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }`;
+    document.head.appendChild(style);
+    
+    document.body.appendChild(notif);
+    
+    setTimeout(() => {
+        notif.style.opacity = '0';
+        notif.style.transform = 'translateX(100px)';
+        notif.style.transition = 'all 0.3s ease';
+        setTimeout(() => notif.remove(), 300);
+    }, 3000);
 }
 
-function mostrarTextoParaCopiar(text) {
-    // Crear modal con el texto para que el usuario pueda copiarlo manualmente
-    const overlay = document.createElement('div');
-    overlay.style.cssText = `
+function mostrarModalCopiaManual(texto) {
+    // Eliminar modal anterior si existe
+    const modalAnterior = document.getElementById('modalCopiaManual');
+    if (modalAnterior) modalAnterior.remove();
+    
+    const modal = document.createElement('div');
+    modal.id = 'modalCopiaManual';
+    modal.style.cssText = `
         position: fixed;
         top: 0;
         left: 0;
         right: 0;
         bottom: 0;
         background: rgba(0,0,0,0.7);
-        z-index: 10000;
+        z-index: 99999;
         display: flex;
         align-items: center;
         justify-content: center;
+        padding: 20px;
     `;
     
-    overlay.innerHTML = `
-        <div style="background: white; padding: 24px; border-radius: 12px; max-width: 600px; width: 90%; max-height: 80vh; display: flex; flex-direction: column;">
-            <h3 style="margin: 0 0 12px 0; color: #005DAA;">📋 Copia el texto manualmente</h3>
-            <p style="margin: 0 0 12px 0; font-size: 0.9rem; color: #64748B;">Selecciona todo el texto (Ctrl+A) y cópialo (Ctrl+C):</p>
-            <textarea id="manualCopyText" style="flex: 1; min-height: 200px; padding: 12px; border: 2px solid #005DAA; border-radius: 8px; font-family: monospace; font-size: 0.85rem; resize: none;" readonly>${text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
+    modal.innerHTML = `
+        <div style="background: white; padding: 24px; border-radius: 16px; max-width: 700px; width: 100%; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="margin: 0; color: #005DAA; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-clipboard"></i> Copia el Reporte Manualmente
+                </h3>
+                <button onclick="document.getElementById('modalCopiaManual').remove()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #64748B; padding: 4px 8px;">&times;</button>
+            </div>
+            <p style="margin: 0 0 12px 0; color: #64748B; font-size: 0.9rem;">
+                Haz clic en el cuadro, presiona <strong>Ctrl+A</strong> para seleccionar todo y <strong>Ctrl+C</strong> para copiar:
+            </p>
+            <textarea id="textoCopiaManual" readonly style="flex: 1; min-height: 300px; padding: 16px; border: 2px solid #005DAA; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.5; resize: none; background: #F8FAFC;">${texto}</textarea>
             <div style="display: flex; gap: 12px; margin-top: 16px; justify-content: flex-end;">
-                <button onclick="document.getElementById('manualCopyText').select(); document.getElementById('manualCopyText').setSelectionRange(0, 99999);" style="padding: 10px 20px; background: #005DAA; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
-                    Seleccionar Todo
+                <button onclick="const ta = document.getElementById('textoCopiaManual'); ta.focus(); ta.select();" style="padding: 12px 24px; background: #005DAA; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-mouse-pointer"></i> Seleccionar Todo
                 </button>
-                <button onclick="this.closest('div').parentElement.parentElement.remove();" style="padding: 10px 20px; background: #64748B; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                <button onclick="document.getElementById('modalCopiaManual').remove()" style="padding: 12px 24px; background: #64748B; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
                     Cerrar
                 </button>
             </div>
         </div>
     `;
     
-    document.body.appendChild(overlay);
+    document.body.appendChild(modal);
     
-    // Seleccionar automáticamente el texto
+    // Seleccionar automáticamente
     setTimeout(() => {
-        const ta = document.getElementById('manualCopyText');
+        const ta = document.getElementById('textoCopiaManual');
         if (ta) {
-            ta.value = text; // Asignar el valor real (sin escapar)
             ta.focus();
             ta.select();
         }
     }, 100);
 }
 
-function showCopyInstructions() {
-    const modal = document.createElement('div');
-    modal.style.cssText = `
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: white;
-        padding: 30px;
-        border-radius: 16px;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        z-index: 10000;
-        max-width: 400px;
-        text-align: center;
-    `;
-    
-    modal.innerHTML = `
-        <div style="font-size: 3rem; margin-bottom: 16px;">✅</div>
-        <h3 style="color: #005DAA; margin-bottom: 12px;">¡Reporte Copiado!</h3>
-        <p style="color: #64748B; font-size: 0.9rem; line-height: 1.5;">
-            El reporte está en tu portapapeles.<br>
-            Ahora puedes pegarlo directamente en Microsoft Teams.
-        </p>
-        <button onclick="this.parentElement.remove()" style="margin-top: 20px; padding: 10px 24px; background: #005DAA; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
-            Entendido
-        </button>
-    `;
-    
-    document.body.appendChild(modal);
-    
-    setTimeout(() => {
-        modal.remove();
-    }, 3000);
-}
+// Función auxiliar para cerrar modal de copia manual con ESC
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const modal = document.getElementById('modalCopiaManual');
+        if (modal) modal.remove();
+    }
+});
 
 function cerrarModalTeams() {
     const modal = document.getElementById('modalTeams');
