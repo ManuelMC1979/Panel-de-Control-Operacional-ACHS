@@ -1128,7 +1128,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Carga inicial desde API - sin mock ni fallback
+// Carga inicial desde API - sin mock ni fallback, CON auto-fallback de mes
 async function simulateInitialLoad() {
     // SIEMPRE cargar desde API - no usar caché ni mock
     const overlay = document.getElementById('refreshOverlay');
@@ -1137,8 +1137,71 @@ async function simulateInitialLoad() {
     // Limpiar datos anteriores mientras carga
     currentData = [];
 
+    // Orden de meses para fallback (del más reciente al más antiguo)
+    const FALLBACK_MONTHS = ['DICIEMBRE', 'NOVIEMBRE', 'OCTUBRE', 'SEPTIEMBRE', 'AGOSTO', 'JULIO', 'JUNIO', 'MAYO', 'ABRIL', 'MARZO', 'FEBRERO', 'ENERO'];
+
+    console.log("[init] mes inicial:", currentMonth);
+
     try {
-        await fetchData(currentMonth);
+        // Intentar cargar el mes actual primero
+        const initialData = await fetchSheet(currentMonth, true);
+        
+        if (initialData && initialData.length > 0) {
+            // El mes actual tiene data, usarlo
+            console.log("[init] mes elegido final:", currentMonth, "regs:", initialData.length);
+            currentData = initialData;
+            currentData.forEach(d => {
+                if (d.mes) d.mes = normalizeMonthName(d.mes);
+                if (d.name) d.name = d.name.toString().trim();
+            });
+            processData(currentData);
+        } else {
+            // Mes actual sin data, buscar fallback
+            console.log("[init] mes sin data, probando fallback:", currentMonth);
+            
+            let foundMonth = null;
+            let foundData = null;
+
+            for (const mes of FALLBACK_MONTHS) {
+                if (mes === currentMonth) continue; // Ya lo intentamos
+                
+                console.log("[init] mes sin data, probando fallback:", mes);
+                try {
+                    const testData = await fetchSheet(mes, true);
+                    if (testData && testData.length > 0) {
+                        foundMonth = mes;
+                        foundData = testData;
+                        break;
+                    }
+                } catch (e) {
+                    // Continuar con el siguiente mes
+                    console.log(`[init] fallback ${mes} falló:`, e.message);
+                }
+            }
+
+            if (foundMonth && foundData) {
+                console.log("[init] mes elegido final:", foundMonth, "regs:", foundData.length);
+                
+                // Actualizar currentMonth global
+                currentMonth = foundMonth;
+                
+                // Actualizar UI del selector de meses
+                updateMonthSelectorUI(foundMonth);
+                
+                // Procesar data encontrada
+                currentData = foundData;
+                currentData.forEach(d => {
+                    if (d.mes) d.mes = normalizeMonthName(d.mes);
+                    if (d.name) d.name = d.name.toString().trim();
+                });
+                processData(currentData);
+            } else {
+                // Ningún mes tiene data
+                console.log("[init] ningún mes tiene data disponible");
+                currentData = [];
+                processData(currentData);
+            }
+        }
     } catch (e) {
         console.error('[simulateInitialLoad] Error al cargar datos desde API:', e);
         // Mostrar estado vacío - NO usar mock data
@@ -1146,6 +1209,22 @@ async function simulateInitialLoad() {
         processData(currentData);
     } finally {
         if (overlay) overlay.classList.remove('active');
+    }
+}
+
+// Actualiza el checkbox del selector de mes en la UI
+function updateMonthSelectorUI(month) {
+    const container = document.getElementById('monthOptions');
+    if (!container) return;
+    
+    // Desmarcar todos y marcar solo el mes encontrado
+    container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        cb.checked = (cb.value === month);
+    });
+    
+    // Actualizar texto del header si existe la función
+    if (typeof updateMonthHeaderText === 'function') {
+        updateMonthHeaderText();
     }
 }
 
