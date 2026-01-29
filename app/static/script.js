@@ -3146,8 +3146,19 @@ function fallbackCopy(text, resolve, reject) {
 }
 
 function copiarReporteTeams() {
-    const text = document.getElementById("teamsMessage").value;
-    if (!text || text.includes("No hay datos")) return;
+    console.log('========================================');
+    console.log('🟡 [COPIAR-ANTIGUO] Función copiarReporteTeams() INICIADA');
+    
+    const textareaElement = document.getElementById("teamsMessage");
+    console.log('🟡 [COPIAR-ANTIGUO] teamsMessage encontrado:', !!textareaElement);
+    
+    const text = textareaElement ? textareaElement.value : '';
+    console.log('🟡 [COPIAR-ANTIGUO] Texto obtenido, longitud:', text.length);
+    
+    if (!text || text.includes("No hay datos")) {
+        console.log('🟡 [COPIAR-ANTIGUO] Texto vacío o sin datos');
+        return;
+    }
 
     // Intentar copiar con execCommand directamente
     try {
@@ -3158,10 +3169,13 @@ function copiarReporteTeams() {
         textarea.focus();
         textarea.select();
         
+        console.log('🟡 [COPIAR-ANTIGUO] Intentando execCommand...');
         const successful = document.execCommand('copy');
+        console.log('🟡 [COPIAR-ANTIGUO] execCommand resultado:', successful);
         document.body.removeChild(textarea);
         
         if (successful) {
+            console.log('✅ [COPIAR-ANTIGUO] ÉXITO');
             const btn = document.querySelector('button[onclick="copiarReporteTeams()"]');
             if (btn) {
                 const originalText = btn.innerHTML;
@@ -3172,14 +3186,18 @@ function copiarReporteTeams() {
                     btn.style.background = '';
                 }, 2000);
             }
+            // Mostrar notificación de éxito
+            mostrarNotificacionCopiado();
             return;
         }
     } catch (err) {
-        console.warn('execCommand failed:', err);
+        console.error('🔴 [COPIAR-ANTIGUO] execCommand error:', err);
     }
     
+    console.log('🟡 [COPIAR-ANTIGUO] Mostrando modal de copia manual');
     // Fallback: mostrar modal para copiar manualmente
-    mostrarTextoParaCopiar(text);
+    mostrarModalCopiaManual(text);
+    console.log('========================================');
 }
 
 async function showEvolutionary(overrideExec, overrideKpi, force = false) {
@@ -5832,19 +5850,34 @@ function getProblematicMetrics(data, metrics) {
 // FUNCIÓN COPIAR REPORTE TEAMS - NUEVA VERSIÓN
 // ============================================
 function copiarReporteTeamsProfesional(evt) {
+    console.log('========================================');
+    console.log('🔵 [COPIAR] Función copiarReporteTeamsProfesional INICIADA');
+    console.log('🔵 [COPIAR] Evento recibido:', evt);
+    console.log('🔵 [COPIAR] Tipo de evento:', evt ? evt.type : 'sin evento');
+    
     // Obtener el texto del reporte desde la vista previa
     const previewElement = document.getElementById('teamsReportPreview');
+    console.log('🔵 [COPIAR] previewElement encontrado:', !!previewElement);
+    
     const preElement = previewElement ? previewElement.querySelector('pre') : null;
+    console.log('🔵 [COPIAR] preElement (pre) encontrado:', !!preElement);
     
     // Usar el texto del elemento pre o de la variable global
     let textoACopiar = '';
     if (preElement && preElement.textContent) {
         textoACopiar = preElement.textContent;
+        console.log('🔵 [COPIAR] Usando texto de preElement, longitud:', textoACopiar.length);
     } else if (window.CURRENT_TEAMS_REPORT) {
         textoACopiar = window.CURRENT_TEAMS_REPORT;
+        console.log('🔵 [COPIAR] Usando texto de CURRENT_TEAMS_REPORT, longitud:', textoACopiar.length);
+    } else {
+        console.log('🔴 [COPIAR] NO HAY TEXTO DISPONIBLE');
     }
     
+    console.log('🔵 [COPIAR] Primeros 100 chars del texto:', textoACopiar.substring(0, 100));
+    
     if (!textoACopiar || textoACopiar.trim() === '') {
+        console.log('🔴 [COPIAR] Texto vacío - mostrando alerta');
         alert('⚠️ Primero genera un reporte seleccionando métricas');
         return;
     }
@@ -5853,13 +5886,17 @@ function copiarReporteTeamsProfesional(evt) {
     let boton = null;
     if (evt && evt.currentTarget) {
         boton = evt.currentTarget;
+        console.log('🔵 [COPIAR] Botón obtenido de evt.currentTarget');
     } else if (evt && evt.target) {
         boton = evt.target.closest('button');
+        console.log('🔵 [COPIAR] Botón obtenido de evt.target.closest');
     }
+    console.log('🔵 [COPIAR] Botón encontrado:', !!boton);
     
     const textoOriginalBoton = boton ? boton.innerHTML : '';
     
     // Crear textarea temporal para copiar
+    console.log('🔵 [COPIAR] Creando textarea temporal...');
     const textareaTemp = document.createElement('textarea');
     textareaTemp.value = textoACopiar;
     
@@ -5877,25 +5914,31 @@ function copiarReporteTeamsProfesional(evt) {
     textareaTemp.style.opacity = '0';
     
     document.body.appendChild(textareaTemp);
+    console.log('🔵 [COPIAR] Textarea agregado al DOM');
     
     // Seleccionar el texto
     textareaTemp.focus();
     textareaTemp.select();
     textareaTemp.setSelectionRange(0, textareaTemp.value.length);
+    console.log('🔵 [COPIAR] Texto seleccionado en textarea');
     
     let copiado = false;
     
     // Intentar copiar con execCommand
     try {
+        console.log('🔵 [COPIAR] Intentando document.execCommand("copy")...');
         copiado = document.execCommand('copy');
+        console.log('🔵 [COPIAR] execCommand retornó:', copiado);
     } catch (e) {
-        console.warn('execCommand falló:', e);
+        console.error('🔴 [COPIAR] execCommand EXCEPCIÓN:', e);
     }
     
     // Limpiar textarea temporal
     document.body.removeChild(textareaTemp);
+    console.log('🔵 [COPIAR] Textarea removido del DOM');
     
     if (copiado) {
+        console.log('✅ [COPIAR] ÉXITO - Texto copiado correctamente');
         // Éxito - mostrar feedback
         if (boton) {
             boton.innerHTML = '<i class="fas fa-check"></i> ¡Copiado!';
@@ -5909,9 +5952,12 @@ function copiarReporteTeamsProfesional(evt) {
         // Mostrar notificación de éxito
         mostrarNotificacionCopiado();
     } else {
+        console.log('🔴 [COPIAR] FALLÓ - Mostrando modal de copia manual');
         // Falló - mostrar modal para copiar manualmente
         mostrarModalCopiaManual(textoACopiar);
     }
+    
+    console.log('========================================');
 }
 
 function mostrarNotificacionCopiado() {
