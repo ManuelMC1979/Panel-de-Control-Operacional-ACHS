@@ -2308,12 +2308,8 @@ function renderPodium(top3, kpiKey) {
         const place = places[idx];
         const placeMedal = place === 1 ? '🥇' : (place === 2 ? '🥈' : '🥉');
 
-        // Extract first name and last name only
-        const nameParts = (d.name || '').trim().split(/\s+/);
-        let shortName = d.name;
-        if (nameParts.length >= 2) {
-            shortName = nameParts[0] + ' ' + nameParts[1];
-        }
+        // Use centralized helper to get first name + first surname
+        const shortName = getShortName(d.name || d.nombre || d.ejecutivo || '');
 
         const div = document.createElement('div');
         div.className = `podium-place place-${place}`;
