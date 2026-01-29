@@ -1411,6 +1411,14 @@ async function fetchData(month, force = false) {
 async function fetchSheet(month, force = false) {
     if (!month) throw new Error('Month required');
 
+    // Helper: convierte a número o null (nunca 0 por defecto)
+    function toNumOrNull(v) {
+        if (v === null || v === undefined) return null;
+        if (typeof v === "string" && v.trim() === "") return null;
+        const n = Number(v);
+        return Number.isFinite(n) ? n : null;
+    }
+
     // SIEMPRE consultar API - caché deshabilitado
     console.log(`[fetchSheet] Consultando API para: ${month}`);
 
@@ -1435,17 +1443,18 @@ async function fetchSheet(month, force = false) {
         return {
             name: (r.name || "").toString().trim(),
             mes: (r.mes || month).toString().trim(),
-            tmo: (r.tmo === null || r.tmo === undefined || r.tmo === "") ? null : Number(r.tmo),
-            transfEPA: (r.transfEPA === null || r.transfEPA === undefined || r.transfEPA === "") ? null : Number(r.transfEPA),
-            tipificaciones: (r.tipificaciones === null || r.tipificaciones === undefined || r.tipificaciones === "") ? null : Number(r.tipificaciones),
-            satEp: (r.satEp === null || r.satEp === undefined || r.satEp === "") ? null : Number(r.satEp),
-            resEp: (r.resEp === null || r.resEp === undefined || r.resEp === "") ? null : Number(r.resEp),
-            satSnl: (r.satSnl === null || r.satSnl === undefined || r.satSnl === "") ? null : Number(r.satSnl),
-            resSnl: (r.resSnl === null || r.resSnl === undefined || r.resSnl === "") ? null : Number(r.resSnl),
+            tmo: toNumOrNull(r.tmo),
+            transfEPA: toNumOrNull(r.transfEPA),
+            tipificaciones: toNumOrNull(r.tipificaciones),
+            satEp: toNumOrNull(r.satEp),
+            resEp: toNumOrNull(r.resEp),
+            satSnl: toNumOrNull(r.satSnl),
+            resSnl: toNumOrNull(r.resSnl),
         };
     }).filter(d => d && d.name && !['TOTAL', 'PROMEDIO', 'EJECUTIVO', 'NOMBRE'].includes(d.name.toUpperCase()) && d.name.length >= 3);
 
     console.log(`[fetchSheet] ${month}: ${parsed.length} registros procesados`);
+    console.log("[fetchSheet] sample parsed:", parsed[0]);
     return parsed;
 }
 
