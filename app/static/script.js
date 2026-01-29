@@ -1021,30 +1021,21 @@ function normalizeCurrentDataMonths(dataArray) {
     dataArray.forEach(d => { if (d && d.mes) d.mes = normalizeMonthName(d.mes); });
 }
 // --- CACHE MANAGEMENT ---
+// DESHABILITADO: No usar caché local - siempre consultar API
 function getTodayDate() {
     return new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 }
 
 const SheetCache = {
     get: (month) => {
-        try {
-            const cache = JSON.parse(localStorage.getItem('sheet_cache') || '{}');
-            const entry = cache[month];
-            if (entry && entry.date === getTodayDate()) {
-                return entry.data;
-            }
-        } catch (e) { console.error("Cache read error", e); }
+        // DESHABILITADO: No usar caché localStorage
+        // Siempre retornar null para forzar consulta a API
         return null;
     },
     set: (month, data) => {
-        try {
-            const cache = JSON.parse(localStorage.getItem('sheet_cache') || '{}');
-            cache[month] = {
-                date: getTodayDate(),
-                data: data
-            };
-            localStorage.setItem('sheet_cache', JSON.stringify(cache));
-        } catch (e) { console.error("Cache save error", e); }
+        // DESHABILITADO: No guardar en localStorage
+        // Los datos deben venir siempre de la API
+        console.log(`[SheetCache] Cache deshabilitado - datos de ${month} no guardados`);
     }
 };
 
@@ -1107,7 +1098,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Registrar Service Worker para habilitar navigation preload/handling (si está disponible)
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('static/sw.js?v=20260129-2', { scope: '/' })
+        navigator.serviceWorker.register('/sw.js?v=20260129-2', { scope: '/' })
             .then(reg => console.log('SW registrado versión 20260129-2, scope:', reg.scope))
             .catch(err => console.warn('Error registro ServiceWorker:', err));
     }
@@ -1137,31 +1128,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Simula la carga inicial: muestra datos mock inmediatamente y luego intenta cargar la planilla real
 async function simulateInitialLoad() {
-    // 1. Intentar cargar desde el Caché diario primero
-    const cached = SheetCache.get(currentMonth);
-    if (cached) {
-        console.log(`🚀 Carga inicial desde caché diario para ${currentMonth}`);
-        currentData = cached;
-        processData(currentData);
-        // Saltamos la animación de carga si ya tenemos datos frescos
-        return;
-    }
-
-    // 2. Si no hay caché, proceder con el flujo normal
+    // SIEMPRE cargar desde API - no usar caché ni mock
     const overlay = document.getElementById('refreshOverlay');
     if (overlay) overlay.classList.add('active');
 
-    // Mostrar datos de ejemplo inmediatamente
-    useMockData();
+    // Limpiar datos anteriores mientras carga
+    currentData = [];
 
-    // Espera breve mientras se establece la conexión real
-    await new Promise(resolve => setTimeout(resolve, 900));
-
-    // Intentar reemplazar con datos reales (fetchData maneja errores internamente)
     try {
         await fetchData(currentMonth);
     } catch (e) {
-        console.error('Error al intentar cargar datos reales:', e);
+        console.error('Error al cargar datos desde API:', e);
+        // Mostrar estado vacío - NO usar mock data
+        currentData = [];
+        processData(currentData);
     } finally {
         if (overlay) overlay.classList.remove('active');
     }
@@ -1416,7 +1396,10 @@ async function fetchData(month, force = false) {
         processData(currentData);
     } catch (err) {
         console.error('Fetch failed:', err);
-        alert(`No se pudo cargar la pestaña "${month}". Asegúrate de que la hoja exista y se llame exactamente así.`);
+        // Limpiar datos y mostrar estado vacío
+        currentData = [];
+        processData(currentData);
+        alert(`La API no tiene datos para el período seleccionado (${month}).`);
     } finally {
         showLoading(false);
     }
@@ -1426,27 +1409,21 @@ async function fetchData(month, force = false) {
 async function fetchSheet(month, force = false) {
     if (!month) throw new Error('Month required');
 
-    // Revisar Caché antes de ir a la red (si no es forzado)
-    if (!force) {
-        const cached = SheetCache.get(month);
-        if (cached) {
-            console.log(`📦 Usando caché diario para la hoja: ${month}`);
-            return cached;
-        }
-    }
+    // SIEMPRE consultar API - caché deshabilitado
+    console.log(`[fetchSheet] Consultando API para: ${month}`);
 
-    // Fetch desde API FastAPI local
+    // Fetch desde API FastAPI
     const response = await fetch(`${API_BASE}/kpis?meses=${encodeURIComponent(month)}`, { cache: 'no-cache' });
     if (!response.ok) {
-        console.warn(`Hoja "${month}" no encontrada en API`);
-        throw new Error(`Hoja "${month}" no encontrada.`);
+        console.error(`[fetchSheet] API error para "${month}": ${response.status}`);
+        throw new Error(`La API no tiene datos para ${month}.`);
     }
 
     const json = await response.json();
-    const rows = json.data || [];
+    const rows = Array.isArray(json.data) ? json.data : [];
 
-    if (!rows || rows.length === 0) {
-        SheetCache.set(month, []);
+    if (rows.length === 0) {
+        console.log(`[fetchSheet] API devolvió data vacía para: ${month}`);
         return [];
     }
 
@@ -1466,9 +1443,7 @@ async function fetchSheet(month, force = false) {
         };
     }).filter(d => d && d.name && !['TOTAL', 'PROMEDIO', 'EJECUTIVO', 'NOMBRE'].includes(d.name.toUpperCase()) && d.name.length >= 3);
 
-    // Guardar en caché antes de retornar
-    SheetCache.set(month, parsed);
-
+    console.log(`[fetchSheet] ${month}: ${parsed.length} registros procesados`);
     return parsed;
 }
 
@@ -1526,31 +1501,9 @@ function parseNumber(str) {
 // function filterDataByMonth removed.
 
 function useMockData() {
-    // Tomar nombres reales de la base de datos de usuarios autorizados
-    const names = Object.values(USUARIOS_DB)
-        .filter(u => u.rol === 'ejecutivo')
-        .map(u => u.ejecutivo)
-        .slice(0, 8); // Tomar hasta 8 para el demo
-
-    const months = MONTHS.slice(0, 4); // OCTUBRE, NOVIEMBRE, DICIEMBRE, ENERO
-
+    // DESHABILITADO: No usar datos mock - siempre consultar API
+    console.warn('[useMockData] DESHABILITADO - Los datos deben venir de la API');
     currentData = [];
-    names.forEach(n => {
-        months.forEach((m) => {
-            currentData.push({
-                name: n,
-                mes: m,
-                tmo: +(4 + Math.random() * 3).toFixed(2),
-                transfEPA: +(75 + Math.random() * 20).toFixed(2),
-                tipificaciones: +(85 + Math.random() * 15).toFixed(2),
-                satEp: +(85 + Math.random() * 15).toFixed(2),
-                resEp: +(80 + Math.random() * 20).toFixed(2),
-                satSnl: +(85 + Math.random() * 15).toFixed(2),
-                resSnl: +(80 + Math.random() * 20).toFixed(2)
-            });
-        });
-    });
-
     processData(currentData);
 }
 
