@@ -2661,10 +2661,35 @@ function getStatusIcon(value, target, type) {
 }
 
 function getShortName(fullName) {
-    if (!fullName) return "";
-    const parts = fullName.trim().split(' ');
-    if (parts.length <= 2) return fullName;
-    return `${parts[0]} ${parts[parts.length - 1]}`;
+    if (!fullName) return "---";
+
+    // Si hay una coma (Formato: Apellidos, Nombres)
+    if (fullName.includes(',')) {
+        const parts = fullName.split(',');
+        const apellidos = parts[0].trim().split(' ');
+        const nombres = parts[1].trim().split(' ');
+        return `${nombres[0]} ${apellidos[0]}`;
+    }
+
+    const words = fullName.trim().split(/\s+/);
+
+    // Heurística robusta para formatos comunes:
+    // - 4+ tokens: ApellidoP ApellidoM Nombre1 Nombre2... -> Nombre1 ApellidoP
+    // - 3 tokens: ApellidoP ApellidoM Nombre1 OR ApellidoP Nombre1 Nombre2 -> tomar token del medio como primer nombre
+    // - 2 tokens: Nombre Apellido -> mantener orden Nombre Apellido
+    if (words.length >= 4) {
+        return `${words[2]} ${words[0]}`;
+    }
+
+    if (words.length === 3) {
+        return `${words[1]} ${words[0]}`;
+    }
+
+    if (words.length === 2) {
+        return `${words[0]} ${words[1]}`;
+    }
+
+    return fullName;
 }
 
 function rankExecutivesForTeams(data, metricId, type) {
