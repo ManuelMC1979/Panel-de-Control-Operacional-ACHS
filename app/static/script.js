@@ -1,6 +1,9 @@
 // CONSTANTS
 let SHEET_ID = localStorage.getItem('SHEET_ID') || '1_Dbbjt1TC8pcBPXGbISfuQr8ilsRan21REy51nMw0hg';
 const GOOGLE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzvy78fivAWc2KNHSUY4THSbHLCmCiyv7kfm99S3L-Ji7J-q7zDThcRHaghtx0vxGlX/exec";
+const API_BASE = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
+    ? "http://127.0.0.1:8000/api"
+    : "/api";
 const GOOGLE_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSceoBX3pg8im7kgdISr4t26EHQA8xQNiARLFtXox1UP3MeLRQ/viewform?usp=publish-editor";
 const FORM_FIELDS = {
     email: 'entry.123456789',
@@ -1068,7 +1071,7 @@ async function loadHistorialFromDB() {
 
         // Intentar fetch local (por ejemplo, servidor que sirva data/historial.json)
         try {
-            const resp = await fetch('static/historial.json', {cache: 'no-store'});
+            const resp = await fetch(`${API_BASE}/kpis/historial`, {cache: 'no-store'});
             if (resp.ok) {
                 const json = await resp.json();
                 if (json && typeof json === 'object') return json;
@@ -1431,114 +1434,36 @@ async function fetchSheet(month, force = false) {
         }
     }
 
-    const tryFetch = async (sheetName) => {
-        try {
-            const gvizUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`;
-            const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(gvizUrl);
-            const response = await fetch(proxyUrl, { cache: 'no-cache' });
-            if (!response.ok) return null;
-            const text = await response.text();
-            const jsonString = text.match(/google\.visualization\.Query\.setResponse\(([\s\S\w]+)\);/);
-            if (jsonString && jsonString[1]) {
-                const json = JSON.parse(jsonString[1]);
-                if (json.status === 'error') return null;
-                return json;
-            }
-        } catch (e) { return null; }
-        return null;
-    };
-
-    // Try a broader set of variations: full uppercase, capitalized, 3-letter, and common year suffixes
-    const cap = month.charAt(0).toUpperCase() + month.slice(1).toLowerCase();
-    const variations = [
-        month.toUpperCase(),
-        cap,
-        month.substring(0, 3).toUpperCase(),
-        `${month} 23`.toUpperCase(),
-        `${cap} 23`,
-        `${month} 2023`.toUpperCase(),
-        `${cap} 2023`,
-        `${month}-23`.toUpperCase(),
-        `${cap}-23`
-    ];
-    let json = null;
-    for (const name of variations) {
-        json = await tryFetch(name);
-        if (json) break;
-    }
-    if (!json) {
-        console.warn(`Hoja "${month}" no encontrada con variaciones:`, variations);
+    // Fetch desde API FastAPI local
+    const response = await fetch(`${API_BASE}/kpis?meses=${encodeURIComponent(month)}`, { cache: 'no-cache' });
+    if (!response.ok) {
+        console.warn(`Hoja "${month}" no encontrada en API`);
         throw new Error(`Hoja "${month}" no encontrada.`);
     }
 
-    const rows = json.table.rows;
-    if (!rows || rows.length === 0) return [];
+    const json = await response.json();
+    const rows = json.data || [];
 
-    // --- HEURISTIC COLUMN DETECTION ---
-    let colMap = { name: -1, mes: -1, tmo: -1, transfEPA: -1, tipificaciones: -1, satEp: -1, resEp: -1, satSnl: -1, resSnl: -1 };
-
-    // Scan many rows to find the headers
-    for (let i = 0; i < Math.min(20, rows.length); i++) {
-        const cells = rows[i].c;
-        if (!cells) continue;
-        cells.forEach((cell, idx) => {
-            if (!cell || !cell.v) return;
-            const h = cell.v.toString().toUpperCase();
-            if ((h.includes('EJECUTIVO') || h.includes('NOMBRE')) && colMap.name === -1) colMap.name = idx;
-            else if (h.includes('MES') && colMap.mes === -1) colMap.mes = idx;
-            else if (h.includes('TMO') && colMap.tmo === -1) colMap.tmo = idx;
-            else if ((h.includes('EPA') || h.includes('TRANSF')) && colMap.transfEPA === -1) colMap.transfEPA = idx;
-            else if (h.includes('TIPI') && colMap.tipificaciones === -1) colMap.tipificaciones = idx;
-            else if (h.includes('SAT') && h.includes('EP') && colMap.satEp === -1) colMap.satEp = idx;
-            else if (h.includes('RES') && h.includes('EP') && colMap.resEp === -1) colMap.resEp = idx;
-            else if (h.includes('SAT') && (h.includes('SNL') || h.includes('PROV')) && colMap.satSnl === -1) colMap.satSnl = idx;
-            else if (h.includes('RES') && (h.includes('SNL') || h.includes('PROV')) && colMap.resSnl === -1) colMap.resSnl = idx;
-        });
+    if (!rows || rows.length === 0) {
+        SheetCache.set(month, []);
+        return [];
     }
 
-    // Default Fallbacks if still not found
-    if (colMap.name === -1) colMap.name = 0;
-    if (colMap.mes === -1) colMap.mes = 1;
-    // Map missing KPIs to sensible defaults if we can't find them
-    Object.keys(colMap).forEach((key, idx) => { if (colMap[key] === -1) colMap[key] = idx; });
-
-    console.log(`Detected Columns for ${month}:`, colMap);
-
     const parsed = rows.map(r => {
-        const c = r.c;
-        if (!c) return null;
-
-        const getStr = (idx) => (c[idx] ? (c[idx].f || c[idx].v || "").toString().trim() : "");
-        const getNum = (idx) => {
-            if (!c[idx] || c[idx].v === null || c[idx].v === undefined) return 0;
-            let val = c[idx].v;
-            // Handle scientific notation and different decimal separators
-            if (typeof val === 'string') {
-                val = val.replace(/[^\d,.E+-]/g, '').replace(',', '.').trim();
-                if (val === '') return 0;
-            }
-            let n = parseFloat(val);
-            if (isNaN(n)) return 0;
-            // Heuristic: If it's a very small decimal, it's likely a percentage
-            if (n > 0 && n <= 1.0) return n * 100;
-            return n;
-        };
-
-        const name = getStr(colMap.name);
-        if (!name || ['TOTAL', 'PROMEDIO', 'EJECUTIVO', 'NOMBRE'].includes(name.toUpperCase()) || name.length < 3) return null;
+        if (!r || !r.name) return null;
 
         return {
-            name,
-            mes: getStr(colMap.mes) || month,
-            tmo: getNum(colMap.tmo),
-            transfEPA: getNum(colMap.transfEPA),
-            tipificaciones: getNum(colMap.tipificaciones),
-            satEp: getNum(colMap.satEp),
-            resEp: getNum(colMap.resEp),
-            satSnl: getNum(colMap.satSnl),
-            resSnl: getNum(colMap.resSnl)
+            name: (r.name || "").toString().trim(),
+            mes: (r.mes || month).toString().trim(),
+            tmo: (r.tmo === null || r.tmo === undefined || r.tmo === "") ? null : Number(r.tmo),
+            transfEPA: (r.transfEPA === null || r.transfEPA === undefined || r.transfEPA === "") ? null : Number(r.transfEPA),
+            tipificaciones: (r.tipificaciones === null || r.tipificaciones === undefined || r.tipificaciones === "") ? null : Number(r.tipificaciones),
+            satEp: (r.satEp === null || r.satEp === undefined || r.satEp === "") ? null : Number(r.satEp),
+            resEp: (r.resEp === null || r.resEp === undefined || r.resEp === "") ? null : Number(r.resEp),
+            satSnl: (r.satSnl === null || r.satSnl === undefined || r.satSnl === "") ? null : Number(r.satSnl),
+            resSnl: (r.resSnl === null || r.resSnl === undefined || r.resSnl === "") ? null : Number(r.resSnl),
         };
-    }).filter(d => d && d.name);
+    }).filter(d => d && d.name && !['TOTAL', 'PROMEDIO', 'EJECUTIVO', 'NOMBRE'].includes(d.name.toUpperCase()) && d.name.length >= 3);
 
     // Guardar en caché antes de retornar
     SheetCache.set(month, parsed);
