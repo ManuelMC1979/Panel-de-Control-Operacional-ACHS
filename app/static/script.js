@@ -737,6 +737,38 @@ function showTipsModal(ejecutivoName) {
 
 }
 
+// === MODAL TIPS DE MEJORA - Funciones de cierre ===
+let tipsModalEscHandler = null;
+
+function closeTipsModal() {
+    const modal = document.getElementById('tipsModal');
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.display = 'none';
+        // Remover handler ESC
+        if (tipsModalEscHandler) {
+            document.removeEventListener('keydown', tipsModalEscHandler);
+            tipsModalEscHandler = null;
+        }
+    }
+    // Remover panel lateral de tips si existe
+    const panel = document.getElementById('tipsPanel');
+    if (panel) panel.remove();
+}
+
+function openTipsModal() {
+    const modal = document.getElementById('tipsModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        modal.classList.add('active');
+        // Handler para tecla ESC
+        tipsModalEscHandler = function(e) {
+            if (e.key === 'Escape') closeTipsModal();
+        };
+        document.addEventListener('keydown', tipsModalEscHandler);
+    }
+}
+
 // 🧮 Obtener semáforo para un KPI específico
 function obtenerSemaforoKPI(kpi, valor) {
     const cfg = KPI_SEMAFORO_CONFIG[kpi];
@@ -1997,6 +2029,8 @@ function renderKpiItem(label, val, target, isHigherBetter, name, kpiKey, iconCla
 }
 
 // Utility to get a short name: "First Name + First Surname"
+// Formato entrada ACHS: "ApellidoP ApellidoM Nombre1 Nombre2..."
+// Formato salida: "Nombre1 ApellidoP" (ej: "Manuel Monsalve")
 function getShortName(fullName) {
     if (!fullName) return "---";
 
@@ -2009,14 +2043,21 @@ function getShortName(fullName) {
     }
 
     const words = fullName.trim().split(/\s+/);
+    
+    // Formato ACHS típico: ApellidoP ApellidoM Nombre1 Nombre2...
+    // Ejemplo: "Monsalve Corvacho Manuel Alejandro" -> "Manuel Monsalve"
     if (words.length >= 3) {
-        // Heurística para formato ACHS: ApellidoP ApellidoM Nombre1...
-        // Retornamos Nombre1 + ApellidoP
+        // words[0] = ApellidoP, words[1] = ApellidoM, words[2] = Nombre1
         return `${words[2]} ${words[0]}`;
     }
+    
+    // Caso de 2 palabras: asumimos Nombre Apellido
+    if (words.length === 2) {
+        return `${words[0]} ${words[1]}`;
+    }
 
-    // Fallback: Mostrar las primeras dos palabras
-    return words.slice(0, 2).join(' ');
+    // Fallback: devolver tal cual
+    return fullName;
 }
 
 function getSemaphoreColor(val, target, isHigherBetter) {
@@ -2142,7 +2183,7 @@ function renderCopcTable(data) {
     data.forEach(d => {
         html += `
             <tr>
-                <td>${d.name}</td>
+                <td>${getShortName(d.name)}</td>
                 <td><span class="quartile-badge ${d.quartile.toLowerCase()}">${d.quartile}</span></td>
                 <td style="font-weight:700; text-align:center;">${d.kpiTotal ?? 0} / ${Object.keys(metas).length}</td>
                 <td>${d.quartile === 'Q4' ? 'Crítico ⚠️' : 'Normal'}</td>
@@ -3046,10 +3087,11 @@ async function showEvolutionary(overrideExec, overrideKpi, force = false) {
                 lbl = document.createElement('div');
                 lbl.id = 'evolExecLabel';
                 lbl.style.fontSize = '0.9rem';
-                lbl.style.color = 'var(--text-secondary)';
+                lbl.style.color = '#ffffff';
                 lbl.style.marginTop = '6px';
                 headerEl.appendChild(lbl);
             }
+            lbl.style.color = '#ffffff';
             lbl.innerText = `Ejecutivo: ${execDisplay}`;
         }
     } catch (e) { /* non-blocking */ }

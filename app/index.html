@@ -88,10 +88,6 @@
             <button class="btn btn-secondary" onclick="showPredictive()">
                 <i class="fas fa-crystal-ball"></i> Predictivo
             </button>
-            <button class="theme-toggle" id="themeToggle" title="Cambiar Tema">
-                <i class="fas fa-moon"></i>
-            </button>
-            
             <!-- Hamburger Menu Button (Mobile) -->
             <button class="hamburger-menu" id="hamburgerMenu" aria-label="Menú de navegación">
                 <span></span>
@@ -99,12 +95,20 @@
                 <span></span>
             </button>
 
-            <!-- User Info & Logout (al final, a la derecha) -->
+            <!-- User Info & Logout -->
             <div id="userInfo" style="margin-left: 1.5rem; text-align: right; display: none;">
                 <div id="userNameTxt" style="font-weight: 700; font-size: 0.9rem;">Usuario</div>
                 <div onclick="logout()"
                     style="font-size: 0.75rem; cursor: pointer; color: var(--achs-verde-claro); text-decoration: underline;">
                     Cerrar Sesión</div>
+            </div>
+
+            <!-- Theme Toggle (al final) -->
+            <div style="display: flex; align-items: center; gap: 8px; margin-left: 1rem;">
+                <span style="font-size: 0.8rem; color: var(--achs-blanco); opacity: 0.9;">Cambiar modo visual:</span>
+                <button class="theme-toggle" id="themeToggle" title="Cambiar Tema">
+                    <i class="fas fa-moon"></i>
+                </button>
             </div>
         </div>
     </header>
@@ -723,9 +727,9 @@
     <!-- Chart.js for Evolutivo -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Modal Tips: Banco de Tips -->
-    <div class="modal-overlay" id="tipsModal" style="z-index:2002;">
-        <div class="modal-content modal-tips" style="max-width:700px;">
-            <div class="modal-header modal-header-branded" style="padding: 20px 24px;">
+    <div class="modal-overlay" id="tipsModal" style="z-index:2002;" onclick="if(event.target===this) closeTipsModal()">
+        <div class="modal-content modal-tips" style="max-width:700px; margin: auto;">
+            <div class="modal-header modal-header-branded" style="padding: 20px 24px; display: flex; justify-content: space-between; align-items: flex-start;">
                 <div style="display: flex; align-items: center; gap: 12px;">
                     <i class="fas fa-lightbulb" style="font-size: 1.8rem;"></i>
                     <div>
@@ -733,6 +737,9 @@
                         <p style="margin: 4px 0 0 0; font-size: 0.85rem; opacity: 0.9;">Consejos para mejorar indicadores</p>
                     </div>
                 </div>
+                <button class="close-modal" onclick="closeTipsModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: white; opacity: 0.8;" title="Cerrar">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
             <div class="modal-body" id="tipsBody" style="padding: 20px 24px; max-height: 65vh; overflow-y: auto;">
                                 <!-- Tips serán inyectados por `script.js` -->
@@ -746,7 +753,7 @@
                                 </div>
             </div>
             <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end;">
-                <button class="btn btn-primary" onclick="toggleTipsModal()">Cerrar</button>
+                <button class="btn btn-primary" onclick="closeTipsModal()">Cerrar</button>
             </div>
         </div>
     </div>

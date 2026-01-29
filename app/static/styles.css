@@ -629,13 +629,14 @@ body.dark-mode .modal-tips .tip-block strong {
     color: #ffffff;
 }
 
-/* Ajustes de layout para modal tips: overlay alineado arriba-izquierda y margen */
+/* Ajustes de layout para modal tips: centrado */
 .modal-overlay {
-    justify-content: flex-start;
+    justify-content: center;
+    align-items: center;
 }
 
 .modal-tips {
-    margin-left: 60px;
+    margin: auto;
 }
 
 /* Tema oscuro - variables y transición según solicitud */
@@ -1180,12 +1181,12 @@ select {
 #copcModal table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.95rem;
+    font-size: 0.8rem; /* Reducido para que 16 ejecutivos se vean sin scroll */
 }
 
 #copcModal th,
 #copcModal td {
-    padding: 12px 14px;
+    padding: 6px 10px; /* Reducido para compactar */
     text-align: center;
     border-bottom: 1px solid var(--border-color);
 }
@@ -1196,26 +1197,27 @@ select {
     color: var(--text-secondary);
     position: sticky;
     top: 0;
+    font-size: 0.75rem;
 }
 
 #copcModal th:first-child,
 #copcModal td:first-child {
     text-align: left;
-    font-weight: 700;
-    width: 260px;
+    font-weight: 600;
+    width: 180px; /* Reducido para nombres cortos */
     position: sticky;
     left: 0;
     background: var(--bg-card);
 }
 
-/* Increase vertical spacing so more executives are visible */
+/* Reduce vertical spacing so more executives fit */
 #copcModal tbody tr {
-    height: 56px;
+    height: 32px; /* Reducido de 56px */
 }
 
 #copcModal tbody td {
-    padding-top: 14px;
-    padding-bottom: 14px;
+    padding-top: 6px;
+    padding-bottom: 6px;
 }
 
 /* Modal Teams - espaciado mejorado */
