@@ -1,9 +1,10 @@
 // CONSTANTS
-let SHEET_ID = localStorage.getItem('SHEET_ID') || '1_Dbbjt1TC8pcBPXGbISfuQr8ilsRan21REy51nMw0hg';
-const GOOGLE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzvy78fivAWc2KNHSUY4THSbHLCmCiyv7kfm99S3L-Ji7J-q7zDThcRHaghtx0vxGlX/exec";
+// LEGACY: SHEET_ID ya no se usa - datos vienen de FastAPI
+// let SHEET_ID = '...'; // REMOVIDO - sin fallback a Google Sheets
+const GOOGLE_APPS_SCRIPT_URL = ""; // DESHABILITADO - sin acceso a Google
 const API_BASE = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
     ? "http://127.0.0.1:8000/api"
-    : "/api";
+    : "https://api.gtrmanuelmonsalve.cl/api";
 const GOOGLE_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSceoBX3pg8im7kgdISr4t26EHQA8xQNiARLFtXox1UP3MeLRQ/viewform?usp=publish-editor";
 const FORM_FIELDS = {
     email: 'entry.123456789',
@@ -1077,7 +1078,7 @@ async function loadHistorialFromDB() {
                 if (json && typeof json === 'object') return json;
             }
         } catch (e) {
-            // ignore, fallback al simulado
+            console.warn('Historial API falló, usando fallback local:', e.message || e);
         }
 
     } catch (err) {
@@ -1106,8 +1107,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Registrar Service Worker para habilitar navigation preload/handling (si está disponible)
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('static/sw.js')
-            .then(reg => console.log('ServiceWorker registrado:', reg.scope))
+        navigator.serviceWorker.register('static/sw.js?v=20260129-2', { scope: '/' })
+            .then(reg => console.log('SW registrado versión 20260129-2, scope:', reg.scope))
             .catch(err => console.warn('Error registro ServiceWorker:', err));
     }
 
@@ -1492,11 +1493,10 @@ async function fetchMultipleMonths(months, force = false) {
         // Detect missing months (those with no rows after merge)
         const missingAfterFetch = months.filter(m => !currentData.some(d => matchMonth(d.mes, m)));
         if (missingAfterFetch.length > 0) {
-            console.warn('fetchMultipleMonths: missing months after fetch:', missingAfterFetch);
+            console.warn('fetchMultipleMonths: sin datos en API para:', missingAfterFetch);
             // Inform the user with actionable message
             try {
-                alert(`No se encontraron datos para los meses: ${missingAfterFetch.join(', ')}.\nVerifica que las pestañas existan y que el ` +
-                    `SHEET_ID sea correcto (nombres exactos, p.ej. NOVIEMBRE). Si las pestañas contienen sufijos ("NOVIEMBRE 23"), usa el mismo nombre o actualiza el código.`);
+                alert(`Sin datos para: ${missingAfterFetch.join(', ')}.\nLa API no tiene información para estos meses.`);
             } catch (e) { /* ignore alert failures */ }
         }
         // Ensure mes values are normalized to full uppercase month names
@@ -2121,44 +2121,14 @@ function renderCopcTable(data) {
 
 // ACTIONS (New)
 function openDatabase() {
-    // Allow user to set or update the SHEET_ID used by the app
-    const input = prompt('Pega la URL completa o el ID de la planilla de Google Sheets (Cancel para abrir la actual):');
-    if (input === null) {
-        // Open current sheet
-        window.open(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`, '_blank');
-        return;
-    }
-
-    const newId = parseSheetIdFromUrl(input.trim());
-    if (!newId) {
-        alert('No se pudo extraer un ID válido. Pega la URL completa o solo el ID.');
-        return;
-    }
-
-    SHEET_ID = newId;
-    localStorage.setItem('SHEET_ID', SHEET_ID);
-    alert('SHEET_ID guardado. Intentando cargar datos...');
-    // Try to fetch data immediately to validate
-    fetchData(currentMonth).then(() => {
-        window.open(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`, '_blank');
-    }).catch(() => {
-        // fetchData shows errors; still open sheet for user to check permissions
-        window.open(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`, '_blank');
-    });
+    // DESHABILITADO: Ya no se usa Google Sheets. Datos vienen de FastAPI.
+    alert('Esta función está deshabilitada. Los datos ahora provienen de la API interna.');
+    console.warn('openDatabase() llamado pero Google Sheets está deshabilitado.');
 }
 
 function parseSheetIdFromUrl(text) {
-    // If user pasted the full URL, extract the /d/<ID>/ segment
-    try {
-        // If it's just an ID (alphanumeric and - _), accept it
-        if (/^[a-zA-Z0-9-_]{20,}$/.test(text)) return text;
-        const m = text.match(/\/d\/([a-zA-Z0-9-_]+)/);
-        if (m && m[1]) return m[1];
-        // Also accept /spreadsheets/d/ pattern
-        const m2 = text.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-        if (m2 && m2[1]) return m2[1];
-        return null;
-    } catch (e) { return null; }
+    // LEGACY: Función mantenida por compatibilidad pero no se usa
+    return null;
 }
 
 // Actualiza la visualización del valor objetivo para la KPI seleccionada
