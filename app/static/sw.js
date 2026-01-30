@@ -1,19 +1,20 @@
-// Service Worker v20260129-2 - Network-only para archivos críticos
+// Service Worker v20260130-1 - Network-only para archivos críticos
 
 const BYPASS_CACHE_PATTERNS = [
   '/static/script.js',
+  '/static/js/auth.js',
   '/static/styles.css',
   'index.html',
   '/api/'
 ];
 
 self.addEventListener('install', event => {
-  console.log('SW v20260129-2 instalado');
+  console.log('SW v20260130-1 instalado');
   self.skipWaiting();
 });
 
 self.addEventListener('activate', event => {
-  console.log('SW v20260129-2 activado');
+  console.log('SW v20260130-1 activado');
   event.waitUntil((async () => {
     await self.clients.claim();
     if (self.registration && self.registration.navigationPreload) {
