@@ -757,9 +757,18 @@
             </div>
         </div>
     </div>
-    <script src="static/ia.js"></script>
-    <script src="static/js/auth.js?v=20260130-1"></script>
-    <script src="static/script.js?v=20260130-1"></script>
+        <script>
+            const isLocal = ["localhost", "127.0.0.1"].includes(location.hostname);
+            if (!window.API_BASE) {
+                window.API_BASE = isLocal
+                    ? "https://api.gtrmanuelmonsalve.cl/api"
+                    : "https://api.gtrmanuelmonsalve.cl/api";
+            }
+            console.log("[config] API_BASE =", window.API_BASE, "| isLocal =", isLocal);
+        </script>
+        <script src="static/ia.js"></script>
+        <script src="static/js/auth.js?v=20260130-1"></script>
+        <script src="static/script.js?v=20260130-1"></script>
 </body>
 
 </html>

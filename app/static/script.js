@@ -1,3 +1,37 @@
+window.apiFetch = async (url, options = {}) => {
+    if (!window.API_BASE) throw new Error("API_BASE no definido");
+    // Normaliza url relativa o absoluta
+    const isApi = (url.startsWith(window.API_BASE) || url.startsWith("/api/"));
+    let finalUrl = url;
+    if (!url.startsWith("http")) {
+        finalUrl = `${window.API_BASE}${url.startsWith("/") ? "" : "/"}${url}`;
+    }
+    let headers = options.headers || {};
+    // Si hay getAuthHeaders y es API, fusionar Authorization
+    if (isApi && typeof window.getAuthHeaders === "function") {
+        const authHeaders = window.getAuthHeaders();
+        // Evitar duplicar Authorization
+        if (authHeaders.Authorization && !headers.Authorization) {
+            headers = { ...headers, Authorization: authHeaders.Authorization };
+        }
+    }
+    // Siempre mantener Content-Type si ya existe
+    if (!headers["Content-Type"]) headers["Content-Type"] = "application/json";
+    // Asegura credentials: 'omit' salvo que ya venga
+    const mergedOptions = { ...options, headers, credentials: options.credentials || 'omit' };
+    const resp = await fetch(finalUrl, mergedOptions);
+    if ((resp.status === 401 || resp.status === 403)) {
+        console.warn(`[apiFetch] Error ${resp.status} en ${finalUrl}`);
+    }
+    return resp;
+};
+console.log("[apiFetch] habilitado");
+// ============================================
+// AUTH GATE: Bloqueo global de llamadas a API si no autenticado
+// ============================================
+function isAuthenticated() {
+    return !!localStorage.getItem('auth_token');
+}
 // CONSTANTS
 // LEGACY: SHEET_ID ya no se usa - datos vienen de FastAPI
 // let SHEET_ID = '...'; // REMOVIDO - sin fallback a Google Sheets
@@ -1032,6 +1066,10 @@ const historial = {
 // Si la API responde OK (incluso con data vacía), usar esa respuesta
 // Solo usar fallback vacío si hay error de red
 async function loadHistorialFromDB() {
+    if (!isAuthenticated()) {
+        console.log('[auth] Bloqueada llamada a API (no autenticado): loadHistorialFromDB');
+        return [];
+    }
     try {
         if (typeof window.fetchHistorialFromDB === 'function') {
             const remote = await window.fetchHistorialFromDB();
@@ -1039,7 +1077,7 @@ async function loadHistorialFromDB() {
         }
 
         // Consultar API de historial
-        const resp = await fetch(`${API_BASE}/kpis/historial`, {cache: 'no-store'});
+    const resp = await window.apiFetch(`/kpis/historial`, {cache: 'no-store'});
         if (resp.ok) {
             const json = await resp.json();
             // API respondió OK - usar la respuesta aunque esté vacía
@@ -1076,18 +1114,28 @@ let evolChart = null;
 
 // SETUP
 document.addEventListener('DOMContentLoaded', () => {
+
     applyTheme(theme);
     startClock();
     initEventListeners();
     populateMonthFilter();
-    // Iniciar con la carga del mes actual y el historial en paralelo
-    simulateInitialLoad();
+    // Iniciar con la carga del mes actual y el historial solo si autenticado
+    if (localStorage.getItem('auth_token')) {
+        simulateInitialLoad();
+    } else {
+        console.log('[auth] Usuario no autenticado, carga de datos detenida');
+    }
 
-    // Registrar Service Worker para habilitar navigation preload/handling (si está disponible)
+    // Registrar Service Worker SOLO en producción
+    const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/static/sw.js?v=20260129-3', { scope: '/static/' })
-            .then(reg => console.log('SW registrado versión 20260129-3, scope:', reg.scope))
-            .catch(err => console.warn('Error registro ServiceWorker:', err));
+        if (isLocal) {
+            console.log('[sw] Registro SW omitido en local');
+        } else {
+            navigator.serviceWorker.register('/static/sw.js?v=20260129-3', { scope: '/static/' })
+                .then(reg => console.log('SW registrado versión 20260129-3, scope:', reg.scope))
+                .catch(err => console.warn('Error registro ServiceWorker:', err));
+        }
     }
 
     const initialKpi = document.getElementById('selectKPI') ? document.getElementById('selectKPI').value : 'tmo';
@@ -1612,6 +1660,10 @@ async function fetchData(month, force = false, isManualSelection = false) {
 
 // Fetch a single sheet and return parsed rows (does not update UI)
 async function fetchSheet(month, force = false) {
+    if (!isAuthenticated()) {
+        console.log('[auth] Bloqueada llamada a API (no autenticado): fetchSheet');
+        return [];
+    }
     if (!month) throw new Error('Month required');
 
     // Helper: convierte a número o null (nunca 0 por defecto)
@@ -1626,7 +1678,7 @@ async function fetchSheet(month, force = false) {
     console.log(`[fetchSheet] Consultando API para: ${month}`);
 
     // Fetch desde API FastAPI
-    const response = await fetch(`${API_BASE}/kpis?meses=${encodeURIComponent(month)}`, { cache: 'no-cache' });
+    const response = await window.apiFetch(`/kpis?meses=${encodeURIComponent(month)}`, { cache: 'no-cache' });
     if (!response.ok) {
         console.error(`[fetchSheet] API error para "${month}": ${response.status}`);
         throw new Error(`La API no tiene datos para ${month}.`);
@@ -3943,7 +3995,7 @@ function generarRecomendaciones(kpis) {
 // AUTENTICACIÓN Y PERMISOS MOVIDOS A auth.js
 // ============================================
 // Las siguientes funciones y constantes ahora están en static/js/auth.js:
-// - USERS, USUARIOS_DB, PERMISOS, SECCIONES_BLOQUEADAS, MENSAJES_ROL
+// - USERS, PERMISOS, SECCIONES_BLOQUEADAS, MENSAJES_ROL
 // - login(), logout(), aplicarRol()
 // - updateMobileNavUser(), updateMobileNavVisibility()
 // - getCurrentUser(), getForcedExecutive()
@@ -4033,26 +4085,8 @@ function cerrarCoachingIdeas() {
 let historialRecomendaciones = JSON.parse(localStorage.getItem('historialRecomendaciones')) || [];
 
 function limpiarHistorialHuerfanos() {
-    // Nombres prohibidos (Mock persistente)
-    const prohibidos = ['Pedro Dias', 'Carlos Lopez', 'Jorge Ruiz', 'Luisa Martinez', 'Juan Perez', 'Maria Gonzalez', 'Ana Silva', 'Sofia Torres'];
-
-    // Definir nombres válidos basados en USUARIOS_DB (nombres largos y cortos para evitar falsos positivos)
-    const nombresValidos = new Set(['GLOBAL', 'TODOS']);
-    Object.values(USUARIOS_DB).forEach(u => {
-        if (u.ejecutivo) nombresValidos.add(u.ejecutivo);
-        if (u.name) nombresValidos.add(u.name);
-    });
-
-    const inicial = historialRecomendaciones.length;
-    historialRecomendaciones = historialRecomendaciones.filter(item => {
-        const esProhibido = prohibidos.some(p => item.ejecutivo.includes(p));
-        return nombresValidos.has(item.ejecutivo) && !esProhibido;
-    });
-
-    if (historialRecomendaciones.length !== inicial) {
-        console.log(`Limpieza de historial: Se eliminaron ${inicial - historialRecomendaciones.length} registros no autorizados.`);
-        localStorage.setItem('historialRecomendaciones', JSON.stringify(historialRecomendaciones));
-    }
+    // [deprecated] función deshabilitada: USUARIOS_DB eliminado
+    console.log('[deprecated] limpiarHistorialHuerfanos deshabilitada');
 }
 
 // Llamar a la limpieza al cargar
