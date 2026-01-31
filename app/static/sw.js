@@ -1,3 +1,5 @@
+const VERSION = "20260130-1";
+const CACHE_NAME = `gtr-kpi-${VERSION}`;
 // Service Worker v20260130-1 - Network-only para archivos críticos
 
 const BYPASS_CACHE_PATTERNS = [
@@ -9,14 +11,19 @@ const BYPASS_CACHE_PATTERNS = [
 ];
 
 self.addEventListener('install', event => {
-  console.log('SW v20260130-1 instalado');
+  console.log(`SW ${VERSION} instalado`);
   self.skipWaiting();
 });
 
 self.addEventListener('activate', event => {
-  console.log('SW v20260130-1 activado');
+  console.log(`SW ${VERSION} activado`);
   event.waitUntil((async () => {
     await self.clients.claim();
+    // Eliminar caches antiguos
+    const keys = await caches.keys();
+    await Promise.all(
+      keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
+    );
     if (self.registration && self.registration.navigationPreload) {
       try {
         await self.registration.navigationPreload.enable();

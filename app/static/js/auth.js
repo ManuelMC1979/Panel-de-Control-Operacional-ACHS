@@ -7,7 +7,6 @@ function initAuthListeners() {
             if (typeof window.login === "function") window.login();
         });
         form.__authBound = true;
-    }
 
     const btn = document.getElementById("loginBtn");
     if (btn && !btn.__authBound) {
@@ -154,6 +153,36 @@ function aplicarRol(rol) {
             updateMobileNavVisibility(rolNormalizado);
         }
         console.log("[auth] Aplicando permisos para:", rolNormalizado);
+    }
+        // 2) Roles activos según reglas
+        const rolesActivos = rolNormalizado === "admin"
+            ? ["admin", "jefatura", "supervisor", "ejecutivo"]
+            : [rolNormalizado];
+
+        // 3) Mostrar/ocultar elementos con data-rol
+        const elementos = document.querySelectorAll('[data-rol]');
+        elementos.forEach(el => {
+            let roles = el.getAttribute('data-rol');
+            if (!roles) return;
+            // Separar por coma o espacio, limpiar espacios
+            const rolesDelElemento = roles.split(/[,\s]+/).map(r => r.trim().toLowerCase()).filter(Boolean);
+            // Mostrar si hay intersección
+            const visible = rolesDelElemento.some(r => rolesActivos.includes(r));
+            if (visible) {
+                if (el.classList && el.classList.contains('mobile-nav-item')) {
+                    el.style.display = 'flex';
+                } else {
+                    el.style.display = '';
+                }
+            } else {
+                el.style.display = 'none';
+            }
+        });
+
+        if (typeof updateMobileNavVisibility === "function") {
+            updateMobileNavVisibility(rolNormalizado);
+        }
+        console.log("[auth] Aplicando permisos para:", rolNormalizado, rolesActivos);
     }
 
 function mostrarError(msg) {

@@ -1132,8 +1132,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isLocal) {
             console.log('[sw] Registro SW omitido en local');
         } else {
-            navigator.serviceWorker.register('/static/sw.js?v=20260129-3', { scope: '/static/' })
-                .then(reg => console.log('SW registrado versión 20260129-3, scope:', reg.scope))
+            navigator.serviceWorker.register('/static/sw.js?v=20260130-1', { scope: '/static/' })
+                .then(reg => console.log('SW registrado versión 20260130-1'))
                 .catch(err => console.warn('Error registro ServiceWorker:', err));
         }
     }
