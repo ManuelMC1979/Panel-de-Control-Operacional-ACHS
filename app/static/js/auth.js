@@ -23,28 +23,42 @@ function initAuthListeners() {
 
 window.initAuthListeners = initAuthListeners;
 function initAuthSession() {
-    const token = localStorage.getItem('auth_token');
+    const token = localStorage.getItem("auth_token");
+    const userRaw = localStorage.getItem("auth_user");
+
+    const loginOverlay = document.getElementById("loginOverlay");
+    const userInfo = document.getElementById("userInfo");
+
+    // Si no hay token -> mantener overlay
+    if (!token) {
+        if (loginOverlay) loginOverlay.style.display = "flex";
+        if (userInfo) userInfo.style.display = "none";
+        console.log("[auth] initAuthSession: no autenticado (overlay visible)");
+        return;
+    }
+
+    // Hay token -> ocultar overlay y mostrar app
+    if (loginOverlay) loginOverlay.style.display = "none";
+    if (userInfo) userInfo.style.display = "block";
+
+    // Cargar usuario (si existe) para nombre + rol
     let user = null;
-    try {
-        user = JSON.parse(localStorage.getItem('auth_user') || 'null');
-    } catch {
-        user = null;
+    try { user = userRaw ? JSON.parse(userRaw) : null; } catch { user = null; }
+
+    const userNameTxt = document.getElementById("userNameTxt");
+    const nombre = user && user.nombre ? String(user.nombre) : "";
+    if (userNameTxt && nombre) userNameTxt.innerText = nombre.split(" ")[0];
+
+    if (nombre && typeof updateMobileNavUser === "function") {
+        updateMobileNavUser(nombre.split(" ")[0]);
     }
-    const loginOverlay = document.getElementById('loginOverlay');
-    const userInfo = document.getElementById('userInfo');
-    const userNameTxt = document.getElementById('userNameTxt');
-    if (token) {
-        if (loginOverlay) loginOverlay.style.display = 'none';
-        if (userInfo) userInfo.style.display = 'block';
-        const nombre = user && user.nombre ? String(user.nombre) : '';
-        if (userNameTxt && nombre) userNameTxt.innerText = nombre.split(' ')[0];
-        if (user && user.rol && typeof aplicarRol === 'function') aplicarRol(user.rol);
-        console.log('[auth] initAuthSession: autenticado');
-    } else {
-        if (loginOverlay) loginOverlay.style.display = 'flex';
-        if (userInfo) userInfo.style.display = 'none';
-        console.log('[auth] initAuthSession: no autenticado (overlay visible)');
+
+    const rol = user && user.rol ? String(user.rol) : "";
+    if (rol && typeof aplicarRol === "function") {
+        aplicarRol(rol);
     }
+
+    console.log("[auth] initAuthSession: autenticado (overlay oculto)");
 function getAuthHeaders() {
     const token = localStorage.getItem("auth_token");
     if (token) {
