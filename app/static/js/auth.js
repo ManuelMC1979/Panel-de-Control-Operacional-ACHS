@@ -210,37 +210,49 @@ async function login() {
             return false;
         }
 
-        localStorage.setItem("auth_token", token);
+                localStorage.setItem("auth_token", token);
 
-        if (usuario && typeof usuario === "object") {
-            const safeUser = {};
-            if ("id" in usuario) safeUser.id = usuario.id;
-            if ("nombre" in usuario) safeUser.nombre = usuario.nombre;
-            if ("correo" in usuario) safeUser.correo = usuario.correo;
-            if ("rol" in usuario) safeUser.rol = usuario.rol;
-            localStorage.setItem("auth_user", JSON.stringify(safeUser));
-        } else {
-            localStorage.setItem("auth_user", JSON.stringify({}));
-        }
+                if (usuario && typeof usuario === "object") {
+                        const safeUser = {};
+                        if ("id" in usuario) safeUser.id = usuario.id;
+                        if ("nombre" in usuario) safeUser.nombre = usuario.nombre;
+                        if ("correo" in usuario) safeUser.correo = usuario.correo;
+                        if ("rol" in usuario) safeUser.rol = usuario.rol;
+                        localStorage.setItem("auth_user", JSON.stringify(safeUser));
+                } else {
+                        localStorage.setItem("auth_user", JSON.stringify({}));
+                }
 
-        const overlay = document.getElementById("loginOverlay");
-        if (overlay) overlay.style.display = "none";
+                const overlay = document.getElementById("loginOverlay");
+                if (overlay) overlay.style.display = "none";
 
-        const userInfo = document.getElementById("userInfo");
-        if (userInfo) userInfo.style.display = "block";
+                const userInfo = document.getElementById("userInfo");
+                if (userInfo) userInfo.style.display = "block";
 
-        const userNameTxt = document.getElementById("userNameTxt");
-        const nombre = usuario && usuario.nombre ? String(usuario.nombre) : "";
-        if (userNameTxt && nombre) userNameTxt.innerText = nombre.split(" ")[0];
+                const userNameTxt = document.getElementById("userNameTxt");
+                const nombre = usuario && usuario.nombre ? String(usuario.nombre) : "";
+                if (userNameTxt && nombre) userNameTxt.innerText = nombre.split(" ")[0];
 
-        if (nombre) updateMobileNavUser(nombre.split(" ")[0]);
+                if (nombre) updateMobileNavUser(nombre.split(" ")[0]);
 
-        if (usuario && usuario.rol && typeof aplicarRol === "function") {
-            aplicarRol(usuario.rol);
-        }
+                if (usuario && usuario.rol && typeof aplicarRol === "function") {
+                        aplicarRol(usuario.rol);
+                }
 
-        if (errorEl) errorEl.style.display = "none";
-        return true;
+                if (errorEl) errorEl.style.display = "none";
+
+                // Forzar reinicio del flujo de carga con sesión ya persistida
+                try {
+                    console.log("[auth] login ok -> recargando para inicializar app con sesión");
+                    setTimeout(() => {
+                        // reload "limpio" sin duplicar historial
+                        window.location.replace(window.location.href);
+                    }, 50);
+                } catch (e) {
+                    // fallback seguro
+                    window.location.reload();
+                }
+                return true;
     } catch (e) {
         mostrarError("Error de conexión con el servidor");
         return false;
