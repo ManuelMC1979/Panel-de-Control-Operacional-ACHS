@@ -20,8 +20,17 @@ window.apiFetch = async (url, options = {}) => {
     // Asegura credentials: 'omit' salvo que ya venga
     const mergedOptions = { ...options, headers, credentials: options.credentials || 'omit' };
     const resp = await fetch(finalUrl, mergedOptions);
-    if ((resp.status === 401 || resp.status === 403)) {
-        console.warn(`[apiFetch] Error ${resp.status} en ${finalUrl}`);
+    if (resp.status === 401 || resp.status === 403) {
+        console.warn("[auth] sesión no válida -> limpiando localStorage", {status: resp.status, url: finalUrl});
+        localStorage.removeItem("auth_token");
+        localStorage.removeItem("auth_user");
+        // Opcional: mostrar overlay inmediato (antes del reload)
+        const overlay = document.getElementById("loginOverlay");
+        if (overlay) overlay.style.display = "flex";
+        const userInfo = document.getElementById("userInfo");
+        if (userInfo) userInfo.style.display = "none";
+        window.location.reload();
+        return resp;
     }
     return resp;
 };
