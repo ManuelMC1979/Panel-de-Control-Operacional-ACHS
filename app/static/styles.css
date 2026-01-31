@@ -1,3 +1,20 @@
+
+/* --- Fix overflow horizontal y ancho consistente header/contenido --- */
+html, body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+.main-wrapper {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+}
 /* Split Button Styles for "Base de Datos" */
 .split-btn-container {
     display: inline-flex;
