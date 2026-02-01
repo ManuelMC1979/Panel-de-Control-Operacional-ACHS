@@ -324,10 +324,11 @@
             }
         }
 
+        // Crear modal con estilos inline completos para evitar conflictos con CSS global
         const modalHTML = `
-            <div class="modal-overlay" id="userModal" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center;">
-                <div class="modal-content" style="max-width: 500px; width: 95%; background: var(--bg-card, #fff); border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); overflow: hidden;">
-                    <div class="modal-header modal-header-branded" style="padding: 20px 24px; background: linear-gradient(135deg, var(--achs-azul, #1976d2), #1565c0); color: white;">
+            <div id="adminUserModal" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 99999; display: flex; justify-content: center; align-items: center; opacity: 1; pointer-events: all;">
+                <div style="max-width: 500px; width: 95%; background: #fff; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); overflow: hidden; max-height: 90vh; display: flex; flex-direction: column;">
+                    <div style="padding: 20px 24px; background: linear-gradient(135deg, #1976d2, #1565c0); color: white; display: flex; justify-content: space-between; align-items: flex-start;">
                         <div style="display: flex; align-items: center; gap: 12px;">
                             <i class="fas fa-user-cog" style="font-size: 1.8rem;"></i>
                             <div>
@@ -335,62 +336,62 @@
                                 <p style="margin: 4px 0 0 0; font-size: 0.85rem; opacity: 0.9;">Gestión de credenciales</p>
                             </div>
                         </div>
-                        <button class="close-modal" onclick="window.adminConfig.closeUserModal()" style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; padding: 5px;">
+                        <button onclick="window.adminConfig.closeUserModal()" style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; padding: 5px; line-height: 1;">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
-                    <div class="modal-body" style="padding: 24px; max-height: 60vh; overflow-y: auto;">
-                        <form id="userForm">
-                            <div class="form-group" style="margin-bottom: 16px;">
-                                <label style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--text-main);">Nombre completo *</label>
-                                <input type="text" id="userNombre" class="form-input" required
+                    <div style="padding: 24px; overflow-y: auto; flex: 1;">
+                        <form id="adminUserForm" onsubmit="event.preventDefault(); window.adminConfig.saveUser();">
+                            <div style="margin-bottom: 16px;">
+                                <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #333;">Nombre completo *</label>
+                                <input type="text" id="adminUserNombre" required
                                     value="${escapeHtml(user?.nombre || '')}"
-                                    style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-card); color: var(--text-main); box-sizing: border-box;">
+                                    style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: #fff; color: #333; box-sizing: border-box; font-size: 1rem;">
                             </div>
-                            <div class="form-group" style="margin-bottom: 16px;">
-                                <label style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--text-main);">Nombre a mostrar</label>
-                                <input type="text" id="userNombreMostrar" class="form-input"
+                            <div style="margin-bottom: 16px;">
+                                <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #333;">Nombre a mostrar</label>
+                                <input type="text" id="adminUserNombreMostrar"
                                     value="${escapeHtml(user?.nombre_mostrar || '')}"
                                     placeholder="Ej: Juan Pérez"
-                                    style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-card); color: var(--text-main); box-sizing: border-box;">
-                                <small style="color: var(--text-secondary); font-size: 0.8rem;">Si está vacío, se usará el nombre completo</small>
+                                    style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: #fff; color: #333; box-sizing: border-box; font-size: 1rem;">
+                                <small style="color: #666; font-size: 0.8rem;">Si está vacío, se usará el nombre completo</small>
                             </div>
-                            <div class="form-group" style="margin-bottom: 16px;">
-                                <label style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--text-main);">Correo *</label>
-                                <input type="email" id="userCorreo" class="form-input" required
+                            <div style="margin-bottom: 16px;">
+                                <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #333;">Correo *</label>
+                                <input type="email" id="adminUserCorreo" required
                                     value="${escapeHtml(user?.correo || '')}"
-                                    style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-card); color: var(--text-main); box-sizing: border-box;">
+                                    style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: #fff; color: #333; box-sizing: border-box; font-size: 1rem;">
                             </div>
-                            <div class="form-group" style="margin-bottom: 16px;">
-                                <label style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--text-main);">Rol *</label>
-                                <select id="userRol" class="form-input" required
-                                    style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-card); color: var(--text-main); box-sizing: border-box;">
+                            <div style="margin-bottom: 16px;">
+                                <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #333;">Rol *</label>
+                                <select id="adminUserRol" required
+                                    style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: #fff; color: #333; box-sizing: border-box; font-size: 1rem;">
                                     <option value="ejecutivo" ${user?.rol === 'ejecutivo' ? 'selected' : ''}>Ejecutivo</option>
                                     <option value="supervisor" ${user?.rol === 'supervisor' ? 'selected' : ''}>Supervisor</option>
                                     <option value="jefatura" ${user?.rol === 'jefatura' ? 'selected' : ''}>Jefatura</option>
                                     <option value="admin" ${user?.rol === 'admin' ? 'selected' : ''}>Administrador</option>
                                 </select>
                             </div>
-                            <div class="form-group" style="margin-bottom: 16px;">
-                                <label style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--text-main);">
+                            <div style="margin-bottom: 16px;">
+                                <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #333;">
                                     Contraseña ${userId ? '(dejar vacío para no cambiar)' : '*'}
                                 </label>
-                                <input type="password" id="userPassword" class="form-input" ${userId ? '' : 'required'}
+                                <input type="password" id="adminUserPassword" ${userId ? '' : 'required'}
                                     placeholder="${userId ? 'Sin cambios' : 'Ingrese contraseña'}"
-                                    style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-card); color: var(--text-main); box-sizing: border-box;">
+                                    style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: #fff; color: #333; box-sizing: border-box; font-size: 1rem;">
                             </div>
-                            <div class="form-group" style="margin-bottom: 16px;">
+                            <div style="margin-bottom: 16px;">
                                 <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                                    <input type="checkbox" id="userActivo" ${user?.is_active !== false ? 'checked' : ''}>
-                                    <span style="color: var(--text-main);">Usuario activo</span>
+                                    <input type="checkbox" id="adminUserActivo" ${user?.is_active !== false ? 'checked' : ''}>
+                                    <span style="color: #333;">Usuario activo</span>
                                 </label>
                             </div>
-                            <div id="userFormError" style="color: var(--achs-red); margin-bottom: 12px; display: none;"></div>
+                            <div id="adminUserFormError" style="color: #e74c3c; margin-bottom: 12px; display: none; padding: 10px; background: #ffeaea; border-radius: 6px;"></div>
                         </form>
                     </div>
-                    <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 12px; background: var(--bg-body, #f5f5f5);">
-                        <button class="btn btn-secondary" onclick="window.adminConfig.closeUserModal()" style="padding: 10px 20px; border-radius: 8px; cursor: pointer;">Cancelar</button>
-                        <button class="btn btn-primary" onclick="window.adminConfig.saveUser()" style="padding: 10px 20px; border-radius: 8px; cursor: pointer; background: var(--achs-azul, #1976d2); color: white; border: none;">
+                    <div style="padding: 16px 24px; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 12px; background: #f9f9f9;">
+                        <button onclick="window.adminConfig.closeUserModal()" style="padding: 10px 20px; border-radius: 8px; cursor: pointer; background: #e0e0e0; border: none; font-size: 1rem;">Cancelar</button>
+                        <button onclick="window.adminConfig.saveUser()" style="padding: 10px 20px; border-radius: 8px; cursor: pointer; background: #1976d2; color: white; border: none; font-size: 1rem;">
                             <i class="fas fa-save"></i> Guardar
                         </button>
                     </div>
@@ -399,28 +400,35 @@
         `;
 
         // Remover modal anterior si existe
-        const existingModal = document.getElementById('userModal');
+        const existingModal = document.getElementById('adminUserModal');
         if (existingModal) existingModal.remove();
 
         // Insertar nuevo modal
         document.body.insertAdjacentHTML('beforeend', modalHTML);
-        console.log('[config-ui] Modal insertado en DOM');
+        
+        // Focus en primer campo
+        setTimeout(() => {
+            const nombreInput = document.getElementById('adminUserNombre');
+            if (nombreInput) nombreInput.focus();
+        }, 100);
+        
+        console.log('[config-ui] Modal insertado y visible');
     }
 
     function closeUserModal() {
-        const modal = document.getElementById('userModal');
+        const modal = document.getElementById('adminUserModal');
         if (modal) modal.remove();
         currentEditUserId = null;
     }
 
     async function saveUser() {
-        const nombre = document.getElementById('userNombre').value.trim();
-        const nombre_mostrar = document.getElementById('userNombreMostrar').value.trim();
-        const correo = document.getElementById('userCorreo').value.trim();
-        const rol = document.getElementById('userRol').value;
-        const password = document.getElementById('userPassword').value;
-        const is_active = document.getElementById('userActivo').checked;
-        const errorEl = document.getElementById('userFormError');
+        const nombre = document.getElementById('adminUserNombre').value.trim();
+        const nombre_mostrar = document.getElementById('adminUserNombreMostrar').value.trim();
+        const correo = document.getElementById('adminUserCorreo').value.trim();
+        const rol = document.getElementById('adminUserRol').value;
+        const password = document.getElementById('adminUserPassword').value;
+        const is_active = document.getElementById('adminUserActivo').checked;
+        const errorEl = document.getElementById('adminUserFormError');
 
         // Validación
         if (!nombre || !correo || !rol) {
