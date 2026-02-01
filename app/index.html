@@ -817,23 +817,47 @@
         <script>document.write('<script src="static/script.js?v=' + BUILD_VERSION + '"><\/script>');</script>
         <script>document.write('<script src="static/js/config-ui.js?v=' + BUILD_VERSION + '"><\/script>');</script>
         <script>
-            // Registrar SW con versión
+            // Registrar SW con versión y auto-reload robusto
             if ('serviceWorker' in navigator) {
+                let refreshing = false;
+                
+                // Listener para cuando el controller cambia (nuevo SW tomó control)
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    if (!refreshing) {
+                        refreshing = true;
+                        console.log('[SW] Controller cambió, recargando página...');
+                        window.location.reload();
+                    }
+                });
+                
                 navigator.serviceWorker.register('static/sw.js?v=' + BUILD_VERSION)
                     .then(reg => {
                         console.log('[SW] Registrado con BUILD_VERSION:', BUILD_VERSION);
+                        
+                        // Verificar actualizaciones inmediatamente
+                        reg.update();
+                        
                         reg.addEventListener('updatefound', () => {
                             const newWorker = reg.installing;
+                            console.log('[SW] Update found, nuevo worker instalando...');
+                            
                             newWorker.addEventListener('statechange', () => {
-                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                    console.log('[SW] Nueva versión disponible, recargando...');
-                                    newWorker.postMessage('SKIP_WAITING');
-                                    window.location.reload();
+                                console.log('[SW] Worker state:', newWorker.state);
+                                
+                                if (newWorker.state === 'installed') {
+                                    if (navigator.serviceWorker.controller) {
+                                        // Hay un SW anterior, forzar activación del nuevo
+                                        console.log('[SW] Nueva versión lista, forzando SKIP_WAITING...');
+                                        newWorker.postMessage('SKIP_WAITING');
+                                    } else {
+                                        // Primera instalación
+                                        console.log('[SW] Primera instalación completada');
+                                    }
                                 }
                             });
                         });
                     })
-                    .catch(err => console.error('[SW] Error:', err));
+                    .catch(err => console.error('[SW] Error de registro:', err));
             }
         </script>
 </body>

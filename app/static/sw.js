@@ -3,21 +3,38 @@
 
 const CACHE_PREFIX = 'kpi-cache-';
 
-// Patrones que NUNCA se cachean (siempre network)
-const NO_CACHE_PATTERNS = [
-  '.js',
-  '.css',
-  'index.html',
-  '/api/',
-  '.html'
-];
+// Extensiones y paths que NUNCA se cachean (siempre network)
+const NO_CACHE_EXTENSIONS = ['.js', '.css', '.html'];
+const NO_CACHE_PATHS = ['/api/'];
 
 // Obtener versión desde URL de registro
-const SW_URL = new URL(self.location);
+const SW_URL = new URL(self.location.href);
 const BUILD_VERSION = SW_URL.searchParams.get('v') || 'unknown';
 const CACHE_NAME = `${CACHE_PREFIX}${BUILD_VERSION}`;
 
-console.log(`[SW] Iniciando v${BUILD_VERSION}`);
+console.log(`[SW] Iniciando v${BUILD_VERSION}, CACHE_NAME=${CACHE_NAME}`);
+
+// Evaluar si debe bypassear cache basado en pathname
+function shouldBypassCache(url) {
+  try {
+    const parsedUrl = new URL(url);
+    const pathname = parsedUrl.pathname.toLowerCase();
+    
+    // Verificar extensiones
+    for (const ext of NO_CACHE_EXTENSIONS) {
+      if (pathname.endsWith(ext)) return true;
+    }
+    
+    // Verificar paths
+    for (const path of NO_CACHE_PATHS) {
+      if (pathname.includes(path)) return true;
+    }
+    
+    return false;
+  } catch (e) {
+    return true; // En caso de error, no cachear
+  }
+}
 
 self.addEventListener('install', event => {
   console.log(`[SW] Install - BUILD: ${BUILD_VERSION}`);
@@ -27,26 +44,17 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   console.log(`[SW] Activate - BUILD: ${BUILD_VERSION}`);
   event.waitUntil((async () => {
-    // Eliminar TODOS los caches antiguos
+    // Eliminar TODOS los caches que no sean el actual
     const cacheNames = await caches.keys();
-    await Promise.all(
-      cacheNames
-        .filter(name => name.startsWith(CACHE_PREFIX) && name !== CACHE_NAME)
-        .map(name => {
-          console.log(`[SW] Eliminando cache antiguo: ${name}`);
-          return caches.delete(name);
-        })
-    );
+    const deletions = cacheNames
+      .filter(name => name !== CACHE_NAME)
+      .map(name => {
+        console.log(`[SW] Eliminando cache: ${name}`);
+        return caches.delete(name);
+      });
     
-    // También eliminar caches con prefijo antiguo
-    await Promise.all(
-      cacheNames
-        .filter(name => name.startsWith('achs-cache-'))
-        .map(name => {
-          console.log(`[SW] Eliminando cache legacy: ${name}`);
-          return caches.delete(name);
-        })
-    );
+    await Promise.all(deletions);
+    console.log(`[SW] Caches limpiados. Solo queda: ${CACHE_NAME}`);
     
     await self.clients.claim();
     console.log(`[SW] Activado y controlando clientes`);
@@ -56,11 +64,8 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = event.request.url;
   
-  // NO cachear JS, CSS, HTML, API - siempre network
-  const shouldBypass = NO_CACHE_PATTERNS.some(pattern => url.includes(pattern));
-  
-  if (shouldBypass) {
-    // Network-only para archivos críticos
+  // NO cachear JS, CSS, HTML, API - siempre network-only
+  if (shouldBypassCache(url)) {
     event.respondWith(
       fetch(event.request).catch(err => {
         console.warn(`[SW] Network error for ${url}:`, err);
