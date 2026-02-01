@@ -726,6 +726,38 @@
     <!-- Scripts -->
     <!-- Chart.js for Evolutivo -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- ===== ADMIN: SECCIÓN DE CONFIGURACIÓN ===== -->
+    <section id="adminConfigRoot" class="admin-config-section" style="display: none; margin: 24px auto; max-width: 1400px; padding: 0 20px;">
+        <div class="config-container" style="background: var(--bg-card); border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); overflow: hidden;">
+            <div class="config-header" style="padding: 20px 24px; background: linear-gradient(135deg, var(--achs-azul), #1565c0); color: white;">
+                <h2 style="margin: 0; display: flex; align-items: center; gap: 12px;">
+                    <i class="fas fa-cogs"></i>
+                    Panel de Configuración
+                </h2>
+                <p style="margin: 8px 0 0 0; opacity: 0.9; font-size: 0.9rem;">Administración del sistema</p>
+            </div>
+            <div class="config-tabs" style="display: flex; border-bottom: 2px solid var(--border-color); background: var(--bg-body);">
+                <button class="tab-btn active" data-tab="users" style="padding: 14px 24px; border: none; background: none; cursor: pointer; font-weight: 600; color: var(--text-main); border-bottom: 3px solid transparent; transition: all 0.2s;">
+                    <i class="fas fa-users"></i> Usuarios
+                </button>
+                <button class="tab-btn" data-tab="system" style="padding: 14px 24px; border: none; background: none; cursor: pointer; font-weight: 600; color: var(--text-secondary); border-bottom: 3px solid transparent; transition: all 0.2s;">
+                    <i class="fas fa-sliders-h"></i> Sistema
+                </button>
+            </div>
+            <div class="config-body" style="padding: 24px;">
+                <div id="tab-users" class="tab-panel active">
+                    <!-- Contenido cargado dinámicamente por config-ui.js -->
+                    <p style="color: var(--text-secondary);">Cargando gestión de usuarios...</p>
+                </div>
+                <div id="tab-system" class="tab-panel" style="display: none;">
+                    <h3 style="margin-top: 0; color: var(--text-main);">⚙️ Configuración del Sistema</h3>
+                    <p style="color: var(--text-secondary);">Próximamente: parámetros de sistema, configuración de API, logs de auditoría.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- Modal Tips: Banco de Tips -->
     <div class="modal-overlay" id="tipsModal" style="z-index:2002;" onclick="if(event.target===this) closeTipsModal()">
         <div class="modal-content modal-tips" style="max-width:700px; margin: auto;">
@@ -769,6 +801,7 @@
         <script src="static/ia.js"></script>
         <script src="static/js/auth.js?v=20260130-1"></script>
         <script src="static/script.js?v=20260130-1"></script>
+        <script src="static/js/config-ui.js?v=20260201-1"></script>
 </body>
 
 </html>

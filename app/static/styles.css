@@ -3345,3 +3345,162 @@ html, body {
     max-width: 100%;
     overflow-x: hidden;
 }
+
+/* ============================================
+   ADMIN CONFIG PANEL STYLES
+   ============================================ */
+
+/* Tab buttons styling */
+.admin-config-section .tab-btn {
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.admin-config-section .tab-btn:hover {
+    background: rgba(25, 118, 210, 0.08);
+}
+
+.admin-config-section .tab-btn.active {
+    color: var(--achs-azul);
+    border-bottom-color: var(--achs-azul) !important;
+    background: rgba(25, 118, 210, 0.05);
+}
+
+.admin-config-section .tab-btn i {
+    margin-right: 8px;
+}
+
+/* Tab panels */
+.admin-config-section .tab-panel {
+    display: none;
+}
+
+.admin-config-section .tab-panel.active {
+    display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Config table styling */
+.config-table th {
+    font-weight: 600;
+    color: var(--text-main);
+    white-space: nowrap;
+}
+
+.config-table td {
+    color: var(--text-secondary);
+    vertical-align: middle;
+}
+
+.config-table tr:hover {
+    background: rgba(25, 118, 210, 0.04);
+}
+
+/* Role badges */
+.role-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.role-badge.role-admin {
+    background: linear-gradient(135deg, #e91e63, #c2185b);
+    color: white;
+}
+
+.role-badge.role-jefatura {
+    background: linear-gradient(135deg, #9c27b0, #7b1fa2);
+    color: white;
+}
+
+.role-badge.role-supervisor {
+    background: linear-gradient(135deg, #1976d2, #1565c0);
+    color: white;
+}
+
+.role-badge.role-ejecutivo {
+    background: linear-gradient(135deg, #43a047, #388e3c);
+    color: white;
+}
+
+/* Icon buttons */
+.btn-icon {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 6px 10px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+    margin: 0 2px;
+}
+
+.btn-icon:hover {
+    background: var(--achs-azul);
+    color: white;
+    border-color: var(--achs-azul);
+}
+
+.btn-icon.btn-danger:hover {
+    background: var(--achs-red);
+    border-color: var(--achs-red);
+}
+
+.btn-icon.btn-success:hover {
+    background: var(--achs-verde);
+    border-color: var(--achs-verde);
+}
+
+/* Form inputs in modal */
+.form-input:focus {
+    outline: none;
+    border-color: var(--achs-azul) !important;
+    box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.15);
+}
+
+/* Responsive config panel */
+@media (max-width: 768px) {
+    .admin-config-section {
+        margin: 12px;
+        padding: 0;
+    }
+
+    .admin-config-section .config-header {
+        padding: 16px;
+    }
+
+    .admin-config-section .config-tabs {
+        flex-wrap: wrap;
+    }
+
+    .admin-config-section .tab-btn {
+        flex: 1;
+        min-width: 50%;
+        text-align: center;
+        padding: 12px 16px;
+    }
+
+    .admin-config-section .config-body {
+        padding: 16px;
+    }
+
+    .config-table th,
+    .config-table td {
+        padding: 8px 6px !important;
+        font-size: 0.8rem;
+    }
+
+    .btn-icon {
+        padding: 4px 6px;
+        font-size: 0.85rem;
+    }
+}
