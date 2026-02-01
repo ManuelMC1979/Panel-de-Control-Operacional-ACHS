@@ -29,8 +29,8 @@
         99: 'admin'
     };
 
-    // Base path para endpoints de admin (apiFetch ya agrega API_BASE)
-    const ADMIN_USERS_PATH = '/api/admin/users';
+    // Ruta para endpoints de admin (API_BASE ya incluye /api)
+    const ADMIN_USERS_PATH = '/admin/users';
 
     // ============================================
     // INICIALIZACIÓN

@@ -1,7 +1,8 @@
 window.apiFetch = async (url, options = {}) => {
     if (!window.API_BASE) throw new Error("API_BASE no definido");
     // Normaliza url relativa o absoluta
-    const isApi = (url.startsWith(window.API_BASE) || url.startsWith("/api/"));
+    // Si es URL relativa (no empieza con http), se considera API para agregar auth headers
+    const isApi = !url.startsWith("http") || url.startsWith(window.API_BASE);
     let finalUrl = url;
     if (!url.startsWith("http")) {
         finalUrl = `${window.API_BASE}${url.startsWith("/") ? "" : "/"}${url}`;
