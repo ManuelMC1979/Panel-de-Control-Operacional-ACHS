@@ -164,19 +164,34 @@
             btn.addEventListener('click', () => {
                 const tabId = btn.getAttribute('data-tab');
 
-                // Quitar active de todos
+                // Quitar active de todos los botones
                 tabBtns.forEach(b => b.classList.remove('active'));
-                tabPanels.forEach(p => p.classList.remove('active'));
+                
+                // Ocultar todos los paneles
+                tabPanels.forEach(p => {
+                    p.classList.remove('active');
+                    p.style.display = 'none';
+                });
 
                 // Activar el seleccionado
                 btn.classList.add('active');
                 const panel = document.getElementById('tab-' + tabId);
-                if (panel) panel.classList.add('active');
+                if (panel) {
+                    panel.classList.add('active');
+                    panel.style.display = 'block';
+                }
 
                 // Cargar contenido según tab
                 if (tabId === 'users') loadUsers();
                 if (tabId === 'system') loadSystemTab();
             });
+        });
+        
+        // Inicializar: ocultar paneles no activos
+        tabPanels.forEach(p => {
+            if (!p.classList.contains('active')) {
+                p.style.display = 'none';
+            }
         });
     }
 
