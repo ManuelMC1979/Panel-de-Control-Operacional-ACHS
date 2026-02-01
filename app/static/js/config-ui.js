@@ -254,23 +254,12 @@
     // ABRIR CARGADOR KPI EN BACKEND
     // ============================================
     function openKPILoader() {
-        // Obtener token usando la función global
-        const token = typeof window.getAuthToken === 'function' 
-            ? window.getAuthToken() 
-            : (localStorage.getItem('auth_token') || localStorage.getItem('token'));
-        
-        if (!token) {
-            alert('⚠️ Debe iniciar sesión para acceder al cargador de KPIs.');
+        const t = localStorage.getItem("auth_token");
+        if (!t) {
+            alert("Sesión inválida, vuelva a iniciar sesión");
             return;
         }
-        
-        // Construir URL con token codificado
-        const backendUrl = 'https://api.gtrmanuelmonsalve.cl/';
-        const urlWithToken = `${backendUrl}?t=${encodeURIComponent(token)}`;
-        
-        // Abrir en nueva pestaña
-        window.open(urlWithToken, '_blank');
-        
+        window.open("https://api.gtrmanuelmonsalve.cl/?t=" + encodeURIComponent(t), "_blank");
         console.log('[config-ui] Abriendo cargador KPI en backend');
     }
 
