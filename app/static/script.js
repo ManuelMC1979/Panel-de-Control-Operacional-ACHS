@@ -131,8 +131,46 @@ const FORM_FIELDS = {
     // nombre: 'entry.987654321',
     // comentario: 'entry.1112131415'
 };
-// Explicitly defining the months the user wants to access as tabs
-const MONTHS = ['OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE', 'ENERO'];
+
+// ============================================
+// MESES DISPONIBLES - Se cargan dinámicamente desde la API
+// ============================================
+// Lista inicial vacía - se poblará desde /api/meses-disponibles
+let MONTHS = [];
+// Fallback en caso de error al cargar meses
+const MONTHS_FALLBACK = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'];
+
+/**
+ * Carga los meses disponibles desde la API
+ * @returns {Promise<string[]>} Array de nombres de meses en orden cronológico
+ */
+async function loadAvailableMonths() {
+    try {
+        console.log('[meses] Cargando meses disponibles desde API...');
+        const response = await window.apiFetch('/meses-disponibles');
+        
+        if (!response.ok) {
+            console.warn('[meses] API respondió con error:', response.status);
+            return MONTHS_FALLBACK;
+        }
+        
+        const data = await response.json();
+        
+        if (!data.meses || !Array.isArray(data.meses) || data.meses.length === 0) {
+            console.warn('[meses] API devolvió meses vacíos, usando fallback');
+            return MONTHS_FALLBACK;
+        }
+        
+        // Extraer solo los nombres de mes (ya vienen ordenados del backend)
+        const meses = data.meses.map(m => m.mes.toUpperCase());
+        console.log('[meses] Meses disponibles cargados:', meses);
+        return meses;
+        
+    } catch (error) {
+        console.error('[meses] Error cargando meses disponibles:', error);
+        return MONTHS_FALLBACK;
+    }
+}
 
 // CONFIG (Thresholds)
 const GOALS = {
@@ -1264,11 +1302,32 @@ async function simulateInitialLoad() {
     // Limpiar datos anteriores mientras carga
     currentData = [];
 
-    // Orden de meses para fallback (del más reciente al más antiguo)
-    const FALLBACK_MONTHS = ['DICIEMBRE', 'NOVIEMBRE', 'OCTUBRE', 'SEPTIEMBRE', 'AGOSTO', 'JULIO', 'JUNIO', 'MAYO', 'ABRIL', 'MARZO', 'FEBRERO', 'ENERO'];
+    // ============================================
+    // PASO 0: Cargar meses disponibles desde la API
+    // ============================================
+    try {
+        MONTHS = await loadAvailableMonths();
+        console.log('[init] MONTHS cargados dinámicamente:', MONTHS);
+        
+        // Repoblar el selector de meses con los datos reales
+        populateMonthFilter();
+        
+        // Si el mes actual no está en los disponibles, usar el último disponible
+        if (MONTHS.length > 0 && !MONTHS.includes(currentMonth)) {
+            currentMonth = MONTHS[MONTHS.length - 1]; // Usar el más reciente
+            console.log('[init] currentMonth ajustado a:', currentMonth);
+        }
+    } catch (e) {
+        console.error('[init] Error cargando meses, usando fallback:', e);
+        MONTHS = MONTHS_FALLBACK;
+    }
+
+    // Orden de meses para fallback (usar los meses cargados en orden inverso)
+    const FALLBACK_MONTHS = [...MONTHS].reverse();
 
     const mesInicial = currentMonth;
     console.log("[month-sync] mes inicial:", mesInicial);
+
 
     try {
         // Intentar cargar el mes actual primero
