@@ -66,12 +66,25 @@
         isConfigViewActive = !isConfigViewActive;
 
         const configRoot = document.getElementById('adminConfigRoot');
-        const dashboardSections = document.querySelectorAll('.filters-container, .dashboard-grid, .team-kpi-summary, .ejecutivo-detail-section');
         const btnConfig = document.getElementById('btnConfigAdmin');
+        
+        // Selectores de TODAS las secciones del dashboard
+        const dashboardSelectors = [
+            '.filters-container',           // Filtros de mes/supervisor
+            '#executiveSummaryWrapper',     // Resumen ejecutivo + podium
+            '.main-wrapper',                // Contenedor principal (alertas + grid KPIs)
+            '.team-kpi-summary',            // Resumen KPI del equipo
+            '.ejecutivo-detail-section',    // Detalle de ejecutivo
+            '.dashboard-grid'               // Grid de KPIs
+        ];
 
         if (isConfigViewActive) {
-            // Mostrar config, ocultar dashboard
-            dashboardSections.forEach(el => el.style.display = 'none');
+            // Mostrar config, ocultar TODO el dashboard
+            dashboardSelectors.forEach(selector => {
+                const elements = document.querySelectorAll(selector);
+                elements.forEach(el => el.style.display = 'none');
+            });
+            
             if (configRoot) {
                 configRoot.style.display = 'block';
                 loadUsers(); // Cargar usuarios al abrir
@@ -83,7 +96,12 @@
         } else {
             // Ocultar config, mostrar dashboard
             if (configRoot) configRoot.style.display = 'none';
-            dashboardSections.forEach(el => el.style.display = '');
+            
+            dashboardSelectors.forEach(selector => {
+                const elements = document.querySelectorAll(selector);
+                elements.forEach(el => el.style.display = '');
+            });
+            
             if (btnConfig) {
                 btnConfig.innerHTML = '<i class="fas fa-cog"></i> Configuración';
                 btnConfig.classList.remove('btn-active');
