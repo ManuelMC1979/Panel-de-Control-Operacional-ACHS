@@ -76,6 +76,32 @@ function getAuthHeaders() {
 }
 window.getAuthHeaders = getAuthHeaders;
 
+// ============================================
+// getAuthToken - Obtener token raw para uso externo (ej: abrir backend con token)
+// ============================================
+function getAuthToken() {
+    // Probar claves en orden de prioridad
+    const token = localStorage.getItem("auth_token") 
+               || localStorage.getItem("token") 
+               || localStorage.getItem("authToken");
+    
+    // También verificar si hay un objeto de sesión con token
+    if (!token) {
+        try {
+            const session = localStorage.getItem("userSession");
+            if (session) {
+                const parsed = JSON.parse(session);
+                if (parsed && parsed.token) return parsed.token;
+            }
+        } catch (e) {
+            // Ignorar errores de parsing
+        }
+    }
+    
+    return token || null;
+}
+window.getAuthToken = getAuthToken;
+
 window.initAuthSession = initAuthSession;
 /**
  * auth.js - Módulo de autenticación y permisos ACHS

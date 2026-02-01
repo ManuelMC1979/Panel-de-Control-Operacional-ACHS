@@ -175,8 +175,88 @@
 
                 // Cargar contenido según tab
                 if (tabId === 'users') loadUsers();
+                if (tabId === 'system') loadSystemTab();
             });
         });
+    }
+
+    // ============================================
+    // TAB SISTEMA - Actualizar KPI
+    // ============================================
+    function loadSystemTab() {
+        const container = document.getElementById('tab-system');
+        if (!container) return;
+
+        container.innerHTML = `
+            <h3 style="margin-top: 0; color: var(--text-main);">⚙️ Configuración del Sistema</h3>
+            
+            <div class="system-section" style="margin-bottom: 24px; padding: 20px; background: var(--bg-body); border-radius: 8px; border: 1px solid var(--border-color);">
+                <h4 style="margin: 0 0 12px 0; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-database" style="color: var(--achs-azul);"></i>
+                    Carga de Datos KPI
+                </h4>
+                <p style="color: var(--text-secondary); margin: 0 0 16px 0; font-size: 0.9rem;">
+                    Accede al formulario de carga de KPIs en el servidor backend. 
+                    Se abrirá en una nueva pestaña con tu sesión actual.
+                </p>
+                <button id="btnUpdateKPI" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-upload"></i>
+                    Actualizar KPI
+                </button>
+                <p id="kpiUpdateNote" style="margin: 12px 0 0 0; font-size: 0.85rem; color: var(--text-secondary); display: none;">
+                    <i class="fas fa-info-circle"></i> Se abrirá el cargador KPI en el backend.
+                </p>
+            </div>
+            
+            <div class="system-section" style="padding: 20px; background: var(--bg-body); border-radius: 8px; border: 1px solid var(--border-color);">
+                <h4 style="margin: 0 0 12px 0; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-history" style="color: var(--achs-naranjo);"></i>
+                    Próximamente
+                </h4>
+                <p style="color: var(--text-secondary); margin: 0; font-size: 0.9rem;">
+                    Logs de auditoría, configuración de parámetros del sistema, gestión de API.
+                </p>
+            </div>
+        `;
+
+        // Agregar listener al botón
+        const btnUpdateKPI = document.getElementById('btnUpdateKPI');
+        const kpiUpdateNote = document.getElementById('kpiUpdateNote');
+        
+        if (btnUpdateKPI) {
+            btnUpdateKPI.addEventListener('click', () => {
+                openKPILoader();
+            });
+            
+            // Mostrar nota al hover
+            btnUpdateKPI.addEventListener('mouseenter', () => {
+                if (kpiUpdateNote) kpiUpdateNote.style.display = 'block';
+            });
+        }
+    }
+
+    // ============================================
+    // ABRIR CARGADOR KPI EN BACKEND
+    // ============================================
+    function openKPILoader() {
+        // Obtener token usando la función global
+        const token = typeof window.getAuthToken === 'function' 
+            ? window.getAuthToken() 
+            : (localStorage.getItem('auth_token') || localStorage.getItem('token'));
+        
+        if (!token) {
+            alert('⚠️ Debe iniciar sesión para acceder al cargador de KPIs.');
+            return;
+        }
+        
+        // Construir URL con token codificado
+        const backendUrl = 'https://api.gtrmanuelmonsalve.cl/';
+        const urlWithToken = `${backendUrl}?t=${encodeURIComponent(token)}`;
+        
+        // Abrir en nueva pestaña
+        window.open(urlWithToken, '_blank');
+        
+        console.log('[config-ui] Abriendo cargador KPI en backend');
     }
 
     // ============================================
