@@ -3467,6 +3467,17 @@ html, body {
     box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.15);
 }
 
+/* Botón configuración activo */
+#btnConfigAdmin.btn-active {
+    background: linear-gradient(135deg, #e91e63, #c2185b) !important;
+    border-color: #e91e63 !important;
+    color: white !important;
+}
+
+#btnConfigAdmin.btn-active:hover {
+    background: linear-gradient(135deg, #d81b60, #ad1457) !important;
+}
+
 /* Responsive config panel */
 @media (max-width: 768px) {
     .admin-config-section {

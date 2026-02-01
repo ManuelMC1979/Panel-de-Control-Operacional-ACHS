@@ -1,11 +1,13 @@
 /**
  * config-ui.js - Módulo de Configuración para Administradores
  * Panel de Control Operacional ACHS
- * Versión: 20260201-1
+ * Versión: 20260201-2
  */
 
 (function() {
     'use strict';
+
+    let isConfigViewActive = false;
 
     // ============================================
     // INICIALIZACIÓN
@@ -20,22 +22,73 @@
         // Actualizar nombre mostrado con nombre_mostrar si existe
         updateDisplayName(user);
 
-        // Si no es admin, no mostrar configuración
+        // Si no es admin, ocultar botones de config
         if (rol !== 'admin') {
-            const configRoot = document.getElementById('adminConfigRoot');
-            if (configRoot) configRoot.style.display = 'none';
+            hideConfigButtons();
             return;
         }
 
-        // Es admin: mostrar sección de configuración
-        const configRoot = document.getElementById('adminConfigRoot');
-        if (configRoot) {
-            configRoot.style.display = 'block';
-            initTabs();
-            loadUsers();
-        }
+        // Es admin: mostrar botones de configuración pero NO el panel aún
+        showConfigButtons();
+        
+        // Inicializar tabs
+        initTabs();
 
         console.log('[config-ui] Admin config inicializado');
+    }
+
+    // ============================================
+    // MOSTRAR/OCULTAR BOTONES DE CONFIG
+    // ============================================
+    function showConfigButtons() {
+        const btnConfig = document.getElementById('btnConfigAdmin');
+        if (btnConfig) btnConfig.style.display = 'inline-flex';
+        
+        const mobileConfigBtn = document.getElementById('mobileConfigBtn');
+        if (mobileConfigBtn) mobileConfigBtn.style.display = 'flex';
+    }
+
+    function hideConfigButtons() {
+        const btnConfig = document.getElementById('btnConfigAdmin');
+        if (btnConfig) btnConfig.style.display = 'none';
+        
+        const mobileConfigBtn = document.getElementById('mobileConfigBtn');
+        if (mobileConfigBtn) mobileConfigBtn.style.display = 'none';
+        
+        const configRoot = document.getElementById('adminConfigRoot');
+        if (configRoot) configRoot.style.display = 'none';
+    }
+
+    // ============================================
+    // TOGGLE VISTA DE CONFIGURACIÓN
+    // ============================================
+    function toggleConfigView() {
+        isConfigViewActive = !isConfigViewActive;
+
+        const configRoot = document.getElementById('adminConfigRoot');
+        const dashboardSections = document.querySelectorAll('.filters-container, .dashboard-grid, .team-kpi-summary, .ejecutivo-detail-section');
+        const btnConfig = document.getElementById('btnConfigAdmin');
+
+        if (isConfigViewActive) {
+            // Mostrar config, ocultar dashboard
+            dashboardSections.forEach(el => el.style.display = 'none');
+            if (configRoot) {
+                configRoot.style.display = 'block';
+                loadUsers(); // Cargar usuarios al abrir
+            }
+            if (btnConfig) {
+                btnConfig.innerHTML = '<i class="fas fa-arrow-left"></i> Volver al Dashboard';
+                btnConfig.classList.add('btn-active');
+            }
+        } else {
+            // Ocultar config, mostrar dashboard
+            if (configRoot) configRoot.style.display = 'none';
+            dashboardSections.forEach(el => el.style.display = '');
+            if (btnConfig) {
+                btnConfig.innerHTML = '<i class="fas fa-cog"></i> Configuración';
+                btnConfig.classList.remove('btn-active');
+            }
+        }
     }
 
     // ============================================
@@ -470,6 +523,7 @@
     // ============================================
     window.adminConfig = {
         init: initAdminConfig,
+        toggleConfigView,
         loadUsers,
         openUserModal,
         closeUserModal,

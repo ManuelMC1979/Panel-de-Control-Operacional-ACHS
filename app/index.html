@@ -88,6 +88,10 @@
             <button class="btn btn-secondary" onclick="showPredictive()">
                 <i class="fas fa-crystal-ball"></i> Predictivo
             </button>
+            <!-- Botón Configuración (solo admin) -->
+            <button class="btn btn-secondary" id="btnConfigAdmin" data-rol="admin" onclick="window.adminConfig.toggleConfigView()" style="display: none;">
+                <i class="fas fa-cog"></i> Configuración
+            </button>
             <!-- Hamburger Menu Button (Mobile) -->
             <button class="hamburger-menu" id="hamburgerMenu" aria-label="Menú de navegación">
                 <span></span>
@@ -162,6 +166,10 @@
         
         <button class="mobile-nav-item" id="mobileCoachingBtn" style="display: none;" onclick="closeMobileNav(); openCoachingIdeasModal();">
             <span style="font-size: 1.1rem;">🧠</span> Ideas de Coaching
+        </button>
+        
+        <button class="mobile-nav-item" id="mobileConfigBtn" data-rol="admin" style="display: none;" onclick="closeMobileNav(); window.adminConfig.toggleConfigView();">
+            <i class="fas fa-cog"></i> Configuración
         </button>
     </nav>
 
