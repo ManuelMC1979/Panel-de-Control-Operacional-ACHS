@@ -1103,9 +1103,16 @@ function getCurrentMonthES() {
     return monthsEs[new Date().getMonth()];
 }
 
-// Mes inicial: usar mes actual si está soportado, sino el primer mes del array MONTHS
+// Mes inicial: usar mes actual si está soportado, sino el mes más cercano hacia atrás
 const mesActualReal = getCurrentMonthES();
-let currentMonth = MONTHS.includes(mesActualReal) ? mesActualReal : MONTHS[0];
+function getClosestPreviousMonth(mesActual, mesesDisponibles) {
+    // Si el mes actual está disponible, usarlo
+    if (mesesDisponibles.includes(mesActual)) return mesActual;
+    // Si no, buscar el mes más reciente (último del array, que es el más cercano al actual)
+    // Asumiendo que MONTHS está ordenado cronológicamente
+    return mesesDisponibles[mesesDisponibles.length - 1];
+}
+let currentMonth = getClosestPreviousMonth(mesActualReal, MONTHS);
 console.log("[month-sync] mes actual del navegador:", mesActualReal, "| mes inicial elegido:", currentMonth);
 
 let theme = localStorage.getItem('theme') || 'light';
