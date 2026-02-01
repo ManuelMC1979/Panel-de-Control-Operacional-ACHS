@@ -3317,3 +3317,31 @@ body.teams-modal-open .fab-kpi {
 .filter-buttons-right {
     flex: 0 0 auto;
 }
+
+/* Fix desborde horizontal global */
+html, body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+.main-wrapper, .content-area, .dashboard-grid {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+/* Fix KPI grid para que no desborde - usar auto-fit en lugar de 7 columnas fijas */
+.team-kpi-summary .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 12px;
+    width: 100%;
+    max-width: 100%;
+}
+
+.team-kpi-summary {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+}
