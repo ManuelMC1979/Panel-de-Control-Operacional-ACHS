@@ -44,10 +44,10 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   console.log(`[SW] Activate - BUILD: ${BUILD_VERSION}`);
   event.waitUntil((async () => {
-    // Eliminar TODOS los caches que no sean el actual
+    // Eliminar SOLO caches con CACHE_PREFIX que no sean el actual
     const cacheNames = await caches.keys();
     const deletions = cacheNames
-      .filter(name => name !== CACHE_NAME)
+      .filter(name => name.startsWith(CACHE_PREFIX) && name !== CACHE_NAME)
       .map(name => {
         console.log(`[SW] Eliminando cache: ${name}`);
         return caches.delete(name);
