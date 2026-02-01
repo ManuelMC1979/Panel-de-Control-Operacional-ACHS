@@ -33,6 +33,81 @@ console.log("[apiFetch] habilitado");
 function isAuthenticated() {
     return !!localStorage.getItem('auth_token');
 }
+
+// ============================================
+// HELPER: Obtener nombre visible (nombre_mostrar o fallback a name)
+// Busca en window.usersDisplayMap que mapea name -> nombre_mostrar
+// ============================================
+window.usersDisplayMap = {}; // Mapa: name (completo) -> nombre_mostrar
+
+function getNombreMostrar(rowOrUser) {
+    if (!rowOrUser) return '';
+    
+    // Obtener el name/identificador del registro
+    const nameKey = (rowOrUser.name ?? rowOrUser.ejecutivo ?? rowOrUser.nombre ?? '').toString().trim();
+    
+    // 1. Primero verificar si el propio objeto tiene nombre_mostrar
+    const nmDirect = (rowOrUser.nombre_mostrar ?? rowOrUser.nombreMostrar ?? '').toString().trim();
+    if (nmDirect) return nmDirect;
+    
+    // 2. Buscar en el mapa global de usuarios
+    if (nameKey && window.usersDisplayMap[nameKey]) {
+        return window.usersDisplayMap[nameKey];
+    }
+    
+    // 3. Fallback al name original
+    return nameKey;
+}
+
+// Cargar mapa de usuarios (nombre_mostrar) desde el backend
+// Usa endpoint público accesible para cualquier usuario autenticado
+async function loadUsersDisplayMap() {
+    // Evitar cargas duplicadas
+    if (window._usersMapLoading) return;
+    if (Object.keys(window.usersDisplayMap).length > 0) return; // Ya cargado
+    
+    try {
+        // Solo cargar si está autenticado
+        if (!localStorage.getItem('auth_token')) return;
+        
+        window._usersMapLoading = true;
+        
+        // Usar endpoint PÚBLICO (no requiere admin)
+        const res = await window.apiFetch('/usuarios/nombres', { method: 'GET' });
+        if (!res.ok) {
+            console.log('[usersDisplayMap] No disponible (status:', res.status, ')- usando nombres completos');
+            window._usersMapLoading = false;
+            return;
+        }
+        
+        const users = await res.json();
+        window.usersDisplayMap = {};
+        
+        users.forEach(u => {
+            // Mapear por nombre completo (que es como viene en currentData)
+            const fullName = (u.nombre || '').toString().trim();
+            const displayName = (u.nombre_mostrar || '').toString().trim();
+            
+            if (fullName && displayName) {
+                window.usersDisplayMap[fullName] = displayName;
+            }
+        });
+        
+        console.log('[usersDisplayMap] Cargado:', Object.keys(window.usersDisplayMap).length, 'usuarios con nombre_mostrar');
+        
+        // Si ya hay datos renderizados, forzar re-render para aplicar nombres
+        if (typeof renderDashboard === 'function' && currentData && currentData.length > 0) {
+            console.log('[usersDisplayMap] Re-renderizando dashboard con nombres actualizados');
+            renderDashboard();
+        }
+        
+    } catch (e) {
+        console.log('[usersDisplayMap] Error (no crítico):', e.message);
+    } finally {
+        window._usersMapLoading = false;
+    }
+}
+
 // CONSTANTS
 // LEGACY: SHEET_ID ya no se usa - datos vienen de FastAPI
 // let SHEET_ID = '...'; // REMOVIDO - sin fallback a Google Sheets
@@ -133,6 +208,8 @@ const ModalManager = {
 document.addEventListener('DOMContentLoaded', () => {
     ModalManager.init();
     initMobileNavigation();
+    // Cargar mapa de usuarios para nombre_mostrar
+    loadUsersDisplayMap();
 });
 
 // ===== MOBILE NAVIGATION =====
@@ -1504,7 +1581,7 @@ async function runIAExample() {
     const contentEl = document.getElementById('iaResultContent');
     if (contentEl) {
         contentEl.innerHTML = `
-            <div><strong>Ejecutivo:</strong> ${ejecutivo.nombre}</div>
+            <div><strong>Ejecutivo:</strong> ${getNombreMostrar(ejecutivo)}</div>
             <pre style="white-space:pre-wrap; margin-top:8px;">Estado: ${JSON.stringify(estado, null, 2)}</pre>
             <div><strong>Riesgos:</strong> ${JSON.stringify(riesgos)}</div>
             <div style="margin-top:8px;"><strong>Recomendación:</strong> ${recomendacion}</div>
@@ -1932,9 +2009,10 @@ function initFilters(data) {
     // Sort alphabetically for dropdown
     const names = Array.from(new Set(data.map(d => d.name).filter(Boolean))).sort();
     names.forEach(n => {
+        const row = data.find(d => d.name === n);
         const opt = document.createElement('option');
         opt.value = n;
-        opt.innerText = n;
+        opt.innerText = getNombreMostrar(row) || n;
         sel.appendChild(opt);
     });
 
@@ -2164,7 +2242,7 @@ function renderDashboard() {
                 <div class="card-header">
                     <div>
                         <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                            <div class="exec-name">${d.name}</div>
+                            <div class="exec-name">${getNombreMostrar(d)}</div>
                             <span style="background: var(--achs-azul); color: white; font-size: 0.65rem; padding: 2px 8px; border-radius: 4px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">${d.mes}</span>
                         </div>
                         <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 2px;">
@@ -2347,8 +2425,8 @@ function renderPodium(top3, kpiKey) {
         const place = places[idx];
         const placeMedal = place === 1 ? '🥇' : (place === 2 ? '🥈' : '🥉');
 
-        // Use centralized helper to get first name + first surname
-        const shortName = getShortName(d.name || d.nombre || d.ejecutivo || '');
+        // Use centralized helper to get first name + first surname (with nombre_mostrar support)
+        const shortName = getShortName(getNombreMostrar(d) || d.name || d.nombre || d.ejecutivo || '');
 
         const div = document.createElement('div');
         div.className = `podium-place place-${place}`;
@@ -2393,7 +2471,7 @@ function renderCopcTable(data) {
     data.forEach(d => {
         html += `
             <tr>
-                <td>${getShortName(d.name)}</td>
+                <td>${getShortName(getNombreMostrar(d))}</td>
                 <td><span class="quartile-badge ${d.quartile.toLowerCase()}">${d.quartile}</span></td>
                 <td style="font-weight:700; text-align:center;">${d.kpiTotal ?? 0} / ${Object.keys(metas).length}</td>
                 <td>${d.quartile === 'Q4' ? 'Crítico ⚠️' : 'Normal'}</td>
@@ -2950,7 +3028,7 @@ function renderTeamsPreview(selectedMetrics, data) {
         const moverList = data.map(e => {
             const prevE = prevData.find(p => p.name === e.name);
             if (!prevE) return null;
-            return { name: getShortName(e.name), delta: scoreDesviacion(e, selectedMetrics) - scoreDesviacion(prevE, selectedMetrics) };
+            return { name: getShortName(getNombreMostrar(e)), delta: scoreDesviacion(e, selectedMetrics) - scoreDesviacion(prevE, selectedMetrics) };
         }).filter(Boolean).sort((a, b) => b.delta - a.delta);
 
         const top = moverList.slice(0, 1);
@@ -3041,7 +3119,7 @@ function generarReporteTeamsActual() {
                 return { label: meta.label, diff, unit: mId === 'tmo' ? ' min' : '%' };
             }).sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
 
-            return { name: getShortName(e.name), delta: currentScore - prevScore, bestKpi: kpiDeltas[0] };
+            return { name: getShortName(getNombreMostrar(e)), delta: currentScore - prevScore, bestKpi: kpiDeltas[0] };
         }).filter(Boolean);
 
         const posMovers = [...moverList].sort((a, b) => b.delta - a.delta).slice(0, 2);
@@ -3364,7 +3442,10 @@ async function showEvolutionary(overrideExec, overrideKpi, force = false) {
                 headerEl.appendChild(lbl);
             }
             lbl.style.color = '#ffffff';
-            lbl.innerText = `Ejecutivo: ${execDisplay}`;
+            // Buscar nombre_mostrar del ejecutivo seleccionado
+            const execRow = currentData.find(d => d.name === execSel);
+            const execDisplayName = (execSel === 'all' || execSel === 'TODOS') ? 'Todos' : getNombreMostrar(execRow) || execSel;
+            lbl.innerText = `Ejecutivo: ${execDisplayName}`;
         }
     } catch (e) { /* non-blocking */ }
 
@@ -3377,7 +3458,14 @@ async function showEvolutionary(overrideExec, overrideKpi, force = false) {
         const names = Array.from(new Set(currentData.map(d => d.name).filter(Boolean))).sort();
         evolExecSel.innerHTML = '';
         const optAll = document.createElement('option'); optAll.value = 'all'; optAll.innerText = 'Todos'; evolExecSel.appendChild(optAll);
-        names.forEach(n => { const o = document.createElement('option'); o.value = n; o.innerText = n; evolExecSel.appendChild(o); });
+        // Mostrar nombre_mostrar en el texto visible, pero value sigue siendo name (para lógica interna)
+        names.forEach(n => {
+            const row = currentData.find(d => d.name === n);
+            const o = document.createElement('option');
+            o.value = n;
+            o.innerText = getNombreMostrar(row) || n;
+            evolExecSel.appendChild(o);
+        });
 
         // Use override if provided, otherwise sync with global filter
         evolExecSel.value = execSel === 'TODOS' ? 'all' : execSel;
@@ -3599,13 +3687,23 @@ function showPredictive() {
     const isEjecutivo = session && session.rol === 'ejecutivo' && session.ejecutivo;
 
     if (isEjecutivo) {
-        execSel.innerHTML = `<option value="${session.ejecutivo}">${session.ejecutivo}</option>`;
+        // Buscar nombre_mostrar del ejecutivo de sesión
+        const sessionRow = (currentData || []).find(d => d.name === session.ejecutivo);
+        const sessionDisplayName = getNombreMostrar(sessionRow) || session.ejecutivo;
+        execSel.innerHTML = `<option value="${session.ejecutivo}">${sessionDisplayName}</option>`;
         execSel.value = session.ejecutivo;
         execSel.disabled = true;
     } else {
         const names = Array.from(new Set((currentData || []).map(d => d.name).filter(Boolean))).sort();
         execSel.innerHTML = '<option value="all">Todo el Equipo</option>';
-        names.forEach(n => { const o = document.createElement('option'); o.value = n; o.innerText = n; execSel.appendChild(o); });
+        // Mostrar nombre_mostrar en texto visible, value sigue siendo name
+        names.forEach(n => {
+            const row = (currentData || []).find(d => d.name === n);
+            const o = document.createElement('option');
+            o.value = n;
+            o.innerText = getNombreMostrar(row) || n;
+            execSel.appendChild(o);
+        });
         execSel.disabled = false;
     }
 
@@ -4592,7 +4690,10 @@ function renderRiskHeatmap() {
     `;
 
     executives.forEach(name => {
-        html += `<tr><td style="text-align:left; font-weight:bold; position:sticky; left:0; z-index:1; background:var(--bg-card);">${getShortName(name)}</td>`;
+        // Obtener nombre_mostrar para UI
+        const execRow = currentData.find(d => d.name === name);
+        const displayName = getNombreMostrar(execRow) || name;
+        html += `<tr><td style="text-align:left; font-weight:bold; position:sticky; left:0; z-index:1; background:var(--bg-card);">${getShortName(displayName)}</td>`;
 
         kpis.forEach(meta => {
             const trendData = [];
@@ -4613,7 +4714,7 @@ function renderRiskHeatmap() {
 
             html += `
                 <td class="risk-cell ${getRiskClass(risk.label)}" style="text-align:center;"
-                    onclick="openRecommendation('${name.replace(/'/g, "\\'")}', '${meta.label}', '${risk.label}', ${score.toFixed(0)})"
+                    onclick="openRecommendation('${displayName.replace(/'/g, "\\'")}', '${meta.label}', '${risk.label}', ${score.toFixed(0)})"
                     title="${needsPriorityCoaching ? 'Prioridad: Coaching Recomendado' : 'Haga clic para ver recomendación'}">
                     ${risk.color} ${needsPriorityCoaching ? '<span style="font-size:0.7rem; vertical-align:middle;" title="Coaching Sugerido">🤖</span>' : ''}
                 </td>

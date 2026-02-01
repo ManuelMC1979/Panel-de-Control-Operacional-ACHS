@@ -240,6 +240,7 @@
                     <thead>
                         <tr style="background: var(--bg-card); border-bottom: 2px solid var(--border-color);">
                             <th style="padding: 12px; text-align: left;">ID</th>
+                            <th style="padding: 12px; text-align: left;">RUT</th>
                             <th style="padding: 12px; text-align: left;">Nombre</th>
                             <th style="padding: 12px; text-align: left;">Nombre Mostrar</th>
                             <th style="padding: 12px; text-align: left;">Correo</th>
@@ -257,6 +258,7 @@
                             return `
                             <tr style="border-bottom: 1px solid var(--border-color);">
                                 <td style="padding: 10px;">${u.id}</td>
+                                <td style="padding: 10px;">${escapeHtml(u.rut || '-')}</td>
                                 <td style="padding: 10px;">${escapeHtml(u.nombre || '')}</td>
                                 <td style="padding: 10px;">${escapeHtml(u.nombre_mostrar || '-')}</td>
                                 <td style="padding: 10px;">${escapeHtml(u.correo || '')}</td>
@@ -343,6 +345,13 @@
                     <div style="padding: 24px; overflow-y: auto; flex: 1;">
                         <form id="adminUserForm" onsubmit="event.preventDefault(); window.adminConfig.saveUser();">
                             <div style="margin-bottom: 16px;">
+                                <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #333;">RUT *</label>
+                                <input type="text" id="adminUserRut" required
+                                    value="${escapeHtml(user?.rut || '')}"
+                                    placeholder="12345678-9"
+                                    style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: #fff; color: #333; box-sizing: border-box; font-size: 1rem;">
+                            </div>
+                            <div style="margin-bottom: 16px;">
                                 <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #333;">Nombre completo *</label>
                                 <input type="text" id="adminUserNombre" required
                                     value="${escapeHtml(user?.nombre || '')}"
@@ -422,6 +431,7 @@
     }
 
     async function saveUser() {
+        const rut = document.getElementById('adminUserRut').value.trim();
         const nombre = document.getElementById('adminUserNombre').value.trim();
         const nombre_mostrar = document.getElementById('adminUserNombreMostrar').value.trim();
         const correo = document.getElementById('adminUserCorreo').value.trim();
@@ -431,8 +441,8 @@
         const errorEl = document.getElementById('adminUserFormError');
 
         // Validación
-        if (!nombre || !correo || !rol) {
-            errorEl.innerText = 'Complete todos los campos requeridos';
+        if (!rut || !nombre || !correo || !rol) {
+            errorEl.innerText = 'Complete todos los campos requeridos (RUT, nombre, correo, rol)';
             errorEl.style.display = 'block';
             return;
         }
@@ -446,6 +456,7 @@
         // Construir payload con role_id (int) e is_active (0/1) que espera el backend
         const role_id = ROLE_ID_MAP[rol.toLowerCase()] || 1;
         const payload = {
+            rut,
             nombre,
             nombre_mostrar: nombre_mostrar || null,
             correo: correo || null,
