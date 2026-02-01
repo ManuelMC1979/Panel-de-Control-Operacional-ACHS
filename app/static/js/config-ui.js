@@ -1,7 +1,7 @@
 /**
  * config-ui.js - Módulo de Configuración para Administradores
  * Panel de Control Operacional ACHS
- * Versión: 20260201-3
+ * Versión: 20260201-4
  */
 
 (function() {
@@ -29,24 +29,8 @@
         99: 'admin'
     };
 
-    /**
-     * Construye URL absoluta usando window.API_BASE
-     * @param {string} path - Ruta relativa (ej: '/admin/users')
-     * @returns {string} URL absoluta
-     */
-    function api(path) {
-        // Si ya es URL absoluta, devolverla tal cual
-        if (path.startsWith('http://') || path.startsWith('https://')) {
-            return path;
-        }
-        
-        const base = (window.API_BASE || '').replace(/\/+$/, ''); // quitar trailing slashes
-        const cleanPath = path.startsWith('/') ? path : '/' + path;
-        const url = base + cleanPath;
-        
-        console.log('[config-ui] api() ->', url);
-        return url;
-    }
+    // Base path para endpoints de admin (apiFetch ya agrega API_BASE)
+    const ADMIN_USERS_PATH = '/api/admin/users';
 
     // ============================================
     // INICIALIZACIÓN
@@ -215,9 +199,9 @@
         `;
 
         try {
-            const res = await window.apiFetch(api('/admin/users'), {
-                method: 'GET',
-                headers: window.getAuthHeaders ? window.getAuthHeaders() : {}
+            console.log('[config-ui] Cargando usuarios desde:', ADMIN_USERS_PATH);
+            const res = await window.apiFetch(ADMIN_USERS_PATH, {
+                method: 'GET'
             });
 
             if (res.status === 401 || res.status === 403) {
@@ -318,9 +302,9 @@
         if (userId) {
             // Cargar datos del usuario para editar
             try {
-                const res = await window.apiFetch(api('/admin/users'), {
-                    method: 'GET',
-                    headers: window.getAuthHeaders ? window.getAuthHeaders() : {}
+                console.log('[config-ui] Cargando usuario para editar, id:', userId);
+                const res = await window.apiFetch(ADMIN_USERS_PATH, {
+                    method: 'GET'
                 });
                 if (res.ok) {
                     const users = await res.json();
@@ -471,22 +455,16 @@
             let res;
             if (currentEditUserId) {
                 // PUT para editar
-                res = await window.apiFetch(api(`/admin/users/${currentEditUserId}`), {
+                console.log('[config-ui] PUT usuario:', currentEditUserId);
+                res = await window.apiFetch(`${ADMIN_USERS_PATH}/${currentEditUserId}`, {
                     method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...(window.getAuthHeaders ? window.getAuthHeaders() : {})
-                    },
                     body: JSON.stringify(payload)
                 });
             } else {
                 // POST para crear
-                res = await window.apiFetch(api('/admin/users'), {
+                console.log('[config-ui] POST nuevo usuario');
+                res = await window.apiFetch(ADMIN_USERS_PATH, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...(window.getAuthHeaders ? window.getAuthHeaders() : {})
-                    },
                     body: JSON.stringify(payload)
                 });
             }
@@ -521,9 +499,8 @@
 
         try {
             console.log('[config-ui] Desactivando usuario:', userId);
-            const res = await window.apiFetch(api(`/admin/users/${userId}`), {
-                method: 'DELETE',
-                headers: window.getAuthHeaders ? window.getAuthHeaders() : {}
+            const res = await window.apiFetch(`${ADMIN_USERS_PATH}/${userId}`, {
+                method: 'DELETE'
             });
 
             if (res.status === 401 || res.status === 403) {
@@ -547,12 +524,8 @@
     async function activateUser(userId) {
         try {
             console.log('[config-ui] Activando usuario:', userId);
-            const res = await window.apiFetch(api(`/admin/users/${userId}`), {
+            const res = await window.apiFetch(`${ADMIN_USERS_PATH}/${userId}`, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(window.getAuthHeaders ? window.getAuthHeaders() : {})
-                },
                 body: JSON.stringify({ is_active: 1 })
             });
 
