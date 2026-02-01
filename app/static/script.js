@@ -135,41 +135,79 @@ const FORM_FIELDS = {
 // ============================================
 // MESES DISPONIBLES - Se cargan dinámicamente desde la API
 // ============================================
-// Lista inicial vacía - se poblará desde /api/meses-disponibles
+// Lista inicial vacía - se poblará desde /api/meses-disponibles o extrayendo de /kpis
 let MONTHS = [];
 // Fallback en caso de error al cargar meses
 const MONTHS_FALLBACK = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'];
 
+// Orden canónico de meses para ordenamiento
+const MES_ORDER = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'];
+
 /**
  * Carga los meses disponibles desde la API
+ * Intenta primero /meses-disponibles, si falla extrae de /kpis
  * @returns {Promise<string[]>} Array de nombres de meses en orden cronológico
  */
 async function loadAvailableMonths() {
+    // INTENTO 1: Endpoint dedicado
     try {
-        console.log('[meses] Cargando meses disponibles desde API...');
+        console.log('[meses] Intentando /meses-disponibles...');
         const response = await window.apiFetch('/meses-disponibles');
         
-        if (!response.ok) {
-            console.warn('[meses] API respondió con error:', response.status);
-            return MONTHS_FALLBACK;
+        if (response.ok) {
+            const data = await response.json();
+            if (data.meses && Array.isArray(data.meses) && data.meses.length > 0) {
+                // Extraer solo los nombres de mes (ya vienen ordenados del backend)
+                const meses = data.meses.map(m => m.mes.toUpperCase());
+                console.log('[meses] Meses desde /meses-disponibles:', meses);
+                return meses;
+            }
         }
-        
-        const data = await response.json();
-        
-        if (!data.meses || !Array.isArray(data.meses) || data.meses.length === 0) {
-            console.warn('[meses] API devolvió meses vacíos, usando fallback');
-            return MONTHS_FALLBACK;
-        }
-        
-        // Extraer solo los nombres de mes (ya vienen ordenados del backend)
-        const meses = data.meses.map(m => m.mes.toUpperCase());
-        console.log('[meses] Meses disponibles cargados:', meses);
-        return meses;
-        
-    } catch (error) {
-        console.error('[meses] Error cargando meses disponibles:', error);
-        return MONTHS_FALLBACK;
+    } catch (e) {
+        console.warn('[meses] /meses-disponibles no disponible:', e.message);
     }
+
+    // INTENTO 2: Extraer meses de /kpis (sin filtro = todos los datos)
+    try {
+        console.log('[meses] Extrayendo meses desde /kpis...');
+        const response = await window.apiFetch('/kpis');
+        
+        if (response.ok) {
+            const json = await response.json();
+            const rows = Array.isArray(json.data) ? json.data : [];
+            
+            if (rows.length > 0) {
+                // Extraer meses únicos y años
+                const mesesSet = new Map(); // mes -> anio más reciente
+                rows.forEach(r => {
+                    if (r.mes) {
+                        const mesUpper = r.mes.toString().toUpperCase().trim();
+                        const anio = r.anio || 2025; // Default si no hay año
+                        const key = `${anio}-${mesUpper}`;
+                        if (!mesesSet.has(key)) {
+                            mesesSet.set(key, { mes: mesUpper, anio: anio });
+                        }
+                    }
+                });
+                
+                // Convertir a array y ordenar cronológicamente
+                const mesesArray = Array.from(mesesSet.values());
+                mesesArray.sort((a, b) => {
+                    if (a.anio !== b.anio) return a.anio - b.anio;
+                    return MES_ORDER.indexOf(a.mes) - MES_ORDER.indexOf(b.mes);
+                });
+                
+                const meses = mesesArray.map(m => m.mes);
+                console.log('[meses] Meses extraídos de /kpis:', meses);
+                return meses;
+            }
+        }
+    } catch (e) {
+        console.error('[meses] Error extrayendo de /kpis:', e);
+    }
+
+    console.warn('[meses] Usando fallback');
+    return MONTHS_FALLBACK;
 }
 
 // CONFIG (Thresholds)
