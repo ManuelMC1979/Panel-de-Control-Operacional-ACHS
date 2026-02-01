@@ -1,76 +1,100 @@
-// Service Worker v20260201-3 - Network-only para archivos críticos
-// IMPORTANTE: Cambiar la versión aquí Y en index.html BUILD para invalidar caché
+// Service Worker - Cache Buster
+// La versión se pasa via URL param desde index.html
 
-const SW_VERSION = '20260201-3';
-const CACHE_NAME = `achs-cache-v${SW_VERSION}`;
+const CACHE_PREFIX = 'kpi-cache-';
 
-const BYPASS_CACHE_PATTERNS = [
-  '/static/script.js',
-  '/static/js/auth.js',
-  '/static/js/config-ui.js',
-  '/static/styles.css',
+// Patrones que NUNCA se cachean (siempre network)
+const NO_CACHE_PATTERNS = [
+  '.js',
+  '.css',
   'index.html',
-  '/api/'
+  '/api/',
+  '.html'
 ];
 
+// Obtener versión desde URL de registro
+const SW_URL = new URL(self.location);
+const BUILD_VERSION = SW_URL.searchParams.get('v') || 'unknown';
+const CACHE_NAME = `${CACHE_PREFIX}${BUILD_VERSION}`;
+
+console.log(`[SW] Iniciando v${BUILD_VERSION}`);
+
 self.addEventListener('install', event => {
-  console.log(`SW v${SW_VERSION} instalado`);
+  console.log(`[SW] Install - BUILD: ${BUILD_VERSION}`);
   self.skipWaiting();
 });
 
 self.addEventListener('activate', event => {
-  console.log(`SW v${SW_VERSION} activado`);
+  console.log(`[SW] Activate - BUILD: ${BUILD_VERSION}`);
   event.waitUntil((async () => {
-    // Limpiar caches antiguos
+    // Eliminar TODOS los caches antiguos
     const cacheNames = await caches.keys();
     await Promise.all(
       cacheNames
-        .filter(name => name.startsWith('achs-cache-') && name !== CACHE_NAME)
+        .filter(name => name.startsWith(CACHE_PREFIX) && name !== CACHE_NAME)
         .map(name => {
-          console.log(`SW: Eliminando cache antiguo: ${name}`);
+          console.log(`[SW] Eliminando cache antiguo: ${name}`);
+          return caches.delete(name);
+        })
+    );
+    
+    // También eliminar caches con prefijo antiguo
+    await Promise.all(
+      cacheNames
+        .filter(name => name.startsWith('achs-cache-'))
+        .map(name => {
+          console.log(`[SW] Eliminando cache legacy: ${name}`);
           return caches.delete(name);
         })
     );
     
     await self.clients.claim();
-    if (self.registration && self.registration.navigationPreload) {
-      try {
-        await self.registration.navigationPreload.enable();
-        console.log('Navigation preload habilitado');
-      } catch (err) {
-        console.warn('No se pudo habilitar navigation preload:', err);
-      }
-    }
+    console.log(`[SW] Activado y controlando clientes`);
   })());
 });
 
 self.addEventListener('fetch', event => {
   const url = event.request.url;
   
-  // Forzar network-only para archivos críticos (sin cache)
-  const shouldBypass = BYPASS_CACHE_PATTERNS.some(pattern => url.includes(pattern));
+  // NO cachear JS, CSS, HTML, API - siempre network
+  const shouldBypass = NO_CACHE_PATTERNS.some(pattern => url.includes(pattern));
   
   if (shouldBypass) {
-    event.respondWith(fetch(event.request).catch(() => {
-      console.warn('SW: fetch falló para', url);
-      return new Response('Error de red', { status: 503 });
-    }));
+    // Network-only para archivos críticos
+    event.respondWith(
+      fetch(event.request).catch(err => {
+        console.warn(`[SW] Network error for ${url}:`, err);
+        return new Response('Network error', { status: 503 });
+      })
+    );
     return;
   }
-
-  // Para otros recursos, usar navigation preload si está disponible
+  
+  // Para otros recursos (fonts, imágenes): cache-first
   event.respondWith((async () => {
-    const preloadResponse = await event.preloadResponse;
-    if (preloadResponse) {
-      return preloadResponse;
+    const cache = await caches.open(CACHE_NAME);
+    const cachedResponse = await cache.match(event.request);
+    
+    if (cachedResponse) {
+      return cachedResponse;
     }
-    return fetch(event.request);
+    
+    try {
+      const networkResponse = await fetch(event.request);
+      if (networkResponse.ok) {
+        cache.put(event.request, networkResponse.clone());
+      }
+      return networkResponse;
+    } catch (err) {
+      console.warn(`[SW] Fetch failed for ${url}`);
+      return new Response('Resource unavailable', { status: 503 });
+    }
   })());
 });
 
-// Mensaje para forzar actualización desde el cliente
 self.addEventListener('message', event => {
   if (event.data === 'SKIP_WAITING') {
+    console.log('[SW] Recibido SKIP_WAITING, activando inmediatamente');
     self.skipWaiting();
   }
 });

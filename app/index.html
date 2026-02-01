@@ -11,8 +11,14 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
+    <!-- BUILD VERSION - Única fuente de verdad para invalidar caché -->
+    <script>
+        const BUILD_VERSION = "20260202-1";
+        window.BUILD_VERSION = BUILD_VERSION;
+    </script>
+
     <!-- Styles -->
-    <link rel="stylesheet" href="static/styles.css">
+    <script>document.write('<link rel="stylesheet" href="static/styles.css?v=' + BUILD_VERSION + '">');</script>
 
     <!-- Icons (Optional, using simple unicode or svg if needed, but CDN is better for "First Impression") -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -798,21 +804,38 @@
         </div>
     </div>
         <script>
-            // BUILD VERSION - Cambiar esta línea para invalidar caché
-            window.BUILD = "20260201-3";
-            
             const isLocal = ["localhost", "127.0.0.1"].includes(location.hostname);
             if (!window.API_BASE) {
                 window.API_BASE = isLocal
                     ? "https://api.gtrmanuelmonsalve.cl/api"
                     : "https://api.gtrmanuelmonsalve.cl/api";
             }
-            console.log("[config] API_BASE =", window.API_BASE, "| isLocal =", isLocal, "| BUILD =", window.BUILD);
+            console.log("[config] API_BASE =", window.API_BASE, "| isLocal =", isLocal, "| BUILD =", BUILD_VERSION);
         </script>
         <script src="static/ia.js"></script>
-        <script src="static/js/auth.js?v=20260201-3"></script>
-        <script src="static/script.js?v=20260201-3"></script>
-        <script src="static/js/config-ui.js?v=20260201-3"></script>
+        <script>document.write('<script src="static/js/auth.js?v=' + BUILD_VERSION + '"><\/script>');</script>
+        <script>document.write('<script src="static/script.js?v=' + BUILD_VERSION + '"><\/script>');</script>
+        <script>document.write('<script src="static/js/config-ui.js?v=' + BUILD_VERSION + '"><\/script>');</script>
+        <script>
+            // Registrar SW con versión
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('static/sw.js?v=' + BUILD_VERSION)
+                    .then(reg => {
+                        console.log('[SW] Registrado con BUILD_VERSION:', BUILD_VERSION);
+                        reg.addEventListener('updatefound', () => {
+                            const newWorker = reg.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    console.log('[SW] Nueva versión disponible, recargando...');
+                                    newWorker.postMessage('SKIP_WAITING');
+                                    window.location.reload();
+                                }
+                            });
+                        });
+                    })
+                    .catch(err => console.error('[SW] Error:', err));
+            }
+        </script>
 </body>
 
 </html>
