@@ -1,21 +1,37 @@
-// Service Worker v20260130-1 - Network-only para archivos críticos
+// Service Worker v20260201-3 - Network-only para archivos críticos
+// IMPORTANTE: Cambiar la versión aquí Y en index.html BUILD para invalidar caché
+
+const SW_VERSION = '20260201-3';
+const CACHE_NAME = `achs-cache-v${SW_VERSION}`;
 
 const BYPASS_CACHE_PATTERNS = [
   '/static/script.js',
   '/static/js/auth.js',
+  '/static/js/config-ui.js',
   '/static/styles.css',
   'index.html',
   '/api/'
 ];
 
 self.addEventListener('install', event => {
-  console.log('SW v20260130-1 instalado');
+  console.log(`SW v${SW_VERSION} instalado`);
   self.skipWaiting();
 });
 
 self.addEventListener('activate', event => {
-  console.log('SW v20260130-1 activado');
+  console.log(`SW v${SW_VERSION} activado`);
   event.waitUntil((async () => {
+    // Limpiar caches antiguos
+    const cacheNames = await caches.keys();
+    await Promise.all(
+      cacheNames
+        .filter(name => name.startsWith('achs-cache-') && name !== CACHE_NAME)
+        .map(name => {
+          console.log(`SW: Eliminando cache antiguo: ${name}`);
+          return caches.delete(name);
+        })
+    );
+    
     await self.clients.claim();
     if (self.registration && self.registration.navigationPreload) {
       try {
@@ -50,4 +66,11 @@ self.addEventListener('fetch', event => {
     }
     return fetch(event.request);
   })());
+});
+
+// Mensaje para forzar actualización desde el cliente
+self.addEventListener('message', event => {
+  if (event.data === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });

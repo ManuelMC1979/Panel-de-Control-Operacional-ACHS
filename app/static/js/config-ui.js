@@ -582,11 +582,11 @@
 
     function showSessionError(container) {
         container.innerHTML = `
-            <div style="text-align: center; padding: 40px;">
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 40px;">
                 <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: var(--achs-red); margin-bottom: 16px;"></i>
                 <h3 style="color: var(--text-main); margin-bottom: 12px;">Sesión expirada o sin permisos</h3>
                 <p style="color: var(--text-secondary); margin-bottom: 20px;">No tiene acceso a esta sección o su sesión ha expirado.</p>
-                <button class="btn btn-primary" onclick="window.logout()">
+                <button class="btn btn-primary" onclick="window.logout()" style="margin: 0 auto;">
                     <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
                 </button>
             </div>

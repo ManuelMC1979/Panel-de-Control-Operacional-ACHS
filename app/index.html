@@ -798,18 +798,21 @@
         </div>
     </div>
         <script>
+            // BUILD VERSION - Cambiar esta línea para invalidar caché
+            window.BUILD = "20260201-3";
+            
             const isLocal = ["localhost", "127.0.0.1"].includes(location.hostname);
             if (!window.API_BASE) {
                 window.API_BASE = isLocal
                     ? "https://api.gtrmanuelmonsalve.cl/api"
                     : "https://api.gtrmanuelmonsalve.cl/api";
             }
-            console.log("[config] API_BASE =", window.API_BASE, "| isLocal =", isLocal);
+            console.log("[config] API_BASE =", window.API_BASE, "| isLocal =", isLocal, "| BUILD =", window.BUILD);
         </script>
         <script src="static/ia.js"></script>
-        <script src="static/js/auth.js?v=20260130-1"></script>
-        <script src="static/script.js?v=20260130-1"></script>
-        <script src="static/js/config-ui.js?v=20260201-1"></script>
+        <script src="static/js/auth.js?v=20260201-3"></script>
+        <script src="static/script.js?v=20260201-3"></script>
+        <script src="static/js/config-ui.js?v=20260201-3"></script>
 </body>
 
 </html>

@@ -59,15 +59,22 @@ function initAuthSession() {
     }
 
     console.log("[auth] initAuthSession: autenticado (overlay oculto)");
+}
+
+// ============================================
+// getAuthHeaders - DEBE estar FUERA de initAuthSession para estar disponible globalmente
+// ============================================
 function getAuthHeaders() {
-    const token = localStorage.getItem("auth_token");
+    // Buscar token en múltiples claves para compatibilidad
+    const token = localStorage.getItem("auth_token") 
+               || localStorage.getItem("token") 
+               || localStorage.getItem("authToken");
     if (token) {
         return { "Authorization": `Bearer ${token}` };
     }
     return {};
 }
 window.getAuthHeaders = getAuthHeaders;
-}
 
 window.initAuthSession = initAuthSession;
 /**

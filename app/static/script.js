@@ -1,3 +1,6 @@
+// Debug flag - solo logs en localhost
+const DEBUG = typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(location.hostname);
+
 window.apiFetch = async (url, options = {}) => {
     if (!window.API_BASE) throw new Error("API_BASE no definido");
     // Normaliza url relativa o absoluta
@@ -20,6 +23,12 @@ window.apiFetch = async (url, options = {}) => {
     if (!headers["Content-Type"]) headers["Content-Type"] = "application/json";
     // Asegura credentials: 'omit' salvo que ya venga
     const mergedOptions = { ...options, headers, credentials: options.credentials || 'omit' };
+    
+    // Debug logging (solo en localhost)
+    if (DEBUG) {
+        console.log(`[apiFetch] ${options.method || 'GET'} ${finalUrl} | Auth: ${headers.Authorization ? 'present' : 'MISSING'}`);
+    }
+    
     const resp = await fetch(finalUrl, mergedOptions);
     if ((resp.status === 401 || resp.status === 403)) {
         console.warn(`[apiFetch] Error ${resp.status} en ${finalUrl}`);
