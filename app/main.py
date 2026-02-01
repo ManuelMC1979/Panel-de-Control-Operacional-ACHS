@@ -465,6 +465,35 @@ def upload_form():
         </div>
         
         <script>
+            // ============================================
+            // GESTIÓN DE TOKEN JWT
+            // ============================================
+            (function() {
+                // Capturar token de URL si viene
+                const urlParams = new URLSearchParams(window.location.search);
+                const tokenUrl = urlParams.get('t');
+                
+                if (tokenUrl) {
+                    localStorage.setItem('kpi_token', tokenUrl);
+                    // Limpiar URL eliminando el token
+                    history.replaceState({}, document.title, '/');
+                    console.log('[KPI] Token guardado desde URL');
+                }
+                
+                // Verificar que hay token
+                const token = localStorage.getItem('kpi_token');
+                if (!token) {
+                    document.body.innerHTML = `
+                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; color: #fca5a5; text-align: center; padding: 20px;">
+                            <h1 style="margin-bottom: 16px;">⚠️ Acceso Denegado</h1>
+                            <p>Debe acceder desde el Dashboard con una sesión válida.</p>
+                            <a href="https://www.gtrmanuelmonsalve.cl" style="margin-top: 20px; color: #22c55e;">Volver al Dashboard</a>
+                        </div>
+                    `;
+                    return;
+                }
+            })();
+            
             function toggleFileInput(name) {
                 const checkbox = document.getElementById('omitir_' + name);
                 const wrapper = document.getElementById('wrapper_' + name);
@@ -495,8 +524,25 @@ def upload_form():
                 }
             }
             
+            function handleAuthError() {
+                localStorage.removeItem('kpi_token');
+                document.body.innerHTML = `
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; color: #fca5a5; text-align: center; padding: 20px;">
+                        <h1 style="margin-bottom: 16px;">⚠️ Sesión Expirada</h1>
+                        <p>Su sesión ha expirado. Vuelva al Dashboard e intente nuevamente.</p>
+                        <a href="https://www.gtrmanuelmonsalve.cl" style="margin-top: 20px; color: #22c55e;">Volver al Dashboard</a>
+                    </div>
+                `;
+            }
+            
             document.getElementById('uploadForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
+                
+                const token = localStorage.getItem('kpi_token');
+                if (!token) {
+                    handleAuthError();
+                    return;
+                }
                 
                 const formData = new FormData(e.target);
                 const submitBtn = e.target.querySelector('.submit-btn');
@@ -509,13 +555,21 @@ def upload_form():
                 try {
                     const response = await fetch('/upload', {
                         method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer ' + token
+                        },
                         body: formData
                     });
+                    
+                    if (response.status === 401 || response.status === 403) {
+                        handleAuthError();
+                        return;
+                    }
                     
                     const result = await response.json();
                     
                     if (response.ok && result.preview_url) {
-                        // Redirigir a vista previa
+                        // Redirigir a vista previa SIN token en URL
                         window.location.href = result.preview_url;
                     } else {
                         throw new Error(result.detail || 'Error al procesar archivos');
@@ -824,7 +878,35 @@ async def preview_data_view(session_id: str):
         </div>
         
         <script>
+            // ============================================
+            // GESTIÓN DE TOKEN JWT EN PREVIEW
+            // ============================================
+            function handleAuthError() {{
+                localStorage.removeItem('kpi_token');
+                document.body.innerHTML = `
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; color: #fca5a5; text-align: center; padding: 20px;">
+                        <h1 style="margin-bottom: 16px;">⚠️ Sesión Expirada</h1>
+                        <p>Su sesión ha expirado. Vuelva al Dashboard e intente nuevamente.</p>
+                        <a href="https://www.gtrmanuelmonsalve.cl" style="margin-top: 20px; color: #22c55e;">Volver al Dashboard</a>
+                    </div>
+                `;
+            }}
+            
+            // Verificar token al cargar
+            (function() {{
+                const token = localStorage.getItem('kpi_token');
+                if (!token) {{
+                    handleAuthError();
+                }}
+            }})();
+            
             async function confirmarInsercion() {{
+                const token = localStorage.getItem('kpi_token');
+                if (!token) {{
+                    handleAuthError();
+                    return;
+                }}
+                
                 const status = document.getElementById('status');
                 const btnConfirm = document.querySelector('.btn-confirm');
                 
@@ -833,8 +915,16 @@ async def preview_data_view(session_id: str):
                 
                 try {{
                     const response = await fetch('/confirm/{session_id}', {{
-                        method: 'POST'
+                        method: 'POST',
+                        headers: {{
+                            'Authorization': 'Bearer ' + token
+                        }}
                     }});
+                    
+                    if (response.status === 401 || response.status === 403) {{
+                        handleAuthError();
+                        return;
+                    }}
                     
                     const result = await response.json();
                     
