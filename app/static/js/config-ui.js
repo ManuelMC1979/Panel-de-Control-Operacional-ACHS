@@ -1,13 +1,52 @@
 /**
  * config-ui.js - Módulo de Configuración para Administradores
  * Panel de Control Operacional ACHS
- * Versión: 20260201-2
+ * Versión: 20260201-3
  */
 
 (function() {
     'use strict';
 
     let isConfigViewActive = false;
+
+    // ============================================
+    // HELPERS Y MAPEOS
+    // ============================================
+    
+    // Mapeo de rol (string) a role_id (int) que espera el backend
+    const ROLE_ID_MAP = {
+        'ejecutivo': 1,
+        'supervisor': 2,
+        'jefatura': 3,
+        'admin': 99
+    };
+
+    // Mapeo inverso: role_id -> rol (para mostrar en UI)
+    const ROLE_NAME_MAP = {
+        1: 'ejecutivo',
+        2: 'supervisor',
+        3: 'jefatura',
+        99: 'admin'
+    };
+
+    /**
+     * Construye URL absoluta usando window.API_BASE
+     * @param {string} path - Ruta relativa (ej: '/admin/users')
+     * @returns {string} URL absoluta
+     */
+    function api(path) {
+        // Si ya es URL absoluta, devolverla tal cual
+        if (path.startsWith('http://') || path.startsWith('https://')) {
+            return path;
+        }
+        
+        const base = (window.API_BASE || '').replace(/\/+$/, ''); // quitar trailing slashes
+        const cleanPath = path.startsWith('/') ? path : '/' + path;
+        const url = base + cleanPath;
+        
+        console.log('[config-ui] api() ->', url);
+        return url;
+    }
 
     // ============================================
     // INICIALIZACIÓN
@@ -176,7 +215,7 @@
         `;
 
         try {
-            const res = await window.apiFetch('/admin/users', {
+            const res = await window.apiFetch(api('/admin/users'), {
                 method: 'GET',
                 headers: window.getAuthHeaders ? window.getAuthHeaders() : {}
             });
@@ -191,6 +230,7 @@
             }
 
             const users = await res.json();
+            console.log('[config-ui] Usuarios cargados:', users.length);
             renderUsersTable(users);
 
         } catch (e) {
@@ -225,23 +265,28 @@
                         </tr>
                     </thead>
                     <tbody>
-                        ${users.map(u => `
+                        ${users.map(u => {
+                            // Obtener rol desde rol (string) o role_id (int)
+                            const rolStr = u.rol || ROLE_NAME_MAP[u.role_id] || '-';
+                            // is_active puede venir como boolean o int
+                            const isActive = u.is_active === true || u.is_active === 1;
+                            return `
                             <tr style="border-bottom: 1px solid var(--border-color);">
                                 <td style="padding: 10px;">${u.id}</td>
                                 <td style="padding: 10px;">${escapeHtml(u.nombre || '')}</td>
                                 <td style="padding: 10px;">${escapeHtml(u.nombre_mostrar || '-')}</td>
                                 <td style="padding: 10px;">${escapeHtml(u.correo || '')}</td>
                                 <td style="padding: 10px;">
-                                    <span class="role-badge role-${(u.rol || '').toLowerCase()}">${u.rol || '-'}</span>
+                                    <span class="role-badge role-${rolStr.toLowerCase()}">${rolStr}</span>
                                 </td>
                                 <td style="padding: 10px; text-align: center;">
-                                    ${u.is_active ? '<span style="color: var(--achs-verde);">✓</span>' : '<span style="color: var(--achs-red);">✗</span>'}
+                                    ${isActive ? '<span style="color: var(--achs-verde);">✓</span>' : '<span style="color: var(--achs-red);">✗</span>'}
                                 </td>
                                 <td style="padding: 10px; text-align: center;">
                                     <button class="btn-icon" onclick="window.adminConfig.openUserModal(${u.id})" title="Editar">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    ${u.is_active ? `
+                                    ${isActive ? `
                                         <button class="btn-icon btn-danger" onclick="window.adminConfig.deactivateUser(${u.id})" title="Desactivar">
                                             <i class="fas fa-user-slash"></i>
                                         </button>
@@ -252,7 +297,7 @@
                                     `}
                                 </td>
                             </tr>
-                        `).join('')}
+                        `}).join('')}
                     </tbody>
                 </table>
             </div>
@@ -273,13 +318,22 @@
         if (userId) {
             // Cargar datos del usuario para editar
             try {
-                const res = await window.apiFetch('/admin/users', {
+                const res = await window.apiFetch(api('/admin/users'), {
                     method: 'GET',
                     headers: window.getAuthHeaders ? window.getAuthHeaders() : {}
                 });
                 if (res.ok) {
                     const users = await res.json();
                     user = users.find(u => u.id === userId);
+                    // Normalizar: si tiene role_id pero no rol, convertir
+                    if (user && user.role_id && !user.rol) {
+                        user.rol = ROLE_NAME_MAP[user.role_id] || 'ejecutivo';
+                    }
+                    // Normalizar is_active a boolean para el checkbox
+                    if (user) {
+                        user.is_active = user.is_active === true || user.is_active === 1;
+                    }
+                    console.log('[config-ui] Usuario para editar:', user);
                 }
             } catch (e) {
                 console.error('[config-ui] Error cargando usuario:', e);
@@ -396,23 +450,28 @@
             return;
         }
 
+        // Construir payload con role_id (int) e is_active (0/1) que espera el backend
+        const role_id = ROLE_ID_MAP[rol.toLowerCase()] || 1;
         const payload = {
             nombre,
             nombre_mostrar: nombre_mostrar || null,
-            correo,
-            rol,
-            is_active
+            correo: correo || null,
+            role_id: role_id,
+            is_active: is_active ? 1 : 0
         };
 
+        // Solo incluir password si tiene valor
         if (password) {
             payload.password = password;
         }
+
+        console.log('[config-ui] saveUser payload:', payload);
 
         try {
             let res;
             if (currentEditUserId) {
                 // PUT para editar
-                res = await window.apiFetch(`/admin/users/${currentEditUserId}`, {
+                res = await window.apiFetch(api(`/admin/users/${currentEditUserId}`), {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
@@ -422,7 +481,7 @@
                 });
             } else {
                 // POST para crear
-                res = await window.apiFetch('/admin/users', {
+                res = await window.apiFetch(api('/admin/users'), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -443,6 +502,7 @@
                 throw new Error(data.detail || data.message || 'Error al guardar usuario');
             }
 
+            console.log('[config-ui] Usuario guardado exitosamente');
             closeUserModal();
             loadUsers();
 
@@ -460,7 +520,8 @@
         if (!confirm('¿Está seguro de desactivar este usuario?')) return;
 
         try {
-            const res = await window.apiFetch(`/admin/users/${userId}`, {
+            console.log('[config-ui] Desactivando usuario:', userId);
+            const res = await window.apiFetch(api(`/admin/users/${userId}`), {
                 method: 'DELETE',
                 headers: window.getAuthHeaders ? window.getAuthHeaders() : {}
             });
@@ -474,6 +535,7 @@
                 throw new Error('Error al desactivar usuario');
             }
 
+            console.log('[config-ui] Usuario desactivado exitosamente');
             loadUsers();
 
         } catch (e) {
@@ -484,13 +546,14 @@
 
     async function activateUser(userId) {
         try {
-            const res = await window.apiFetch(`/admin/users/${userId}`, {
+            console.log('[config-ui] Activando usuario:', userId);
+            const res = await window.apiFetch(api(`/admin/users/${userId}`), {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                     ...(window.getAuthHeaders ? window.getAuthHeaders() : {})
                 },
-                body: JSON.stringify({ is_active: true })
+                body: JSON.stringify({ is_active: 1 })
             });
 
             if (res.status === 401 || res.status === 403) {
@@ -502,6 +565,7 @@
                 throw new Error('Error al activar usuario');
             }
 
+            console.log('[config-ui] Usuario activado exitosamente');
             loadUsers();
 
         } catch (e) {
